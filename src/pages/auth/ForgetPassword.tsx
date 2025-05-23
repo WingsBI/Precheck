@@ -1,0 +1,332 @@
+import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link as RouterLink } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Card,
+  CardContent,
+  Grid,
+  InputAdornment,
+  IconButton,
+  MenuItem,
+} from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { forgetPassword } from '../../store/slices/authSlice';
+import type { RootState } from '../../store/store';
+
+const ForgetPassword: React.FC = () => {
+  const dispatch = useDispatch();
+  const { isLoading, error } = useSelector((state: RootState) => state.auth);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [formData, setFormData] = useState({
+    userId: '',
+    securityQuestion: '',
+    securityAnswer: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const securityQuestions = [
+    { id: 1, question: 'What is your mother\'s maiden name?' },
+    { id: 2, question: 'What was your first pet\'s name?' },
+    { id: 3, question: 'In which city were you born?' },
+    { id: 4, question: 'What is your favorite movie?' },
+  ];
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.userId) errors.userId = 'User ID is required';
+    if (!formData.securityQuestion) errors.securityQuestion = 'Security question is required';
+    if (!formData.securityAnswer) errors.securityAnswer = 'Security answer is required';
+    if (!formData.newPassword) errors.newPassword = 'New password is required';
+    if (!formData.confirmPassword) errors.confirmPassword = 'Please confirm your password';
+    if (formData.newPassword !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateForm()) {
+      try {
+        await dispatch(forgetPassword(formData) as any);
+      } catch (err) {
+        // Error handling is managed by the Redux slice
+      }
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handleToggleNewPassword = () => {
+    setShowNewPassword(!showNewPassword);
+  };
+
+  const handleToggleConfirmPassword = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        width: '100vw',
+        background: 'linear-gradient(135deg, #a8005a 0%, #c2185b 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Card
+        sx={{
+          maxWidth: 520,
+          width: '100%',
+          mx: 2,
+          boxShadow: '0px 10px 30px rgba(0, 0, 0, 0.1)',
+          borderRadius: 4,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header */}
+        <Box
+          sx={{
+            bgcolor: 'primary.main',
+            background: 'linear-gradient(90deg, #800B4C 0%, #B5106D 100%)',
+            p: 3,
+            pb: 4,
+          }}
+        >
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="Logo"
+            sx={{
+              height: 50,
+              width: 'auto',
+              mb: 1,
+            }}
+          />
+          <Typography variant="h5" color="white" fontWeight="600">
+            Reset Password
+          </Typography>
+        </Box>
+
+        {/* Form */}
+        <CardContent sx={{ p: 3, pt: 4 }}>
+          <form onSubmit={handleSubmit}>
+            <Box mb={3}>
+              <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+                User ID
+              </Typography>
+              <TextField
+                fullWidth
+                id="userId"
+                name="userId"
+                placeholder="Enter your user ID"
+                value={formData.userId}
+                onChange={handleChange}
+                error={!!formErrors.userId}
+                helperText={formErrors.userId}
+                disabled={isLoading}
+                InputProps={{
+                  sx: {
+                    borderRadius: 1.5,
+                    bgcolor: 'background.default',
+                  }
+                }}
+              />
+            </Box>
+
+            <Grid container spacing={2} mb={3}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+                  Security Question
+                </Typography>
+                <TextField
+                  select
+                  fullWidth
+                  id="securityQuestion"
+                  name="securityQuestion"
+                  value={formData.securityQuestion}
+                  onChange={handleChange}
+                  error={!!formErrors.securityQuestion}
+                  helperText={formErrors.securityQuestion}
+                  disabled={isLoading}
+                  InputProps={{
+                    sx: {
+                      borderRadius: 1.5,
+                      bgcolor: 'background.default',
+                    }
+                  }}
+                >
+                  {securityQuestions.map((option) => (
+                    <MenuItem key={option.id} value={option.id}>
+                      {option.question}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+                  Security Answer
+                </Typography>
+                <TextField
+                  fullWidth
+                  id="securityAnswer"
+                  name="securityAnswer"
+                  placeholder="Enter your answer"
+                  value={formData.securityAnswer}
+                  onChange={handleChange}
+                  error={!!formErrors.securityAnswer}
+                  helperText={formErrors.securityAnswer}
+                  disabled={isLoading}
+                  InputProps={{
+                    sx: {
+                      borderRadius: 1.5,
+                      bgcolor: 'background.default',
+                    }
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={2} mb={3}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+                  New Password
+                </Typography>
+                <TextField
+                  fullWidth
+                  id="newPassword"
+                  name="newPassword"
+                  type={showNewPassword ? 'text' : 'password'}
+                  placeholder="Enter new password"
+                  value={formData.newPassword}
+                  onChange={handleChange}
+                  error={!!formErrors.newPassword}
+                  helperText={formErrors.newPassword}
+                  disabled={isLoading}
+                  InputProps={{
+                    sx: {
+                      borderRadius: 1.5,
+                      bgcolor: 'background.default',
+                    },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleToggleNewPassword}
+                          edge="end"
+                        >
+                          {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+                  Confirm Password
+                </Typography>
+                <TextField
+                  fullWidth
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirm new password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  error={!!formErrors.confirmPassword}
+                  helperText={formErrors.confirmPassword}
+                  disabled={isLoading}
+                  InputProps={{
+                    sx: {
+                      borderRadius: 1.5,
+                      bgcolor: 'background.default',
+                    },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleToggleConfirmPassword}
+                          edge="end"
+                        >
+                          {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            {error && (
+              <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
+                {error}
+              </Typography>
+            )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <Button
+                component={RouterLink}
+                to="/login"
+                variant="outlined"
+                color="secondary"
+                sx={{
+                  py: 1.5,
+                  px: 3,
+                  fontWeight: 600,
+                  minWidth: '120px',
+                }}
+              >
+                Back to Login
+              </Button>
+             
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                disabled={isLoading}
+                sx={{
+                  py: 1.5,
+                  px: 4,
+                  fontWeight: 600,
+                  minWidth: '120px',
+                  backgroundColor: '#a8005a',
+                  '&:hover': { backgroundColor: '#8e004b' }
+                }}
+              >
+                {isLoading ? 'Resetting...' : 'Reset'}
+              </Button>
+            </Box>
+          </form>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+};
+
+export default ForgetPassword; 
