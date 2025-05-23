@@ -7,7 +7,7 @@ import type { RootState } from '../../store/store';
 const StoreIn: React.FC = () => {
   const dispatch = useDispatch();
   const [form, setForm] = useState({ item: '', quantity: '', date: '' });
-  const { loading } = useSelector((state: RootState) => state.precheck);
+  const { isLoading } = useSelector((state: RootState) => state.precheck);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -15,7 +15,7 @@ const StoreIn: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(storeInPrecheck(form));
+    dispatch(storeInPrecheck(form) as any);
   };
 
   return (
@@ -52,8 +52,8 @@ const StoreIn: React.FC = () => {
             InputLabelProps={{ shrink: true }}
             required
           />
-          <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading}>
-            {loading ? 'Storing...' : 'Store In'}
+          <Button type="submit" variant="contained" color="primary" fullWidth disabled={isLoading}>
+            {isLoading ? 'Storing...' : 'Store In'}
           </Button>
         </form>
       </Paper>

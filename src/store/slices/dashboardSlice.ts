@@ -1,26 +1,31 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface DashboardState {
-  data: any;
+  data: any[];
   loading: boolean;
   error: string | null;
 }
 
 const initialState: DashboardState = {
-  data: null,
+  data: [],
   loading: false,
   error: null,
 };
 
 export const fetchDashboardData = createAsyncThunk(
   'dashboard/fetchData',
-  async () => {
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/dashboard');
-      return response.data;
-    } catch (error) {
-      throw error;
+      // Since there's no dashboard API endpoint in the swagger, 
+      // we'll return mock data for now
+      const mockData = [
+        { id: 1, name: 'Sample Item 1', status: 'Active', date: new Date().toLocaleDateString() },
+        { id: 2, name: 'Sample Item 2', status: 'Pending', date: new Date().toLocaleDateString() },
+      ];
+      return mockData;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard data');
     }
   }
 );
@@ -41,7 +46,7 @@ const dashboardSlice = createSlice({
       })
       .addCase(fetchDashboardData.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'An error occurred';
+        state.error = action.payload as string;
       });
   },
 });

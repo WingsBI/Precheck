@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface SopState {
   assemblies: any[];
@@ -19,7 +19,7 @@ export const getAllAssemblies = createAsyncThunk(
   'sop/getAllAssemblies',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/sop/allassemblies');
+      const response = await api.get('/api/sop/allassemblies');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch assemblies');
@@ -31,7 +31,7 @@ export const getSopForAssembly = createAsyncThunk(
   'sop/getSopForAssembly',
   async (request: any, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/sop/GetSop', request);
+      const response = await api.post('/api/sop/GetSop', request);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch SOP');
@@ -43,7 +43,7 @@ export const exportSopForAssembly = createAsyncThunk(
   'sop/exportSopForAssembly',
   async (request: any, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/sop/exportSop', request, {
+      const response = await api.post('/api/sop/exportSop', request, {
         responseType: 'blob',
       });
       return response.data;

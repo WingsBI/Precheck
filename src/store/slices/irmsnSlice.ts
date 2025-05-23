@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface IRMSNState {
   irmsnList: any[];
@@ -16,7 +16,7 @@ const initialState: IRMSNState = {
 export const fetchIRMSNList = createAsyncThunk(
   'irmsn/fetchIRMSNList',
   async (search: string) => {
-    const response = await axios.get(`/api/irmsn?search=${search}`);
+    const response = await api.get(`/api/irmsn?search=${search}`);
     return response.data;
   }
 );
@@ -24,7 +24,7 @@ export const fetchIRMSNList = createAsyncThunk(
 export const createIRMSN = createAsyncThunk(
   'irmsn/createIRMSN',
   async (data: any) => {
-    const response = await axios.post('/api/irmsn', data);
+    const response = await api.post('/api/irmsn', data);
     return response.data;
   }
 );
@@ -32,7 +32,7 @@ export const createIRMSN = createAsyncThunk(
 export const updateIRMSN = createAsyncThunk(
   'irmsn/updateIRMSN',
   async (data: any) => {
-    const response = await axios.put(`/api/irmsn/${data.id}`, data);
+    const response = await api.put(`/api/irmsn/${data.id}`, data);
     return response.data;
   }
 );

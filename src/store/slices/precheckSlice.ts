@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface PrecheckState {
   assemblyDrawings: any[];
@@ -23,7 +23,7 @@ export const getAssemblyDrawing = createAsyncThunk(
   'precheck/getAssemblyDrawing',
   async (assemblyNumber: string, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`/api/precheck/${assemblyNumber}`);
+      const response = await api.get(`/api/precheck/${assemblyNumber}`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch assembly drawing');
@@ -35,7 +35,7 @@ export const makePrecheck = createAsyncThunk(
   'precheck/makePrecheck',
   async (request: any[], { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/precheck/MakePrecheck', request);
+      const response = await api.post('/api/precheck/MakePrecheck', request);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to make precheck');
@@ -47,7 +47,7 @@ export const viewPrecheckDetails = createAsyncThunk(
   'precheck/viewPrecheckDetails',
   async (request: any, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/precheck/ViewPrecheck', { params: request });
+      const response = await api.get('/api/precheck/ViewPrecheck', { params: request });
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to view precheck details');
@@ -59,7 +59,7 @@ export const getPrecheckStatus = createAsyncThunk(
   'precheck/getPrecheckStatus',
   async (request: any, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/precheck/GetPrecheckStatus', { params: request });
+      const response = await api.get('/api/precheck/GetPrecheckStatus', { params: request });
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to get precheck status');
@@ -71,7 +71,7 @@ export const getAvailableComponents = createAsyncThunk(
   'precheck/getAvailableComponents',
   async (qrCode: string, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`/api/precheck/GetStoreAvailablComponents/${qrCode}`);
+        const response = await api.get(`/api/precheck/GetStoreAvailablComponents/${qrCode}`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to get available components');
@@ -83,7 +83,7 @@ export const fetchConsumptionList = createAsyncThunk(
   'precheck/fetchConsumptionList',
   async (params: any, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/precheck/consumption-list', { params });
+        const response = await api.get('/api/precheck/consumption-list', { params });
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch consumption list');
@@ -95,7 +95,7 @@ export const makePrecheckOrder = createAsyncThunk(
   'precheck/makePrecheckOrder',
   async (orderData: any, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/precheck/make-order', orderData);
+      const response = await api.post('/api/precheck/make-order', orderData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to make precheck order');
@@ -107,7 +107,7 @@ export const storeInPrecheck = createAsyncThunk(
   'precheck/storeInPrecheck',
   async (storeData: any, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/precheck/store-in', storeData);
+      const response = await api.post('/api/precheck/store-in', storeData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to store in precheck');
