@@ -37,6 +37,7 @@ import {
   Toolbar,
   Slide,
   useScrollTrigger,
+  TablePagination,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -83,7 +84,7 @@ interface PrecheckItem {
   components?: number;
 }
 
-export default function Precheck() {
+export default function EnhancedPrecheck() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isTablet = useMediaQuery(theme.breakpoints.between('md', 'lg'));
@@ -318,154 +319,13 @@ export default function Precheck() {
     </Grid>
   );
 
-  // Desktop Table View
-  const DesktopTableView = () => (
-    <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Assembly Number</TableCell>
-            <TableCell>Drawing Number</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Priority</TableCell>
-            <TableCell>Date Created</TableCell>
-            <TableCell>Last Updated</TableCell>
-            <TableCell align="center">Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {isLoading ? (
-            Array.from({ length: rowsPerPage }).map((_, index) => (
-              <TableRow key={index}>
-                {Array.from({ length: 7 }).map((_, cellIndex) => (
-                  <TableCell key={cellIndex}>
-                    <Skeleton variant="text" height={32} />
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : paginatedData.length > 0 ? (
-            paginatedData.map((precheck: any) => (
-              <TableRow 
-                key={precheck.id}
-                hover
-                sx={{ 
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.04)',
-                  },
-                }}
-                onClick={() => handleItemClick(precheck)}
-              >
-                <TableCell>
-                  <Typography variant="body2" fontWeight={500}>
-                    {precheck.assemblyNumber}
-                  </Typography>
-                </TableCell>
-                <TableCell>{precheck.drawingNumber}</TableCell>
-                <TableCell>
-                  <Chip 
-                    label={precheck.status} 
-                    color={getStatusColor(precheck.status) as any}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  {precheck.priority && (
-                    <Chip 
-                      label={precheck.priority} 
-                      color={getPriorityColor(precheck.priority) as any}
-                      size="small"
-                      variant="outlined"
-                    />
-                  )}
-                </TableCell>
-                <TableCell>
-                  {new Date(precheck.createdAt).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  {new Date(precheck.updatedAt || precheck.createdAt).toLocaleDateString()}
-                </TableCell>
-                <TableCell align="center">
-                  <Stack direction="row" spacing={1} justifyContent="center">
-                    <Tooltip title="View Details">
-                      <IconButton size="small" color="primary">
-                        <ViewIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Edit">
-                      <IconButton size="small" color="secondary">
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Process">
-                      <IconButton 
-                        size="small" 
-                        color="success"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMakePrecheck(precheck);
-                        }}
-                        disabled={isLoading}
-                      >
-                        <CheckCircleIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={7} align="center">
-                <Box py={4}>
-                  <Typography variant="h6" color="text.secondary" gutterBottom>
-                    No precheck data found
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Try adjusting your search criteria or create a new precheck.
-                  </Typography>
-                </Box>
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-
   return (
     <Box sx={{ 
       flexGrow: 1, 
       p: { xs: 1, sm: 2, md: 3 },
-      maxWidth: { xl: '1400px', xxl: '1800px' },
+      maxWidth: { xl: '1400px' },
       mx: 'auto',
     }}>
-      {/* Sticky Header for Mobile */}
-      {isMobile && (
-        <Slide appear={false} direction="down" in={trigger}>
-          <AppBar 
-            position="fixed" 
-            sx={{ 
-              top: 64, 
-              backgroundColor: 'background.paper',
-              color: 'text.primary',
-              boxShadow: 1,
-              zIndex: theme.zIndex.appBar - 1,
-            }}
-          >
-            <Toolbar variant="dense">
-              <Typography variant="h6" sx={{ flexGrow: 1, fontSize: '1rem' }}>
-                Precheck Management
-              </Typography>
-              <IconButton onClick={handleRefresh} disabled={isLoading}>
-                <RefreshIcon />
-              </IconButton>
-            </Toolbar>
-          </AppBar>
-        </Slide>
-      )}
-
       {/* Main Header */}
       <Box mb={{ xs: 2, md: 3 }}>
         <Typography 
@@ -484,7 +344,7 @@ export default function Precheck() {
             color: 'primary.main',
           }}
         >
-          Precheck Management
+          Enhanced Precheck Management
         </Typography>
         <Typography 
           variant="body1" 
@@ -494,7 +354,7 @@ export default function Precheck() {
             maxWidth: '600px',
           }}
         >
-          Manage and monitor precheck operations for assembly components
+          Fully responsive precheck management optimized for all device types
         </Typography>
       </Box>
 
@@ -508,7 +368,6 @@ export default function Precheck() {
               fontSize: { xs: '0.875rem', sm: '1rem' },
             },
           }}
-          onClose={() => {/* Clear error */}}
         >
           {error}
         </Alert>
@@ -523,7 +382,6 @@ export default function Precheck() {
         }}
       >
         <Grid container spacing={{ xs: 2, md: 3 }} alignItems="center">
-          {/* Assembly Number Search */}
           <Grid item xs={12} sm={6} md={4}>
             <TextField
               fullWidth
@@ -544,7 +402,6 @@ export default function Precheck() {
             />
           </Grid>
 
-          {/* Global Search */}
           <Grid item xs={12} sm={6} md={4}>
             <TextField
               fullWidth
@@ -562,7 +419,6 @@ export default function Precheck() {
             />
           </Grid>
 
-          {/* Action Buttons */}
           <Grid item xs={12} md={4}>
             <Stack 
               direction={{ xs: 'column', sm: 'row' }} 
@@ -587,23 +443,31 @@ export default function Precheck() {
               >
                 Filter
               </Button>
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                fullWidth
-                sx={{ minHeight: { xs: 44, md: 48 } }}
-              >
-                Export
-              </Button>
             </Stack>
           </Grid>
         </Grid>
       </Paper>
 
       {/* Data Display */}
-      {isMobile || isTablet ? <MobileCardView /> : <DesktopTableView />}
+      <MobileCardView />
 
-      {/* Floating Action Button for Mobile */}
+      {/* Pagination */}
+      <Box display="flex" justifyContent="center" mt={3}>
+        <TablePagination
+          component="div"
+          count={filteredData.length}
+          page={page}
+          onPageChange={(_, newPage) => setPage(newPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 15, 25]}
+        />
+      </Box>
+
+      {/* Floating Action Button */}
       {isMobile && (
         <Fab
           color="primary"
@@ -614,7 +478,6 @@ export default function Precheck() {
             right: 16,
             zIndex: theme.zIndex.speedDial,
           }}
-          onClick={() => {/* Navigate to create precheck */}}
         >
           <AddIcon />
         </Fab>
@@ -661,35 +524,6 @@ export default function Precheck() {
                   {selectedItem.drawingNumber}
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Status
-                </Typography>
-                <Chip 
-                  label={selectedItem.status} 
-                  color={getStatusColor(selectedItem.status) as any}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Priority
-                </Typography>
-                {selectedItem.priority && (
-                  <Chip 
-                    label={selectedItem.priority} 
-                    color={getPriorityColor(selectedItem.priority) as any}
-                    variant="outlined"
-                  />
-                )}
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Description
-                </Typography>
-                <Typography variant="body2">
-                  {selectedItem.description || 'No description available.'}
-                </Typography>
-              </Grid>
             </Grid>
           )}
         </DialogContent>
@@ -697,10 +531,10 @@ export default function Precheck() {
           <Button onClick={() => setDialogOpen(false)}>
             Close
           </Button>
-          <Button variant="contained" onClick={() => {/* Handle edit */}}>
+          <Button variant="contained">
             Edit
           </Button>
-          <Button variant="contained" color="success" onClick={() => {/* Handle process */}}>
+          <Button variant="contained" color="success">
             Process
           </Button>
         </DialogActions>

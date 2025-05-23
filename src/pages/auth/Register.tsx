@@ -21,6 +21,7 @@ import {
   getAllDepartments,
   getUserRoles,
   getSecurityQuestions,
+  getPlants,
 } from '../../store/slices/commonSlice';
 import type { RootState } from '../../store/store';
 
@@ -65,6 +66,7 @@ const Register = () => {
     departments,
     userRoles,
     securityQuestions,
+    plants,
     isLoading: isLoadingCommon,
   } = useSelector((state: RootState) => state.common);
 
@@ -75,6 +77,7 @@ const Register = () => {
     dispatch(getAllDepartments() as any);
     dispatch(getUserRoles() as any);
     dispatch(getSecurityQuestions() as any);
+    dispatch(getPlants() as any);
   }, [dispatch]);
 
   const formik = useFormik<RegisterFormValues>({
@@ -132,14 +135,14 @@ const Register = () => {
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
+      <Box
+        sx={{
+          minHeight: '100vh',
         width: '100vw',
         background: 'linear-gradient(135deg, #a8005a 0%, #c2185b 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
       }}
     >
       <Card
@@ -186,8 +189,8 @@ const Register = () => {
                   <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
                     Username
                   </Typography>
-                  <TextField
-                    fullWidth
+            <TextField
+              fullWidth
                     id="username"
                     name="username"
                     placeholder="Enter username"
@@ -209,10 +212,10 @@ const Register = () => {
                   <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
                     Email
                   </Typography>
-                  <TextField
-                    fullWidth
-                    id="email"
-                    name="email"
+            <TextField
+              fullWidth
+              id="email"
+              name="email"
                     placeholder="Enter email"
                     value={formik.values.email}
                     onChange={formik.handleChange}
@@ -284,10 +287,10 @@ const Register = () => {
                   <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
                     Password
                   </Typography>
-                  <TextField
-                    fullWidth
+            <TextField
+              fullWidth
                     id="password"
-                    name="password"
+              name="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter password"
                     value={formik.values.password}
@@ -322,9 +325,9 @@ const Register = () => {
                   <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
                     Role
                   </Typography>
-                  <TextField
+            <TextField
                     select
-                    fullWidth
+              fullWidth
                     id="role"
                     name="role"
                     value={formik.values.role}
@@ -342,8 +345,8 @@ const Register = () => {
                     {userRoles.map((option) => (
                       <MenuItem key={option.id} value={option.id}>
                         {option.name}
-                      </MenuItem>
-                    ))}
+                  </MenuItem>
+                ))}
                   </TextField>
                 </Box>
 
@@ -371,8 +374,8 @@ const Register = () => {
                     {departments.map((option) => (
                       <MenuItem key={option.id} value={option.id}>
                         {option.name}
-                      </MenuItem>
-                    ))}
+                  </MenuItem>
+                ))}
                   </TextField>
                 </Box>
 
@@ -397,11 +400,11 @@ const Register = () => {
                       }
                     }}
                   >
-                    {departments.map((option) => (
+                    {plants.map((option) => (
                       <MenuItem key={option.id} value={option.id}>
-                        {option.name}
-                      </MenuItem>
-                    ))}
+                        {option.name || option.plantname}
+                  </MenuItem>
+                ))}
                   </TextField>
                 </Box>
 
@@ -409,10 +412,10 @@ const Register = () => {
                   <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
                     Security Answer
                   </Typography>
-                  <TextField
-                    fullWidth
+            <TextField
+              fullWidth
                     id="securityAnswer"
-                    name="securityAnswer"
+              name="securityAnswer"
                     placeholder="Enter answer"
                     value={formik.values.securityAnswer}
                     onChange={formik.handleChange}
@@ -487,11 +490,11 @@ const Register = () => {
                 Back to Login
               </Button>
              
-              <Button
-                type="submit"
-                variant="contained"
+            <Button
+              type="submit"
+              variant="contained"
                 color="primary"
-                disabled={isLoading}
+              disabled={isLoading}
                 sx={{
                   py: 1.5,
                   px: 4,
@@ -502,12 +505,12 @@ const Register = () => {
                 }}
               >
                 {isLoading ? 'Registering...' : 'Register'}
-              </Button>
+            </Button>
             </Box>
           </form>
         </CardContent>
       </Card>
-    </Box>
+      </Box>
   );
 };
 

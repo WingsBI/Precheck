@@ -51,10 +51,16 @@ const Login: React.FC = () => {
     if (validateForm()) {
       try {
         const resultAction = await dispatch(login(formData) as any);
+        console.log('Login result:', resultAction);
+        
         if (login.fulfilled.match(resultAction)) {
-          navigate('/');
+          console.log('Login successful, navigating to dashboard');
+          navigate('/dashboard', { replace: true });
+        } else if (login.rejected.match(resultAction)) {
+          console.log('Login failed:', resultAction.payload);
         }
       } catch (err) {
+        console.error('Login error:', err);
         // Error handling is managed by the Redux slice
       }
     }

@@ -39,13 +39,13 @@ const Dashboard: React.FC = () => {
   const { sopDetails, isLoading: isSopLoading } = useSelector(
     (state: RootState) => state.sop
   );
-  const { dashboardData, loading } = useSelector((state: RootState) => state.dashboard);
+  const { data: dashboardData, loading } = useSelector((state: RootState) => state.dashboard);
 
   useEffect(() => {
     // Fetch recent precheck and SOP data
     dispatch(viewPrecheckDetails({ limit: 5 }) as any);
     dispatch(getSopForAssembly({ limit: 5 }) as any);
-    dispatch(fetchDashboardData());
+    dispatch(fetchDashboardData() as any);
   }, [dispatch]);
 
   const summaryCards = [
@@ -186,7 +186,7 @@ const Dashboard: React.FC = () => {
                     <CircularProgress />
                   </TableCell>
                 </TableRow>
-              ) : (
+              ) : dashboardData && Array.isArray(dashboardData) ? (
                 dashboardData.map((row: any) => (
                   <TableRow key={row.id}>
                     <TableCell>{row.id}</TableCell>
@@ -195,6 +195,12 @@ const Dashboard: React.FC = () => {
                     <TableCell>{row.date}</TableCell>
                   </TableRow>
                 ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    No dashboard data available
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>

@@ -1,22 +1,22 @@
 import React from 'react';
 import { Box, Typography, Paper } from '@mui/material';
 
-const MakeOrder: React.FC = () => {
+const ViewBarcode: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom color="primary.main" fontWeight={600}>
-        Make Order
+        View QR Code
       </Typography>
       <Typography variant="body1" color="text.secondary" gutterBottom>
-        Create and manage orders for precheck components
+        View and manage existing QR codes
       </Typography>
       
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Order Management System
+          QR Code Viewer
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          This page will contain the order creation and management functionality.
+          This page will contain the QR code viewing and management functionality.
           Coming soon...
         </Typography>
       </Paper>
@@ -24,4 +24,4 @@ const MakeOrder: React.FC = () => {
   );
 };
 
-export default MakeOrder; 
+export default ViewBarcode; 

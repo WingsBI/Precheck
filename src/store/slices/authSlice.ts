@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface User {
   id: number;
@@ -21,8 +21,8 @@ const getInitialState = (): AuthState => {
   if (storedUser) {
     try {
       const user = JSON.parse(storedUser);
-      // Set the token in axios headers
-      axios.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
+      // Set the token in api headers
+      api.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
       return {
         user,
         isLoading: false,
@@ -45,15 +45,37 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials: { username: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/auth/login', credentials);
-      const userData = response.data;
-      // Store user data in localStorage
+      // Map username to userId as per API specification
+      const loginData = {
+        userId: credentials.username,
+        password: credentials.password
+      };
+      const response = await api.post('/Auth/login', loginData);
+      console.log('API Response:', response.data); // Add debugging
+      
+      const authData = response.data;
+      
+      // Transform the API response to match our User interface
+      const userData = {
+        id: authData.id || 1, // Provide default if not present
+        email: authData.email || '',
+        role: authData.role || 'user',
+        token: authData.token || authData.accessToken || '', // Handle different token field names
+        departmentId: authData.departmentId || 0,
+        // Include any other fields from the API response
+        ...authData
+      };
+      
+      console.log('Transformed user data:', userData); // Add debugging
+      
+      // Store user data in localStorage 
       localStorage.setItem('user', JSON.stringify(userData));
-      // Set the token in axios headers
-      axios.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
+      // Set the token in api headers
+      api.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
       return userData;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Login failed');
+      console.error('Login API error:', error.response?.data); // Add debugging
+      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed');
     }
   }
 );
@@ -72,7 +94,19 @@ export const register = createAsyncThunk(
     securityAnswer: string;
   }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/auth/register', userData);
+      // Map to API expected fields
+      const registerData = {
+        userName: userData.username,
+        email: userData.email,
+        userId: userData.name, // Using name as userId based on the Register component mapping
+        password: userData.password,
+        userroleId: userData.roleId,
+        plantId: userData.plantId,
+        deptId: userData.departmentId,
+        securityQuestionId: userData.securityQuestionId,
+        securityAnswer: userData.securityAnswer
+      };
+      const response = await api.post('/Auth/register', registerData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Registration failed');
@@ -83,12 +117,13 @@ export const register = createAsyncThunk(
 export const resetPassword = createAsyncThunk(
   'auth/reset',
   async (resetData: {
-    userId: number;
-    currentPassword: string;
-    newPassword: string;
+    userId: string;
+    password: string;
+    securityQuestionId: number;
+    securityAnswer: string;
   }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/auth/reset', resetData);
+      const response = await api.post('/Auth/reset', resetData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Password reset failed');
@@ -98,9 +133,21 @@ export const resetPassword = createAsyncThunk(
 
 export const forgetPassword = createAsyncThunk(
   'auth/forgetPassword',
-  async (email: string, { rejectWithValue }) => {
+  async (forgetData: {
+    userId: string;
+    securityQuestion: string;
+    securityAnswer: string;
+    newPassword: string;
+  }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/auth/forget-password', { email });
+      // The API might need this in a different format
+      const resetData = {
+        userId: forgetData.userId,
+        password: forgetData.newPassword,
+        securityQuestionId: parseInt(forgetData.securityQuestion),
+        securityAnswer: forgetData.securityAnswer
+      };
+      const response = await api.post('/Auth/reset', resetData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Password reset request failed');
@@ -115,9 +162,9 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.error = null;
-      // Clear localStorage and axios headers
+      // Clear localStorage and api headers
       localStorage.removeItem('user');
-      delete axios.defaults.headers.common['Authorization'];
+      delete api.defaults.headers.common['Authorization'];
     },
     clearError: (state) => {
       state.error = null;

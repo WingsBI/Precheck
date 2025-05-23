@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface QRCodeState {
   qrcodeList: any[];
@@ -16,7 +16,7 @@ const initialState: QRCodeState = {
 export const fetchQRCodeList = createAsyncThunk(
   'qrcode/fetchQRCodeList',
   async () => {
-    const response = await axios.get('/api/qrcode');
+    const response = await api.get('/api/qrcode');
     return response.data;
   }
 );
@@ -24,7 +24,7 @@ export const fetchQRCodeList = createAsyncThunk(
 export const createQRCode = createAsyncThunk(
   'qrcode/createQRCode',
   async (data: any) => {
-    const response = await axios.post('/api/qrcode', data);
+    const response = await api.post('/api/qrcode', data);
     return response.data;
   }
 );

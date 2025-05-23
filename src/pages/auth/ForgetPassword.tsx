@@ -58,7 +58,12 @@ const ForgetPassword: React.FC = () => {
     e.preventDefault();
     if (validateForm()) {
       try {
-        await dispatch(forgetPassword(formData) as any);
+        await dispatch(forgetPassword({
+          userId: formData.userId,
+          securityQuestion: formData.securityQuestion,
+          securityAnswer: formData.securityAnswer,
+          newPassword: formData.newPassword
+        }) as any);
       } catch (err) {
         // Error handling is managed by the Redux slice
       }

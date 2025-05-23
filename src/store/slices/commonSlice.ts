@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface CommonState {
   departments: any[];
@@ -36,7 +36,7 @@ export const getAllDepartments = createAsyncThunk(
   'common/getAllDepartments',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/auth/GetAllDepartment');
+      const response = await api.get('/Auth/GetAllDepartment');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch departments');
@@ -49,7 +49,7 @@ export const getAllModules = createAsyncThunk(
   'common/getAllModules',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/common/GetAllModules');
+      const response = await api.get('/Common/GetAllModules');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch modules');
@@ -62,7 +62,7 @@ export const getAllComponentTypes = createAsyncThunk(
   'common/getAllComponentTypes',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/common/GetAllComponenttype');
+      const response = await api.get('/Common/GetAllComponenttype');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch component types');
@@ -71,11 +71,13 @@ export const getAllComponentTypes = createAsyncThunk(
 );
 
 // Drawing Numbers
-export const getAllDrawingNumbers = createAsyncThunk(
-  'common/getAllDrawingNumbers',
-  async (request: any, { rejectWithValue }) => {
+export const getDrawingNumbers = createAsyncThunk(
+  'common/getDrawingNumbers',
+  async (componentType?: string, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/common/GetAllDrawingNumber', { params: request });
+      const response = await api.get('/Common/GetAllDrawingNumber', {
+        params: componentType ? { ComponentType: componentType } : undefined
+      });
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch drawing numbers');
@@ -88,7 +90,7 @@ export const getAllDocumentTypes = createAsyncThunk(
   'common/getAllDocumentTypes',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/common/GetAllDocumentType');
+      const response = await api.get('/Common/GetAllDocumentType');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch document types');
@@ -101,7 +103,7 @@ export const getAllProductionSeries = createAsyncThunk(
   'common/getAllProductionSeries',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/common/GetAllProductionSeries');
+      const response = await api.get('/Common/GetAllProductionSeries');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch production series');
@@ -114,7 +116,7 @@ export const getAllUnits = createAsyncThunk(
   'common/getAllUnits',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/common/GetAllUnit');
+      const response = await api.get('/Common/GetAllUnit');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch units');
@@ -127,7 +129,7 @@ export const getUserRoles = createAsyncThunk(
   'common/getUserRoles',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/auth/GetUserRoles');
+      const response = await api.get('/Auth/GetUserRoles');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch user roles');
@@ -136,11 +138,11 @@ export const getUserRoles = createAsyncThunk(
 );
 
 // Plants
-export const getAllPlants = createAsyncThunk(
-  'common/getAllPlants',
+export const getPlants = createAsyncThunk(
+  'common/getPlants',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/auth/GetAllPlants');
+      const response = await api.get('/Auth/GetAllPlants');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch plants');
@@ -153,7 +155,7 @@ export const getSecurityQuestions = createAsyncThunk(
   'common/getSecurityQuestions',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/auth/GetSecurityQuestion');
+      const response = await api.get('/Auth/GetSecurityQuestion');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch security questions');
@@ -208,14 +210,14 @@ const commonSlice = createSlice({
         state.isLoading = false;
       })
       // Drawing Numbers
-      .addCase(getAllDrawingNumbers.pending, (state) => {
+      .addCase(getDrawingNumbers.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(getAllDrawingNumbers.fulfilled, (state, action) => {
+      .addCase(getDrawingNumbers.fulfilled, (state, action) => {
         state.drawingNumbers = action.payload;
         state.isLoading = false;
       })
-      .addCase(getAllDrawingNumbers.rejected, (state, action) => {
+      .addCase(getDrawingNumbers.rejected, (state, action) => {
         state.error = action.payload as string;
         state.isLoading = false;
       })
@@ -268,14 +270,14 @@ const commonSlice = createSlice({
         state.isLoading = false;
       })
       // Plants
-      .addCase(getAllPlants.pending, (state) => {
+      .addCase(getPlants.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(getAllPlants.fulfilled, (state, action) => {
+      .addCase(getPlants.fulfilled, (state, action) => {
         state.plants = action.payload;
         state.isLoading = false;
       })
-      .addCase(getAllPlants.rejected, (state, action) => {
+      .addCase(getPlants.rejected, (state, action) => {
         state.error = action.payload as string;
         state.isLoading = false;
       })
