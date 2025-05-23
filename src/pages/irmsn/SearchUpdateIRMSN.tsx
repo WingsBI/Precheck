@@ -243,10 +243,10 @@ export default function SearchUpdateIRMSN() {
               <IconButton 
                 onClick={() => handleEdit(item)}
                 color="primary"
-                size="small"
+          size="small"
               >
-                <EditIcon />
-              </IconButton>
+                      <EditIcon />
+                    </IconButton>
             </Tooltip>
           </Stack>
 
@@ -520,30 +520,30 @@ export default function SearchUpdateIRMSN() {
 
             {/* ID Range */}
             <Grid item xs={12}>
-              <TextField
+          <TextField
                 label="ID Number Range"
-                fullWidth
+            fullWidth
                 value={updateForm.idNumberRange}
                 onChange={(e) => setUpdateForm(prev => ({ ...prev, idNumberRange: e.target.value }))}
                 helperText="e.g., 1-100 or 1,2,3"
-              />
+          />
             </Grid>
 
             {/* Supplier */}
             <Grid item xs={12} sm={6}>
-              <TextField
+          <TextField
                 label="Supplier"
-                fullWidth
+            fullWidth
                 value={updateForm.supplier}
                 onChange={(e) => setUpdateForm(prev => ({ ...prev, supplier: e.target.value }))}
-              />
+          />
             </Grid>
 
             {/* Remark */}
             <Grid item xs={12} sm={6}>
-              <TextField
+          <TextField
                 label="Remark"
-                fullWidth
+            fullWidth
                 multiline
                 rows={2}
                 value={updateForm.remark}

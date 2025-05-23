@@ -484,8 +484,8 @@ export default function Precheck() {
             color: 'primary.main',
           }}
         >
-          Precheck Management
-        </Typography>
+        Precheck Management
+      </Typography>
         <Typography 
           variant="body1" 
           color="text.secondary"
@@ -569,16 +569,16 @@ export default function Precheck() {
               spacing={1}
               sx={{ height: '100%' }}
             >
-              <Button
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={handleRefresh}
-                disabled={isLoading}
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={handleRefresh}
+              disabled={isLoading}
                 fullWidth
                 sx={{ minHeight: { xs: 44, md: 48 } }}
-              >
-                Refresh
-              </Button>
+            >
+              Refresh
+            </Button>
               <Button
                 variant="outlined"
                 startIcon={<FilterListIcon />}
@@ -673,7 +673,7 @@ export default function Precheck() {
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2" gutterBottom>
                   Priority
-                </Typography>
+                    </Typography>
                 {selectedItem.priority && (
                   <Chip 
                     label={selectedItem.priority} 
@@ -685,12 +685,12 @@ export default function Precheck() {
               <Grid item xs={12}>
                 <Typography variant="subtitle2" gutterBottom>
                   Description
-                </Typography>
-                <Typography variant="body2">
+                    </Typography>
+                    <Typography variant="body2">
                   {selectedItem.description || 'No description available.'}
-                </Typography>
+                    </Typography>
               </Grid>
-            </Grid>
+          </Grid>
           )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>

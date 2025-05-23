@@ -299,7 +299,7 @@ export default function MakePrecheck() {
           </Stack>
 
           {/* Progress */}
-          <Box>
+    <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
               <Typography variant="body2" color="textSecondary">
                 Progress
@@ -468,10 +468,10 @@ export default function MakePrecheck() {
                     name="poNumber"
                     control={control}
                     render={({ field }) => (
-                      <TextField
+          <TextField
                         {...field}
                         label="PO Number *"
-                        fullWidth
+            fullWidth
                         error={!!errors.poNumber}
                         helperText={errors.poNumber?.message}
                         size={isMobile ? "small" : "medium"}
@@ -486,7 +486,7 @@ export default function MakePrecheck() {
                     name="projectNumber"
                     control={control}
                     render={({ field }) => (
-                      <TextField
+          <TextField
                         {...field}
                         label="Project Number *"
                         fullWidth
@@ -501,7 +501,7 @@ export default function MakePrecheck() {
                 {/* Quantity */}
                 <Grid item xs={12} md={4}>
                   <Controller
-                    name="quantity"
+            name="quantity"
                     control={control}
                     render={({ field }) => (
                       <TextField
@@ -548,7 +548,7 @@ export default function MakePrecheck() {
                         {...field}
                         label="End Range *"
                         type="number"
-                        fullWidth
+            fullWidth
                         error={!!errors.endRange}
                         helperText={errors.endRange?.message}
                         inputProps={{ min: 1 }}
@@ -564,10 +564,10 @@ export default function MakePrecheck() {
                     name="remarks"
                     control={control}
                     render={({ field }) => (
-                      <TextField
+          <TextField
                         {...field}
                         label="Remarks"
-                        fullWidth
+            fullWidth
                         multiline
                         rows={3}
                         size={isMobile ? "small" : "medium"}
@@ -587,10 +587,10 @@ export default function MakePrecheck() {
                     fullWidth
                   >
                     {isCreating ? 'Creating...' : 'Create Precheck Items'}
-                  </Button>
+          </Button>
                 </Grid>
               </Grid>
-            </form>
+        </form>
           </CardContent>
         </Card>
       ),

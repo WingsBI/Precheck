@@ -456,7 +456,7 @@ export default function Layout() {
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>
                   <LogoutIcon sx={{ mr: 1 }} />
-                  Logout
+                Logout
                 </MenuItem>
               </Menu>
             </Box>
