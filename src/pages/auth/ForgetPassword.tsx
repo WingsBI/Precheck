@@ -125,7 +125,7 @@ const ForgetPassword: React.FC = () => {
         >
           <Box
             component="img"
-            src="/logo.png"
+            src="/logo.jpg"
             alt="Logo"
             sx={{
               height: 50,

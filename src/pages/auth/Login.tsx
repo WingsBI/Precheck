@@ -117,7 +117,7 @@ const Login: React.FC = () => {
         >
           <Box
             component="img"
-            src="/logo.png"
+            src="/assets/logo.jpg"
             alt="Logo"
             sx={{
               height: 50,
