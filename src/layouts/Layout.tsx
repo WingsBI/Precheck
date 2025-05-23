@@ -54,6 +54,19 @@ import { logout } from '../store/slices/authSlice';
 const drawerWidth = 280;
 const mobileDrawerWidth = 240;
 
+// Role constants matching C# application
+const ADMIN_ROLE = "Admin";
+const QC_ROLE = "QC";
+const STORE_ROLE = "Store";
+
+interface MenuItem {
+  text: string;
+  icon: React.ReactNode;
+  path: string;
+  roles?: string[];
+  subItems?: MenuItem[];
+}
+
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
@@ -93,19 +106,6 @@ const StyledAppBar = styled(AppBar, {
     marginLeft: drawerWidth,
   },
 }));
-
-interface MenuItem {
-  text: string;
-  icon: React.ReactNode;
-  path: string;
-  roles?: string[];
-  subItems?: MenuItem[];
-}
-
-// Role constants matching C# application
-const ADMIN_ROLE = "Admin";
-const QC_ROLE = "QC";
-const STORE_ROLE = "Store";
 
 export default function Layout() {
   const theme = useTheme();

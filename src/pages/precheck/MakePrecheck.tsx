@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import {
   Box,
   Paper,
@@ -13,9 +13,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
   Alert,
   Autocomplete,
   IconButton,
@@ -117,6 +114,7 @@ export default function MakePrecheck() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [precheckDialogOpen, setPrecheckDialogOpen] = useState(false);
+  const [assemblyNumber, setAssemblyNumber] = useState('');
 
   // Stage options
   const stages = [
