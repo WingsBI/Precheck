@@ -59,7 +59,7 @@ let theme = createTheme({
   },
   typography: {
     fontFamily: [
-      'Inter',
+      'Nunito Sans',
       '-apple-system',
       'BlinkMacSystemFont',
       '"Segoe UI"',

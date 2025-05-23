@@ -166,7 +166,7 @@ const Register = () => {
         >
           <Box
             component="img"
-            src="/src/assets/images/godrej-logo.svg"
+            src="/src/assets/logo.jpg"
             alt="Godrej Logo"
             sx={{
               height: 50,
