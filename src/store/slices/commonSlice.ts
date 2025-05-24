@@ -36,7 +36,7 @@ export const getAllDepartments = createAsyncThunk(
   'common/getAllDepartments',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Auth/GetAllDepartment');
+      const response = await api.get('/api/Auth/GetAllDepartment');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch departments');
@@ -49,7 +49,7 @@ export const getAllModules = createAsyncThunk(
   'common/getAllModules',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Common/GetAllModules');
+      const response = await api.get('/api/Common/GetAllModules');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch modules');
@@ -62,7 +62,7 @@ export const getAllComponentTypes = createAsyncThunk(
   'common/getAllComponentTypes',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Common/GetAllComponenttype');
+      const response = await api.get('/api/Common/GetAllComponenttype');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch component types');
@@ -73,9 +73,9 @@ export const getAllComponentTypes = createAsyncThunk(
 // Drawing Numbers
 export const getDrawingNumbers = createAsyncThunk(
   'common/getDrawingNumbers',
-  async (componentType?: string, { rejectWithValue }) => {
+  async ({ componentType }: { componentType?: string }, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Common/GetAllDrawingNumber', {
+      const response = await api.get('/api/Common/GetAllDrawingNumber', {
         params: componentType ? { ComponentType: componentType } : undefined
       });
       return response.data;
@@ -90,7 +90,7 @@ export const getAllDocumentTypes = createAsyncThunk(
   'common/getAllDocumentTypes',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Common/GetAllDocumentType');
+      const response = await api.get('/api/Common/GetAllDocumentType');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch document types');
@@ -103,7 +103,7 @@ export const getAllProductionSeries = createAsyncThunk(
   'common/getAllProductionSeries',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Common/GetAllProductionSeries');
+      const response = await api.get('/api/Common/GetAllProductionSeries');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch production series');
@@ -116,7 +116,7 @@ export const getAllUnits = createAsyncThunk(
   'common/getAllUnits',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Common/GetAllUnit');
+      const response = await api.get('/api/Common/GetAllUnit');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch units');
@@ -129,7 +129,7 @@ export const getUserRoles = createAsyncThunk(
   'common/getUserRoles',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Auth/GetUserRoles');
+      const response = await api.get('/api/Auth/GetUserRoles');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch user roles');
@@ -142,7 +142,7 @@ export const getPlants = createAsyncThunk(
   'common/getPlants',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Auth/GetAllPlants');
+      const response = await api.get('/api/Auth/GetAllPlants');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch plants');
@@ -155,7 +155,7 @@ export const getSecurityQuestions = createAsyncThunk(
   'common/getSecurityQuestions',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/Auth/GetSecurityQuestion');
+      const response = await api.get('/api/Auth/GetSecurityQuestion');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch security questions');

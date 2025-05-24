@@ -50,7 +50,7 @@ export const login = createAsyncThunk(
         userId: credentials.username,
         password: credentials.password
       };
-      const response = await api.post('/Auth/login', loginData);
+      const response = await api.post('/api/Auth/login', loginData);
       console.log('API Response:', response.data); // Add debugging
       
       const authData = response.data;
@@ -106,7 +106,7 @@ export const register = createAsyncThunk(
         securityQuestionId: userData.securityQuestionId,
         securityAnswer: userData.securityAnswer
       };
-      const response = await api.post('/Auth/register', registerData);
+      const response = await api.post('/api/Auth/register', registerData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Registration failed');
@@ -123,7 +123,7 @@ export const resetPassword = createAsyncThunk(
     securityAnswer: string;
   }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/Auth/reset', resetData);
+      const response = await api.post('/api/Auth/reset', resetData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Password reset failed');
@@ -147,7 +147,7 @@ export const forgetPassword = createAsyncThunk(
         securityQuestionId: parseInt(forgetData.securityQuestion),
         securityAnswer: forgetData.securityAnswer
       };
-      const response = await api.post('/Auth/reset', resetData);
+      const response = await api.post('/api/Auth/reset', resetData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Password reset request failed');
