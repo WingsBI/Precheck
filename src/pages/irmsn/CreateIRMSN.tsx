@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Typography, TextField, Button, Paper } from '@mui/material';
 import { createIRMSN } from '../../store/slices/irmsnSlice';
-import type { RootState } from '../../store/store';
+import type { RootState, AppDispatch } from '../../store/store';
 
 const CreateIRMSN: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [form, setForm] = useState({ name: '', status: '', date: '' });
   const { loading } = useSelector((state: RootState) => state.irmsn);
 
@@ -15,7 +15,7 @@ const CreateIRMSN: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(createIRMSN(form));
+    (dispatch as any)(createIRMSN(form));
   };
 
   return (
