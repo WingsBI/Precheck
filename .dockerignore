@@ -18,13 +18,6 @@ build
 *.swp
 *.swo
 
-# Environment files
-.env
-.env.local
-.env.development
-.env.test
-.env.production
-
 # Docker files
 Dockerfile
 .dockerignore
