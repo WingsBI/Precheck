@@ -33,7 +33,7 @@ const initialState: CommonState = {
 
 // Departments
 export const getAllDepartments = createAsyncThunk(
-  'common/getAllDepartments',
+  'common/getAllDepartment',
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/api/Auth/GetAllDepartment');
@@ -73,10 +73,13 @@ export const getAllComponentTypes = createAsyncThunk(
 // Drawing Numbers
 export const getDrawingNumbers = createAsyncThunk(
   'common/getDrawingNumbers',
-  async ({ componentType }: { componentType?: string }, { rejectWithValue }) => {
+  async ({ componentType, search }: { componentType?: string, search?: string }, { rejectWithValue }) => {
     try {
       const response = await api.get('/api/Common/GetAllDrawingNumber', {
-        params: componentType ? { ComponentType: componentType } : undefined
+        params: {
+          ComponentType: componentType || '',
+          search
+        }
       });
       return response.data;
     } catch (error: any) {
