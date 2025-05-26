@@ -41,6 +41,7 @@ import {
   Warning as WarningIcon,
 } from '@mui/icons-material';
 import type { RootState } from '../../store/store';
+import { searchIRMSN, updateIRMSN } from '../../store/slices/irmsnSlice';
 
 interface IRMSNItem {
   id: number;
@@ -78,11 +79,9 @@ export default function SearchUpdateIRMSN() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const dispatch = useDispatch();
   
-  // State
-  const [searchResults, setSearchResults] = useState<IRMSNItem[]>([]);
+  // Update selector to use IRMSN slice
+  const { searchResults, loading: isLoading, error } = useSelector((state: RootState) => state.irmsn);
   const [selectedItem, setSelectedItem] = useState<IRMSNItem | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
 
@@ -114,60 +113,13 @@ export default function SearchUpdateIRMSN() {
 
   const stages = searchForm.documentType === 'IR' ? IRStages : MSNStages;
 
-  // Mock search function
+  // Update search function to use slice
   const onSearch = async () => {
     if (!searchForm.searchTerm.trim()) return;
-
-    setIsSearching(true);
-    setSearchResults([]);
-    setSuccessMessage('');
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockResults: IRMSNItem[] = [
-        {
-          id: 1,
-          irNumber: searchForm.documentType === 'IR' ? `IR-2024-001-${searchForm.searchTerm}` : undefined,
-          msnNumber: searchForm.documentType === 'MSN' ? `MSN-2024-001-${searchForm.searchTerm}` : undefined,
-          drawingNumber: `DWG-${searchForm.searchTerm}-001`,
-          productionSeries: 'PS-2024-A',
-          nomenclature: 'Test Component 1',
-          idNumberRange: '1-10',
-          quantity: 10,
-          projectNumber: 'PRJ-2024-001',
-          poNumber: 'PO-2024-001',
-          stage: searchForm.documentType === 'IR' ? 'Before Testing' : 'Testing',
-          supplier: 'Test Supplier',
-          remark: 'Test remark',
-          createdDate: '2024-01-15',
-          userName: 'TestUser',
-        },
-        {
-          id: 2,
-          irNumber: searchForm.documentType === 'IR' ? `IR-2024-002-${searchForm.searchTerm}` : undefined,
-          msnNumber: searchForm.documentType === 'MSN' ? `MSN-2024-002-${searchForm.searchTerm}` : undefined,
-          drawingNumber: `DWG-${searchForm.searchTerm}-002`,
-          productionSeries: 'PS-2024-B',
-          nomenclature: 'Test Component 2',
-          idNumberRange: '11-20',
-          quantity: 10,
-          projectNumber: 'PRJ-2024-002',
-          poNumber: 'PO-2024-002',
-          stage: searchForm.documentType === 'IR' ? 'Final' : 'Final',
-          supplier: 'Test Supplier 2',
-          remark: 'Test remark 2',
-          createdDate: '2024-01-16',
-          userName: 'TestUser2',
-        },
-      ];
-      
-      setSearchResults(mockResults);
+      await dispatch(searchIRMSN(searchForm)).unwrap();
     } catch (error) {
       console.error('Error searching:', error);
-    } finally {
-      setIsSearching(false);
     }
   };
 
@@ -183,28 +135,21 @@ export default function SearchUpdateIRMSN() {
     setEditDialogOpen(true);
   };
 
+  // Update the update function to use slice
   const onUpdate = async () => {
     if (!selectedItem) return;
     
-    setIsUpdating(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update the item in search results
-      setSearchResults(prev => prev.map(item => 
-        item.id === selectedItem.id 
-          ? { ...item, ...updateForm }
-          : item
-      ));
+      await dispatch(updateIRMSN({ 
+        id: selectedItem.id,
+        ...updateForm 
+      })).unwrap();
       
       setSuccessMessage(`${searchForm.documentType} Number updated successfully!`);
       setEditDialogOpen(false);
       setSelectedItem(null);
     } catch (error) {
       console.error('Error updating:', error);
-    } finally {
-      setIsUpdating(false);
     }
   };
 
@@ -379,12 +324,12 @@ export default function SearchUpdateIRMSN() {
               <Button
                 variant="contained"
                 size={isMobile ? "medium" : "large"}
-                disabled={isSearching || !searchForm.searchTerm.trim()}
-                startIcon={isSearching ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
+                disabled={isLoading || !searchForm.searchTerm.trim()}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
                 fullWidth
                 onClick={onSearch}
               >
-                {isSearching ? 'Searching...' : 'Search'}
+                {isLoading ? 'Searching...' : 'Search'}
               </Button>
             </Grid>
           </Grid>
@@ -407,7 +352,7 @@ export default function SearchUpdateIRMSN() {
       )}
 
       {/* No Results */}
-      {!isSearching && searchResults.length === 0 && searchForm.searchTerm && (
+      {!isLoading && searchResults.length === 0 && searchForm.searchTerm && (
         <Paper 
           elevation={0} 
           sx={{ 
@@ -538,17 +483,17 @@ export default function SearchUpdateIRMSN() {
           <Button 
             onClick={handleCancelEdit}
             startIcon={<CancelIcon />}
-            disabled={isUpdating}
+            disabled={isLoading}
           >
             Cancel
           </Button>
           <Button 
             onClick={onUpdate}
             variant="contained"
-            startIcon={isUpdating ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-            disabled={isUpdating || !updateForm.stage}
+            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+            disabled={isLoading || !updateForm.stage}
           >
-            {isUpdating ? 'Updating...' : 'Update'}
+            {isLoading ? 'Updating...' : 'Update'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -37,6 +37,7 @@ import {
 } from "../../store/slices/commonSlice";
 import debounce from "lodash/debounce";
 import api from "../../services/api";
+import { generateIRMSN, clearGeneratedNumber } from "../../store/slices/irmsnSlice";
 
 // Create typed versions of the hooks
 const useAppDispatch: () => AppDispatch = useDispatch;
@@ -57,11 +58,10 @@ export default function GenerateIRMSN() {
   const dispatch = useAppDispatch();
   const [localLoading, setLocalLoading] = useState(false);
 
-  // Update selector usage
-  const documentTypes = useAppSelector((state) => state.common.documentTypes);
-  const productionSeries = useAppSelector(
-    (state) => state.common.productionSeries
-  );
+  // Update selectors
+  const { loading: isLoading, generatedNumber, error } = useSelector((state: RootState) => state.irmsn);
+  const documentTypes = useSelector((state: RootState) => state.common.documentTypes);
+  const productionSeries = useSelector((state: RootState) => state.common.productionSeries);
 
   // Local state
   const [selectedDrawing, setSelectedDrawing] = useState<DrawingNumber | null>(
@@ -69,7 +69,6 @@ export default function GenerateIRMSN() {
   );
   const [searchResults, setSearchResults] = useState<DrawingNumber[]>([]);
   const [stages, setStages] = useState<string[]>([]);
-  const [generatedNumber, setGeneratedNumber] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
 
   // Load initial data
@@ -165,59 +164,22 @@ export default function GenerateIRMSN() {
   };
 
   const onSubmit = async (data: FormData) => {
-    setLocalLoading(true);
     try {
-      const payload = {
-        Id: null,
-        IrNumber: null,
-        DrawingNumberId: selectedDrawing?.id,
-        Stage: data.stage,
-        ProductionOrderNumber: data.poNumber,
-        NomenclatureId: data.NomenclatureId,
-        ComponentTypeId: data.ComponentTypeId,
-        Quantity: data.quantity,
-        Remark: data.remark || "",
-        CreatedBy: null,
-        CreatedDate: null,
-        ModifiedBy: null,
-        ModifiedDate: null,
-        ProjectNumber: data.projectNumber,
-        Supplier: data.supplier || "",
-        IsActive: null,
-        DrawingNumberIdName: null,
-        ProductionSeriesName: null,
-        Nomenclature: null,
-        ComponentType: null,
-        ProdSeriesId: Number(data.ProdSeriesId) || 1,
-        IdNumberStart: null,
-        IdNumberEnd: null,
-        MRIR: null,
-        userName: null,
-        IdNumberRange: data.idRange,
-        GeneratedBy: data.GeneratedBy || "System",
-        SerialNumber: 0,
-      };
-
-      const endpoint =
-        data.documentType === "IR"
-          ? "/api/reports/IRNumber"
-          : "/api/reports/MSNNumber";
-      const response = await api.post(endpoint, payload);
-      setGeneratedNumber(response.data.irNumber);
+      await dispatch(generateIRMSN(data)).unwrap();
     } catch (error) {
       console.error("Error generating number:", error);
-    } finally {
-      setLocalLoading(false);
     }
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(generatedNumber);
+    if (generatedNumber) {
+      navigator.clipboard.writeText(generatedNumber);
+    }
   };
 
   const handleReset = () => {
     reset();
-    setGeneratedNumber("");
+    dispatch(clearGeneratedNumber());
     setSearchResults([]);
   };
 
