@@ -16,8 +16,6 @@ import MakePrecheck from './pages/precheck/MakePrecheck';
 import StoreIn from './pages/precheck/StoreIn';
 import MakeOrder from './pages/precheck/MakeOrder';
 
-// IR/MSN Pages
-import IRMSN from './pages/irmsn/IRMSN';
 import GenerateIRMSN from './pages/irmsn/GenerateIRMSN';
 import SearchUpdateIRMSN from './pages/irmsn/SearchUpdateIRMSN';
 import ViewIRMSN from './pages/irmsn/ViewIRMSN';

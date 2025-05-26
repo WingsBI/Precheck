@@ -5,7 +5,6 @@ import {
   AppBar,
   Box,
   CssBaseline,
-  Divider,
   Drawer,
   IconButton,
   List,
@@ -23,12 +22,13 @@ import {
   MenuItem,
   Breadcrumbs,
   Link,
-  Chip,
   Stack,
+  Collapse,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
   Dashboard as DashboardIcon,
   Assignment as AssignmentIcon,
   Description as DescriptionIcon,
@@ -36,7 +36,6 @@ import {
   Logout as LogoutIcon,
   ViewList as ViewListIcon,
   QrCode as QrCodeIcon,
-  AccountCircle as AccountCircleIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   NavigateNext as NavigateNextIcon,
@@ -50,14 +49,8 @@ import {
 import { styled } from "@mui/material/styles";
 import type { RootState } from "../store/store";
 import { logout } from "../store/slices/authSlice";
-
-const drawerWidth = 280;
-const mobileDrawerWidth = 240;
-
-// Role constants matching C# application
-const ADMIN_ROLE = "Admin";
-const QC_ROLE = "QC";
-const STORE_ROLE = "Store";
+const drawerWidth = 250;
+const drawerCollapsedWidth = 70;
 
 interface MenuItem {
   text: string;
@@ -67,51 +60,72 @@ interface MenuItem {
   subItems?: MenuItem[];
 }
 
-const Main = styled("main", { shouldForwardProp: (prop) => prop !== "open" })<{
-  open?: boolean;
-}>(({ theme, open }) => ({
+const Main = styled("main")(({ theme }) => ({
   flexGrow: 1,
   padding: theme.spacing(1),
-  transition: theme.transitions.create("margin", {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
   marginLeft: 0,
-  [theme.breakpoints.up("md")]: {
-    padding: theme.spacing(3),
-    marginLeft: open ? 0 : `-${drawerWidth}px`,
-    transition: theme.transitions.create("margin", {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  },
+  width: "100%",
   [theme.breakpoints.up("lg")]: {
-    marginLeft: 0,
+    paddingLeft: drawerCollapsedWidth,
   },
 }));
 
-const StyledAppBar = styled(AppBar, {
+const StyledAppBar = styled(AppBar)(({ theme }) => ({
+  zIndex: theme.zIndex.drawer + 1,
+  background: "linear-gradient(135deg, #A8005A 0%, #d63384 100%)",
+  boxShadow: "0 2px 8px rgba(168, 0, 90, 0.2)",
+  [theme.breakpoints.up("lg")]: {
+    paddingLeft: drawerCollapsedWidth,
+  },
+}));
+
+const StyledDrawer = styled(Drawer, {
   shouldForwardProp: (prop) => prop !== "open",
 })<{ open?: boolean }>(({ theme, open }) => ({
-  transition: theme.transitions.create(["margin", "width"], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  [theme.breakpoints.up("md")]: {
-    width: open ? `calc(100% - ${drawerWidth}px)` : "100%",
-    marginLeft: open ? drawerWidth : 0,
+  width: open ? drawerWidth : drawerCollapsedWidth,
+  flexShrink: 0,
+  whiteSpace: "nowrap",
+  boxSizing: "border-box",
+  "& .MuiDrawer-paper": {
+    width: open ? drawerWidth : drawerCollapsedWidth,
+    transition: theme.transitions.create("width", {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+    overflowX: "hidden",
+    background: "linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)",
+    borderRight: "1px solid rgba(0, 0, 0, 0.12)",
+    boxShadow: "2px 0 8px rgba(0,0,0,0.05)",
+    position: "fixed",
+    height: "100vh",
+    zIndex: theme.zIndex.drawer,
   },
-  [theme.breakpoints.up("lg")]: {
-    width: open ? `calc(100% - ${drawerWidth}px)` : "100%",
-    marginLeft: open ? drawerWidth : 0,
+}));
+
+const LogoBox = styled(Box, {
+  shouldForwardProp: (prop) => prop !== "open",
+})<{ open?: boolean }>(({ theme, open }) => ({
+  display: "flex",
+  alignItems: "center",
+  padding: theme.spacing(0, 1),
+  minHeight: 64,
+  background: "linear-gradient(135deg, #A8005A 0%, #d63384 100%)",
+  color: "white",
+  cursor: "pointer",
+  justifyContent: open ? "space-between" : "center",
+  transition: theme.transitions.create(["justify-content", "padding"], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.enteringScreen,
+  }),
+  "&:hover": {
+    background: "linear-gradient(135deg, #920050 0%, #c02a5b 100%)",
   },
 }));
 
 export default function Layout() {
   const theme = useTheme();
   const location = useLocation();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const isTablet = useMediaQuery(theme.breakpoints.between("md", "lg"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -123,7 +137,7 @@ export default function Layout() {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
 
-  // Menu items structure matching C# application
+  // Menu items structure
   const menuItems: MenuItem[] = [
     {
       text: "Dashboard",
@@ -195,12 +209,6 @@ export default function Layout() {
     },
   ];
 
-  // Helper functions for role-based access (matching C# logic)
-  const hasAdminOrQcAccess = () =>
-    user?.role === ADMIN_ROLE || user?.role === QC_ROLE;
-  const hasAdminOrStoreAccess = () =>
-    user?.role === ADMIN_ROLE || user?.role === STORE_ROLE;
-
   // Filter menu items based on user role
   const getFilteredMenuItems = () => {
     return menuItems; // Show all items for testing
@@ -215,7 +223,6 @@ export default function Layout() {
       pathSegments.length > 1 ||
       (pathSegments.length === 1 && pathSegments[0] !== "dashboard")
     ) {
-      // Find the main menu item
       const mainItem = menuItems.find(
         (item) =>
           location.pathname.startsWith(item.path) && item.path !== "/dashboard"
@@ -224,7 +231,6 @@ export default function Layout() {
       if (mainItem) {
         breadcrumbs.push({ label: mainItem.text, path: mainItem.path });
 
-        // Find sub item if exists
         const subItem = mainItem.subItems?.find(
           (sub) => location.pathname === sub.path
         );
@@ -245,15 +251,6 @@ export default function Layout() {
     }
   }, [location.pathname, isMobile]);
 
-  // Set initial drawer state based on screen size
-  useEffect(() => {
-    if (isDesktop) {
-      setDesktopOpen(true);
-    } else if (isTablet) {
-      setDesktopOpen(false);
-    }
-  }, [isDesktop, isTablet]);
-
   const handleDrawerToggle = () => {
     if (isMobile) {
       setMobileOpen(!mobileOpen);
@@ -262,8 +259,19 @@ export default function Layout() {
     }
   };
 
+  const handleLogoClick = () => {
+    if (isDesktop) {
+      setDesktopOpen(!desktopOpen);
+    }
+  };
+
   const handleItemClick = (item: MenuItem) => {
     if (item.subItems && item.subItems.length > 0) {
+      // If drawer is collapsed, open it first when clicking on items with subitems
+      if (!desktopOpen && isDesktop) {
+        setDesktopOpen(true);
+      }
+
       const isExpanded = expandedItems.includes(item.text);
       setExpandedItems((prev) =>
         isExpanded
@@ -295,96 +303,153 @@ export default function Layout() {
     handleProfileMenuClose();
   };
 
-  const drawerContent = (
+  const drawerContent = (isDesktopVersion: boolean = false) => (
     <>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          p: 2,
-          minHeight: 64,
-          background: "linear-gradient(135deg, #A8005A 0%, #A8005A 100%)",
-          color: "white",
-        }}
+      <LogoBox
+        open={isDesktopVersion ? desktopOpen : true}
+        onClick={isDesktopVersion ? handleLogoClick : undefined}
       >
-        <Typography
-          variant="h6"
-          noWrap
-          component="div"
-          sx={{ flexGrow: 1, fontSize: { xs: "1rem", md: "1.25rem" } }}
-        >
-          Godrej Precheck
-        </Typography>
-        {!isMobile && (
+        {(!isDesktopVersion || desktopOpen) && (
+          <Typography
+            variant="h6"
+            component="div"
+            sx={{
+              fontSize: { xs: "1rem", md: "1.25rem" },
+              fontWeight: 600,
+              letterSpacing: 0.5,
+            }}
+          >
+            Godrej Precheck
+          </Typography>
+        )}
+        {isDesktopVersion && (
+          <IconButton
+            sx={{
+              color: "white",
+              opacity: desktopOpen ? 1 : 0,
+              transition: "opacity 0.2s",
+            }}
+          >
+            {desktopOpen ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+          </IconButton>
+        )}
+        {!isDesktopVersion && (
           <IconButton onClick={handleDrawerToggle} sx={{ color: "white" }}>
             <ChevronLeftIcon />
           </IconButton>
         )}
-      </Box>
-      <Divider />
-      <List sx={{ flex: 1, overflow: "auto" }}>
+      </LogoBox>
+
+      <List sx={{ flex: 1, py: 1 }}>
         {getFilteredMenuItems().map((item) => (
           <Box key={item.text}>
-            <ListItem disablePadding>
-              <ListItemButton
-                onClick={() => handleItemClick(item)}
-                sx={{
-                  minHeight: 48,
-                  justifyContent: desktopOpen ? "initial" : "center",
-                  px: 2.5,
-                  "&:hover": {
-                    backgroundColor: "rgba(25, 118, 210, 0.08)",
-                  },
-                }}
+            <ListItem disablePadding sx={{ display: "block" }}>
+              <Tooltip
+                title={!desktopOpen && isDesktopVersion ? item.text : ""}
+                placement="right"
+                arrow
               >
-                <ListItemIcon
+                <ListItemButton
+                  onClick={() => handleItemClick(item)}
                   sx={{
-                    minWidth: 0,
-                    mr: desktopOpen ? 3 : "auto",
-                    justifyContent: "center",
-                    color: "primary.main",
+                    minHeight: 48,
+                    px: 2.5,
+                    mx: 1,
+                    mb: 0.5,
+                    borderRadius: 2,
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      backgroundColor: "rgba(168, 0, 90, 0.08)",
+                      transform: "translateX(4px)",
+                    },
+                    backgroundColor:
+                      location.pathname.startsWith(item.path) &&
+                      item.path !== "/dashboard"
+                        ? "rgba(168, 0, 90, 0.12)"
+                        : "transparent",
                   }}
                 >
-                  <Tooltip
-                    title={!desktopOpen ? item.text : ""}
-                    placement="right"
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: desktopOpen || !isDesktopVersion ? 3 : "auto",
+                      justifyContent: "center",
+                      color: location.pathname.startsWith(item.path)
+                        ? "#A8005A"
+                        : "text.secondary",
+                    }}
                   >
-                    <span>{item.icon}</span>
-                  </Tooltip>
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  sx={{
-                    opacity: desktopOpen ? 1 : 0,
-                    "& .MuiListItemText-primary": {
-                      fontSize: { xs: "0.875rem", md: "1rem" },
-                      fontWeight: 500,
-                    },
-                  }}
-                />
-                {item.subItems &&
-                  item.subItems.length > 0 &&
-                  desktopOpen &&
-                  (expandedItems.includes(item.text) ? (
-                    <ExpandLessIcon />
-                  ) : (
-                    <ExpandMoreIcon />
-                  ))}
-              </ListItemButton>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    sx={{
+                      opacity: desktopOpen || !isDesktopVersion ? 1 : 0,
+                      "& .MuiListItemText-primary": {
+                        fontSize: "0.9rem",
+                        fontWeight: location.pathname.startsWith(item.path)
+                          ? 600
+                          : 500,
+                        color: location.pathname.startsWith(item.path)
+                          ? "#A8005A"
+                          : "text.primary",
+                      },
+                    }}
+                  />
+                  {item.subItems &&
+                    item.subItems.length > 0 &&
+                    (desktopOpen || !isDesktopVersion) && (
+                      <Box sx={{ ml: 1 }}>
+                        {expandedItems.includes(item.text) ? (
+                          <ExpandLessIcon sx={{ color: "text.secondary" }} />
+                        ) : (
+                          <ExpandMoreIcon sx={{ color: "text.secondary" }} />
+                        )}
+                      </Box>
+                    )}
+                </ListItemButton>
+              </Tooltip>
             </ListItem>
-            {item.subItems &&
-              item.subItems.length > 0 &&
-              expandedItems.includes(item.text) &&
-              desktopOpen && (
+
+            {item.subItems && item.subItems.length > 0 && (
+              <Collapse
+                in={
+                  expandedItems.includes(item.text) &&
+                  (desktopOpen || !isDesktopVersion)
+                }
+                timeout="auto"
+                unmountOnExit
+              >
                 <List component="div" disablePadding>
                   {item.subItems.map((subItem) => (
                     <ListItemButton
                       key={subItem.text}
-                      sx={{ pl: 6, py: 1 }}
                       onClick={() => handleSubItemClick(subItem)}
+                      sx={{
+                        pl: 7,
+                        py: 1,
+                        mx: 1,
+                        mb: 0.5,
+                        borderRadius: 2,
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          backgroundColor: "rgba(168, 0, 90, 0.05)",
+                          transform: "translateX(4px)",
+                        },
+                        backgroundColor:
+                          location.pathname === subItem.path
+                            ? "rgba(168, 0, 90, 0.08)"
+                            : "transparent",
+                      }}
                     >
                       <ListItemIcon
-                        sx={{ minWidth: 36, color: "text.secondary" }}
+                        sx={{
+                          minWidth: 32,
+                          color:
+                            location.pathname === subItem.path
+                              ? "#A8005A"
+                              : "text.secondary",
+                        }}
                       >
                         {subItem.icon}
                       </ListItemIcon>
@@ -392,15 +457,21 @@ export default function Layout() {
                         primary={subItem.text}
                         sx={{
                           "& .MuiListItemText-primary": {
-                            fontSize: "0.875rem",
-                            color: "text.secondary",
+                            fontSize: "0.825rem",
+                            fontWeight:
+                              location.pathname === subItem.path ? 600 : 400,
+                            color:
+                              location.pathname === subItem.path
+                                ? "#A8005A"
+                                : "text.secondary",
                           },
                         }}
                       />
                     </ListItemButton>
                   ))}
                 </List>
-              )}
+              </Collapse>
+            )}
           </Box>
         ))}
       </List>
@@ -410,39 +481,53 @@ export default function Layout() {
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <CssBaseline />
-      <StyledAppBar position="fixed" open={isDesktop ? desktopOpen : false}>
-        <Toolbar>
-          {/* Left side - Breadcrumb */}
-          <Box sx={{ flexGrow: 1 }}>
-            <Breadcrumbs
-              separator={<NavigateNextIcon fontSize="small" />}
-              sx={{ color: "white" }}
+
+      {/* App Bar */}
+      <StyledAppBar position="fixed">
+        <Toolbar sx={{ minHeight: 64 }}>
+          {/* Mobile menu button */}
+          {isMobile && (
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2, color: "white" }}
             >
-              {generateBreadcrumbs().map((crumb, index) => (
-                <Link
-                  key={crumb.path}
-                  color="inherit"
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate(crumb.path);
-                  }}
-                  sx={{
-                    textDecoration: "none",
-                    "&:hover": { textDecoration: "underline" },
-                    fontSize: { xs: "1rem", md: "1rem" },
-                  }}
-                >
-                  {index === 0 && (
-                    <HomeIcon sx={{ mr: 0.5, fontSize: "inherit" }} />
-                  )}
-                  {crumb.label}
-                </Link>
-              ))}
-            </Breadcrumbs>
+              <MenuIcon />
+            </IconButton>
+          )}
+
+          {/* Godrej Aerospace Title */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              flexGrow: 1,
+            }}  
+          >
+            <img
+              src="/assets/logo.jpg" // Replace with your actual logo path
+              alt="Logo"
+              style={{ height: 32, marginRight: 8, borderRadius: 10 }}
+            />
+            <Typography
+              variant="h6"
+              noWrap
+              component="div"
+              sx={{
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              Godrej Aerospace
+            </Typography>
           </Box>
 
-          {/* Right side - User info */}
+          {/* User Profile */}
           {user && (
             <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}>
               <Stack
@@ -450,50 +535,41 @@ export default function Layout() {
                 sx={{ mr: 2, display: { xs: "none", sm: "flex" } }}
               >
                 <Typography
-                  variant="body1"
+                  variant="body2"
                   sx={{ fontWeight: 600, color: "white" }}
                 >
-                  Welcome, {user.email}
+                  {user.userid}
                 </Typography>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "rgba(255,255,255,0.8)" }}
-                  >
-                    {user.departmentId || "Department"} - {user.role || "Role"}
-                  </Typography>
-                  <Chip
-                    label="v1.7"
-                    size="small"
-                    sx={{
-                      height: 16,
-                      fontSize: "0.7rem",
-                      bgcolor: "rgba(255,255,255,0.2)",
-                      color: "white",
-                    }}
-                  />
-                </Stack>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "rgba(255,255,255,0.8)" }}
+                >
+                  {user.department} - {user.role}
+                </Typography>
               </Stack>
               <IconButton
                 size="large"
                 edge="end"
                 aria-label="account of current user"
                 onClick={handleProfileMenuOpen}
-                color="inherit"
+                sx={{
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  },
+                }}
               >
                 <Avatar
                   sx={{
-                    width: 35,
-                    height: 35,
-                    bgcolor: "primary.main",
-                    fontSize: "1.4rem",
+                    width: 36,
+                    height: 36,
+                    bgcolor: "rgba(255,255,255,0.2)",
+                    color: "white",
+                    fontSize: "0.9rem",
                     fontWeight: 600,
-                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.4)",
-                    borderRadius: 2,
+                    border: "2px solid rgba(255,255,255,0.3)",
                   }}
                 >
-                  {user?.email?.split("@")[0].substring(0, 2).toUpperCase() ||
-                    "U"}
+                  {user.username?.substring(0, 2).toUpperCase() || "U"}
                 </Avatar>
               </IconButton>
               <Menu
@@ -501,14 +577,28 @@ export default function Layout() {
                 open={Boolean(anchorEl)}
                 onClose={handleProfileMenuClose}
                 onClick={handleProfileMenuClose}
+                PaperProps={{
+                  sx: {
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                    borderRadius: 2,
+                    mt: 1,
+                  },
+                }}
               >
                 <MenuItem onClick={() => navigate("/settings")}>
-                  <SettingsIcon sx={{ mr: 1 }} />
-                  Settings
+                  <ListItemIcon>
+                    <SettingsIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Settings"
+                    secondary={`ID: ${user.userid}`}
+                  />
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>
-                  <LogoutIcon sx={{ mr: 1 }} />
-                  Logout
+                  <ListItemIcon>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Logout" />
                 </MenuItem>
               </Menu>
             </Box>
@@ -516,7 +606,7 @@ export default function Layout() {
         </Toolbar>
       </StyledAppBar>
 
-      {/* Mobile drawer */}
+      {/* Mobile Drawer */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
@@ -525,200 +615,40 @@ export default function Layout() {
           keepMounted: true,
         }}
         sx={{
-          display: { xs: "block", md: "none" },
+          display: { xs: "block", lg: "none" },
           "& .MuiDrawer-paper": {
             boxSizing: "border-box",
-            width: mobileDrawerWidth,
+            width: 280,
+            background: "linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)",
+            zIndex: theme.zIndex.drawer + 2,
           },
         }}
       >
-        {drawerContent}
+        {drawerContent(false)}
       </Drawer>
 
-      {/* Desktop drawer */}
-      <Drawer
-        variant="persistent"
-        anchor="left"
-        open={isDesktop ? desktopOpen : false}
+      {/* Desktop Drawer */}
+      <StyledDrawer
+        variant="permanent"
+        open={desktopOpen}
         sx={{
           display: { xs: "none", lg: "block" },
-          width: desktopOpen ? drawerWidth : 64,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            width: desktopOpen ? drawerWidth : 64,
-            boxSizing: "border-box",
-            overflowX: "hidden",
-            transition: theme.transitions.create("width", {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
-            }),
-          },
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            p: 2,
-            minHeight: 64,
-            background: "linear-gradient(135deg, #A8005A 0%, #A8005A 100%)",
-            color: "white",
-            justifyContent: "space-between",
-          }}
-        >
-          <Box
-            component="img"
-            src="/assets/logo.jpg"
-            alt="Godrej Logo"
-            sx={{
-              height: 32,
-              width: "auto",
-              display: desktopOpen ? "block" : "none",
-            }}
-          />
-          <Typography
-            variant="h6"
-            noWrap
-            component="div"
-            sx={{
-              flexGrow: 1,
-              fontSize: "1rem",
-              fontWeight: 500,
-              display: desktopOpen ? "block" : "none",
-            }}
-          >
-            Godrej Precheck
-          </Typography>
-          <IconButton
-            onClick={handleDrawerToggle}
-            sx={{
-              color: "white",
-              p: 0.5,
-            }}
-          >
-            <ChevronLeftIcon
-              sx={{
-                transform: desktopOpen ? "none" : "rotate(180deg)",
-                transition: "transform 0.3s",
-              }}
-            />
-          </IconButton>
-        </Box>
-        <Divider />
-        <List sx={{ flex: 1, overflow: "auto" }}>
-          {getFilteredMenuItems().map((item) => (
-            <Box key={item.text}>
-              <ListItem disablePadding>
-                <ListItemButton
-                  onClick={() => handleItemClick(item)}
-                  sx={{
-                    minHeight: 48,
-                    justifyContent: desktopOpen ? "initial" : "center",
-                    px: 2.5,
-                    "&:hover": {
-                      backgroundColor: "rgba(25, 118, 210, 0.08)",
-                    },
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 0,
-                      mr: desktopOpen ? 3 : "auto",
-                      justifyContent: "center",
-                      color: "primary.main",
-                    }}
-                  >
-                    <Tooltip
-                      title={!desktopOpen ? item.text : ""}
-                      placement="right"
-                    >
-                      <span>{item.icon}</span>
-                    </Tooltip>
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={item.text}
-                    sx={{
-                      opacity: desktopOpen ? 1 : 0,
-                      "& .MuiListItemText-primary": {
-                        fontSize: "0.9375rem",
-                        fontWeight: 500,
-                        lineHeight: 1.2,
-                      },
-                    }}
-                  />
-                  {item.subItems &&
-                    item.subItems.length > 0 &&
-                    desktopOpen &&
-                    (expandedItems.includes(item.text) ? (
-                      <ExpandLessIcon />
-                    ) : (
-                      <ExpandMoreIcon />
-                    ))}
-                </ListItemButton>
-              </ListItem>
-              {item.subItems &&
-                item.subItems.length > 0 &&
-                expandedItems.includes(item.text) &&
-                desktopOpen && (
-                  <List component="div" disablePadding>
-                    {item.subItems.map((subItem) => (
-                      <ListItemButton
-                        key={subItem.text}
-                        sx={{ pl: 6, py: 1 }}
-                        onClick={() => handleSubItemClick(subItem)}
-                      >
-                        <ListItemIcon
-                          sx={{ minWidth: 36, color: "text.secondary" }}
-                        >
-                          {subItem.icon}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={subItem.text}
-                          sx={{
-                            "& .MuiListItemText-primary": {
-                              fontSize: "0.875rem",
-                              color: "text.secondary",
-                              lineHeight: 1.2,
-                            },
-                          }}
-                        />
-                      </ListItemButton>
-                    ))}
-                  </List>
-                )}
-            </Box>
-          ))}
-        </List>
-        {isDesktop && !desktopOpen && (
-          <IconButton
-            onClick={handleDrawerToggle}
-            sx={{
-              position: "fixed",
-              top: 80, // adjust as needed
-              left: 8,
-              zIndex: 1301, // above the drawer
-              bgcolor: "background.paper",
-              boxShadow: 3,
-              borderRadius: "50%",
-              width: 40,
-              height: 40,
-              "&:hover": {
-                bgcolor: "primary.light",
-              },
-            }}
-          >
-            <MenuIcon />
-          </IconButton>
-        )}
-      </Drawer>
+        {drawerContent(true)}
+      </StyledDrawer>
 
-      <Main open={isDesktop ? desktopOpen : false}>
+      {/* Main Content */}
+      <Main>
         <Toolbar />
         <Box
           sx={{
-            p: { xs: 1, sm: 2, md: 3 },
-            maxWidth: "100%",
-            overflow: "hidden",
+            p: { xs: 2, sm: 3, md: 3 },
+            // ml: { xs: 0, lg: desktopOpen ? `${drawerWidth - drawerCollapsedWidth}px` : 0 },
+            transition: theme.transitions.create("margin-left", {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
           }}
         >
           <Outlet />

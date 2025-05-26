@@ -99,6 +99,7 @@ const Register = () => {
         const { confirmPassword, ...registerData } = values;
         const transformedData = {
           username: registerData.username,
+          userId: registerData.userId,
           password: registerData.password,
           name: registerData.userId,
           departmentId: Number(registerData.department),

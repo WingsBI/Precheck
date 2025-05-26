@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import type { DrawingNumber, ProductionSeries, DocumentType } from '../../types';
 
 interface CommonState {
   departments: any[];

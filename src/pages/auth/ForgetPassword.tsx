@@ -131,6 +131,7 @@ const ForgetPassword: React.FC = () => {
               height: 50,
               width: 'auto',
               mb: 1,
+              borderRadius: 10
             }}
           />
           <Typography variant="h5" color="white" fontWeight="600">

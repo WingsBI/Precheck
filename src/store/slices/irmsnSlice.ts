@@ -1,85 +1,138 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
+interface IRMSNItem {
+  id: number;
+  irNumber?: string;
+  msnNumber?: string;
+  drawingNumber: string;
+  productionSeries: string;
+  nomenclature: string;
+  idNumberRange: string;
+  quantity: number;
+  projectNumber: string;
+  poNumber: string;
+  stage: string;
+  supplier?: string;
+  remark?: string;
+  createdDate: string;
+  userName: string;
+}
+
 interface IRMSNState {
-  irmsnList: any[];
+  irmsnList: IRMSNItem[];
+  searchResults: IRMSNItem[];
   loading: boolean;
   error: string | null;
+  generatedNumber: string | null;
 }
 
 const initialState: IRMSNState = {
   irmsnList: [],
+  searchResults: [],
   loading: false,
   error: null,
+  generatedNumber: null,
 };
 
-export const fetchIRMSNList = createAsyncThunk(
-  'irmsn/fetchIRMSNList',
-  async (search: string) => {
-    const response = await api.get(`/api/irmsn?search=${search}`);
-    return response.data;
+// Search IRMSN
+export const searchIRMSN = createAsyncThunk(
+  'irmsn/searchIRMSN',
+  async ({ documentType, searchTerm }: { documentType: 'IR' | 'MSN', searchTerm: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/IRMSN/Search`, {
+        params: { documentType, searchTerm }
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to search IRMSN');
+    }
   }
 );
 
-export const createIRMSN = createAsyncThunk(
-  'irmsn/createIRMSN',
-  async (data: any) => {
-    const response = await api.post('/api/irmsn', data);
-    return response.data;
+// Generate IRMSN
+export const generateIRMSN = createAsyncThunk(
+  'irmsn/generateIRMSN',
+  async (data: any, { rejectWithValue }) => {
+    try {
+      const endpoint = data.documentType === 'IR' ? '/api/reports/IRNumber' : '/api/reports/MSNNumber';
+      const response = await api.post(endpoint, data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to generate IRMSN number');
+    }
   }
 );
 
+// Update IRMSN
 export const updateIRMSN = createAsyncThunk(
   'irmsn/updateIRMSN',
-  async (data: any) => {
-    const response = await api.put(`/api/irmsn/${data.id}`, data);
-    return response.data;
+  async (data: any, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/api/IRMSN/${data.id}`, data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update IRMSN');
+    }
   }
 );
 
 const irmsnSlice = createSlice({
   name: 'irmsn',
   initialState,
-  reducers: {},
+  reducers: {
+    clearGeneratedNumber: (state) => {
+      state.generatedNumber = null;
+    },
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchIRMSNList.pending, (state) => {
+      // Search IRMSN
+      .addCase(searchIRMSN.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
-      .addCase(fetchIRMSNList.fulfilled, (state, action) => {
+      .addCase(searchIRMSN.fulfilled, (state, action) => {
         state.loading = false;
-        state.irmsnList = action.payload;
+        state.searchResults = action.payload;
       })
-      .addCase(fetchIRMSNList.rejected, (state, action) => {
+      .addCase(searchIRMSN.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch IRMSN list';
+        state.error = action.payload as string;
       })
-      .addCase(createIRMSN.pending, (state) => {
+      // Generate IRMSN
+      .addCase(generateIRMSN.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
-      .addCase(createIRMSN.fulfilled, (state, action) => {
+      .addCase(generateIRMSN.fulfilled, (state, action) => {
         state.loading = false;
-        state.irmsnList.push(action.payload);
+        state.generatedNumber = action.payload.irNumber;
       })
-      .addCase(createIRMSN.rejected, (state, action) => {
+      .addCase(generateIRMSN.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to create IRMSN';
+        state.error = action.payload as string;
       })
+      // Update IRMSN
       .addCase(updateIRMSN.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(updateIRMSN.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.irmsnList.findIndex(item => item.id === action.payload.id);
-        if (index !== -1) {
-          state.irmsnList[index] = action.payload;
-        }
+        state.searchResults = state.searchResults.map(item =>
+          item.id === action.payload.id ? action.payload : item
+        );
       })
       .addCase(updateIRMSN.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to update IRMSN';
+        state.error = action.payload as string;
       });
   },
 });
 
+export const { clearGeneratedNumber, clearError } = irmsnSlice.actions;
 export default irmsnSlice.reducer; 
