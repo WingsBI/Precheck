@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import type { DrawingNumber, ProductionSeries, DocumentType } from '../../types';
 
 interface CommonState {
   departments: any[];
@@ -73,10 +74,13 @@ export const getAllComponentTypes = createAsyncThunk(
 // Drawing Numbers
 export const getDrawingNumbers = createAsyncThunk(
   'common/getDrawingNumbers',
-  async ({ componentType }: { componentType?: string }, { rejectWithValue }) => {
+  async ({ componentType, search }: { componentType?: string, search?: string }, { rejectWithValue }) => {
     try {
       const response = await api.get('/api/Common/GetAllDrawingNumber', {
-        params: componentType ? { ComponentType: componentType } : undefined
+        params: {
+          ComponentType: componentType || '',
+          search
+        }
       });
       return response.data;
     } catch (error: any) {

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState } from "react";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
   Typography,
@@ -11,13 +11,13 @@ import {
   CardContent,
   InputAdornment,
   IconButton,
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { login } from '../../store/slices/authSlice';
-import type { RootState } from '../../store/store';
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { login } from "../../store/slices/authSlice";
+import type { RootState } from "../../store/store";
 
 interface LoginForm {
-  username: string;
+  userId: string;
   password: string;
 }
 
@@ -28,19 +28,19 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState<LoginForm>({
-    username: '',
-    password: '',
+    userId: "",
+    password: "",
   });
 
   const [formErrors, setFormErrors] = useState<Partial<LoginForm>>({});
 
   const validateForm = () => {
     const errors: Partial<LoginForm> = {};
-    if (!formData.username) {
-      errors.username = 'Username is required';
+    if (!formData.userId) {
+      errors.userId = "UserId is required";
     }
     if (!formData.password) {
-      errors.password = 'Password is required';
+      errors.password = "Password is required";
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -51,16 +51,16 @@ const Login: React.FC = () => {
     if (validateForm()) {
       try {
         const resultAction = await dispatch(login(formData) as any);
-        console.log('Login result:', resultAction);
-        
+        console.log("Login result:", resultAction);
+
         if (login.fulfilled.match(resultAction)) {
-          console.log('Login successful, navigating to dashboard');
-          navigate('/dashboard', { replace: true });
+          console.log("Login successful, navigating to dashboard");
+          navigate("/dashboard", { replace: true });
         } else if (login.rejected.match(resultAction)) {
-          console.log('Login failed:', resultAction.payload);
+          console.log("Login failed:", resultAction.payload);
         }
       } catch (err) {
-        console.error('Login error:', err);
+        console.error("Login error:", err);
         // Error handling is managed by the Redux slice
       }
     }
@@ -76,7 +76,7 @@ const Login: React.FC = () => {
     if (formErrors[name as keyof LoginForm]) {
       setFormErrors((prev) => ({
         ...prev,
-        [name]: '',
+        [name]: "",
       }));
     }
   };
@@ -88,83 +88,103 @@ const Login: React.FC = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
-        width: '100vw',
-        background: 'linear-gradient(135deg, #a8005a 0%, #c2185b 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        minHeight: "100vh",
+        width: "100vw",
+        background: "linear-gradient(135deg, #a8005a 0%, #c2185b 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
       <Card
         sx={{
           maxWidth: 420,
-          width: '100%',
+          width: "100%",
           mx: 2,
-          boxShadow: '0px 10px 30px rgba(0, 0, 0, 0.1)',
-          borderRadius: 4,
-          overflow: 'hidden',
+          boxShadow: "0px 10px 30px rgba(0, 0, 0, 0.1)",
+          borderRadius: 2,
+          overflow: "hidden",
         }}
       >
         {/* Header */}
         <Box
           sx={{
-            bgcolor: 'primary.main',
-            background: 'linear-gradient(90deg, #800B4C 0%, #B5106D 100%)',
+            bgcolor: "primary.main",
+            background: "linear-gradient(90deg, #800B4C 0%, #B5106D 100%)",
             p: 3,
             pb: 4,
           }}
         >
           <Box
-            component="img"
-            src="/assets/logo.jpg"
-            alt="Logo"
             sx={{
-              height: 50,
-              width: 'auto',
-              mb: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
-          />
-          <Typography variant="h5" color="white" fontWeight="600">
-            Login
-          </Typography>
+          >
+
+            <Box
+              component="img"
+              src="/assets/logo.jpg"
+              alt="Logo"
+              sx={{
+                height: 50,
+                width: "auto",
+                borderRadius: 2,
+              }}
+            />
+          </Box>
         </Box>
 
         {/* Form */}
         <CardContent sx={{ p: 3, pt: 4 }}>
           <form onSubmit={handleSubmit}>
             <Box mb={3}>
-              <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
-                Username
+              <Typography
+                variant="subtitle1"
+                fontWeight="600"
+                color="secondary.main"
+                mb={1}
+              >
+                UserId
               </Typography>
               <TextField
                 fullWidth
-                id="username"
-                name="username"
-                placeholder="Enter your username"
-                value={formData.username}
+                id="userId"
+                name="userId"
+                placeholder="Enter your userId"
+                value={formData.userId}
                 onChange={handleChange}
-                error={!!formErrors.username}
-                helperText={formErrors.username}
+                error={!!formErrors.userId}
+                helperText={formErrors.userId}
                 disabled={isLoading}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
-                    document.getElementById('password')?.focus();
+                    document.getElementById("password")?.focus();
                   }
                 }}
                 InputProps={{
-                  sx: { 
+                  sx: {
                     borderRadius: 1.5,
-                    bgcolor: 'background.default',
-                  }
+                    bgcolor: "background.default",
+                  },
                 }}
               />
             </Box>
 
             <Box mb={2}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                <Typography variant="subtitle1" fontWeight="600" color="secondary.main">
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={1}
+              >
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="600"
+                  color="secondary.main"
+                >
                   Password
                 </Typography>
               </Box>
@@ -172,7 +192,7 @@ const Login: React.FC = () => {
                 fullWidth
                 id="password"
                 name="password"
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleChange}
@@ -182,7 +202,7 @@ const Login: React.FC = () => {
                 InputProps={{
                   sx: {
                     borderRadius: 1.5,
-                    bgcolor: 'background.default',
+                    bgcolor: "background.default",
                   },
                   endAdornment: (
                     <InputAdornment position="end">
@@ -211,7 +231,12 @@ const Login: React.FC = () => {
             </Box>
 
             {error && (
-              <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
+              <Typography
+                color="error"
+                variant="body2"
+                align="center"
+                sx={{ mb: 2 }}
+              >
                 {error}
               </Typography>
             )}
@@ -227,16 +252,16 @@ const Login: React.FC = () => {
                 mt: 2,
                 py: 1.5,
                 fontWeight: 600,
-                backgroundColor: '#a8005a',
-                '&:hover': { backgroundColor: '#8e004b' }
+                backgroundColor: "#a8005a",
+                "&:hover": { backgroundColor: "#8e004b" },
               }}
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? "Logging in..." : "Login"}
             </Button>
 
             <Box mt={3} textAlign="center">
               <Typography variant="body2" color="text.secondary">
-                Don't have an account?{' '}
+                Don't have an account?{" "}
                 <Link
                   component={RouterLink}
                   to="/register"
@@ -255,4 +280,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login; 
+export default Login;

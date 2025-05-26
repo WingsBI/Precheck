@@ -318,26 +318,7 @@ export default function SearchUpdateIRMSN() {
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
-      {/* Header */}
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: { xs: 2, md: 3 }, 
-          mb: 3, 
-          background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
-          color: 'white',
-          borderRadius: 2
-        }}
-      >
-        <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold" gutterBottom>
-          Search & Update IR/MSN Numbers
-        </Typography>
-        <Typography variant="body1" sx={{ opacity: 0.9 }}>
-          Search for existing IR/MSN numbers and update their details
-        </Typography>
-      </Paper>
-
-      {/* Success Message */}
+   
       {successMessage && (
         <Alert 
           severity="success" 

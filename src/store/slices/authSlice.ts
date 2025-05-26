@@ -1,81 +1,61 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
-
-interface User {
-  id: number;
-  email: string;
-  role: string;
-  token: string;
-  departmentId: number;
-}
+import { decodeJwt } from '../../utils/jwtUtils';
 
 interface AuthState {
-  user: User | null;
+  user: {
+    token: string | null;
+    id: string | null;
+    userid: string | null;
+    username: string | null;
+    roleid: string | null;
+    role: string | null;
+    plantid: string | null;
+    email: string | null;
+    deptid: string | null;
+    department: string | null;
+  } | null;
   isLoading: boolean;
   error: string | null;
 }
 
-// Get initial state from localStorage
-const getInitialState = (): AuthState => {
-  const storedUser = localStorage.getItem('user');
-  if (storedUser) {
-    try {
-      const user = JSON.parse(storedUser);
-      // Set the token in api headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
-      return {
-        user,
-        isLoading: false,
-        error: null,
-      };
-    } catch (error) {
-      localStorage.removeItem('user');
-    }
-  }
-  return {
-    user: null,
-    isLoading: false,
-    error: null,
-  };
+const initialState: AuthState = {
+  user: null,
+  isLoading: false,
+  error: null,
 };
-
-const initialState: AuthState = getInitialState();
 
 export const login = createAsyncThunk(
   'auth/login',
-  async (credentials: { username: string; password: string }, { rejectWithValue }) => {
+  async (credentials: { userId: string; password: string }, { rejectWithValue }) => {
     try {
-      // Map username to userId as per API specification
-      const loginData = {
-        userId: credentials.username,
-        password: credentials.password
+      const response = await api.post('/api/Auth/Login', credentials);
+      const token = response.data.token;
+      
+      if (!token) {
+        throw new Error('No token received');
+      }
+
+      // Decode the JWT token
+      const decodedToken = decodeJwt(token);
+      if (!decodedToken) {
+        throw new Error('Invalid token received');
+      }
+
+      return {
+        token,
+        id: decodedToken.id,
+        userid: decodedToken.userid,
+        username: decodedToken.username,
+        roleid: decodedToken.roleid,
+        role: decodedToken.role,
+        plantid: decodedToken.plantid,
+        email: decodedToken.email,
+        deptid: decodedToken.deptid,
+        department: decodedToken.department,
       };
-      const response = await api.post('/api/Auth/login', loginData);
-      console.log('API Response:', response.data); // Add debugging
-      
-      const authData = response.data;
-      
-      // Transform the API response to match our User interface
-      const userData = {
-        id: authData.id || 1, // Provide default if not present
-        email: authData.email || '',
-        role: authData.role || 'user',
-        token: authData.token || authData.accessToken || '', // Handle different token field names
-        departmentId: authData.departmentId || 0,
-        // Include any other fields from the API response
-        ...authData
-      };
-      
-      console.log('Transformed user data:', userData); // Add debugging
-      
-      // Store user data in localStorage 
-      localStorage.setItem('user', JSON.stringify(userData));
-      // Set the token in api headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
-      return userData;
     } catch (error: any) {
-      console.error('Login API error:', error.response?.data); // Add debugging
-      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed');
+      return rejectWithValue(error.response?.data?.message || 'Login failed');
     }
   }
 );
@@ -84,6 +64,7 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData: {
     username: string;
+    userId: string;
     password: string;
     name: string;
     email: string;
@@ -162,9 +143,7 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.error = null;
-      // Clear localStorage and api headers
-      localStorage.removeItem('user');
-      delete api.defaults.headers.common['Authorization'];
+      localStorage.removeItem('token');
     },
     clearError: (state) => {
       state.error = null;
@@ -172,7 +151,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Login
       .addCase(login.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -181,6 +159,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload;
         state.error = null;
+        localStorage.setItem('token', action.payload.token);
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
