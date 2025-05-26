@@ -21,6 +21,7 @@ interface IRMSNItem {
 
 interface IRMSNState {
   irmsnList: IRMSNItem[];
+  msnList: IRMSNItem[];
   searchResults: IRMSNItem[];
   loading: boolean;
   error: string | null;
@@ -29,6 +30,7 @@ interface IRMSNState {
 
 const initialState: IRMSNState = {
   irmsnList: [],
+  msnList: [],
   searchResults: [],
   loading: false,
   error: null,
@@ -77,6 +79,56 @@ export const updateIRMSN = createAsyncThunk(
   }
 );
 
+// Generate IRMSN
+export const fetchIRMSNList = createAsyncThunk(
+  'irmsn/fetchIRMSNList',
+  async ({ drawingNumber, stage, productionSeries, departmentTypeId }: { 
+    drawingNumber?: string, 
+    stage?: string, 
+    productionSeries?: string, 
+    departmentTypeId?: string 
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/reports/GetIRNumberByDrawingNumber', {
+        params: {
+          DrawingNumber: drawingNumber || '',
+          Stage: stage || '',
+          Productionseries: productionSeries || '',
+          DepartmentTypeId: departmentTypeId || ''
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch IR numbers');
+    }
+  }
+);
+
+// Fetch MSN List
+export const fetchMSNList = createAsyncThunk(
+  'irmsn/fetchMSNList',
+  async ({ drawingNumber, stage, productionSeries, departmentTypeId }: { 
+    drawingNumber?: string, 
+    stage?: string, 
+    productionSeries?: string, 
+    departmentTypeId?: string 
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/reports/GetMSNNumberByDrawingNumber', {
+        params: {
+          DrawingNumber: drawingNumber || '',
+          Stage: stage || '',
+          Productionseries: productionSeries || '',
+          DepartmentTypeId: departmentTypeId || ''
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch MSN numbers');
+    }
+  }
+);
+
 const irmsnSlice = createSlice({
   name: 'irmsn',
   initialState,
@@ -86,6 +138,10 @@ const irmsnSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
+    },
+    clearTables: (state) => {
+      state.irmsnList = [];
+      state.msnList = [];
     },
   },
   extraReducers: (builder) => {
@@ -100,6 +156,32 @@ const irmsnSlice = createSlice({
         state.searchResults = action.payload;
       })
       .addCase(searchIRMSN.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Fetch IRMSN List
+      .addCase(fetchIRMSNList.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchIRMSNList.fulfilled, (state, action) => {
+        state.loading = false;
+        state.irmsnList = action.payload;
+      })
+      .addCase(fetchIRMSNList.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Fetch MSN List
+      .addCase(fetchMSNList.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMSNList.fulfilled, (state, action) => {
+        state.loading = false;
+        state.msnList = action.payload;
+      })
+      .addCase(fetchMSNList.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
@@ -134,5 +216,5 @@ const irmsnSlice = createSlice({
   },
 });
 
-export const { clearGeneratedNumber, clearError } = irmsnSlice.actions;
+export const { clearGeneratedNumber, clearError, clearTables } = irmsnSlice.actions;
 export default irmsnSlice.reducer; 

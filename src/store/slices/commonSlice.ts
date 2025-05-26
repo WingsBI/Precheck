@@ -34,7 +34,7 @@ const initialState: CommonState = {
 
 // Departments
 export const getAllDepartments = createAsyncThunk(
-  'common/getAllDepartments',
+  'common/getAllDepartment',
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/api/Auth/GetAllDepartment');
