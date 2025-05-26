@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, IconButton, CircularProgress } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { fetchIRMSNList } from '../../store/slices/irmsnSlice';
+// import { fetchIRMSNList } from '../../store/slices/irmsnSlice';
 import type { RootState } from '../../store/store';
 
 const ViewIRMSN: React.FC = () => {
@@ -10,9 +10,9 @@ const ViewIRMSN: React.FC = () => {
   const { irmsnList, loading } = useSelector((state: RootState) => state.irmsn);
   const [search, setSearch] = React.useState('');
 
-  useEffect(() => {
-    dispatch(fetchIRMSNList(search));
-  }, [dispatch, search]);
+  // useEffect(() => {
+  //   dispatch(fetchIRMSNList(search));
+  // }, [dispatch, search]);
 
   return (
     <Box>
@@ -26,9 +26,9 @@ const ViewIRMSN: React.FC = () => {
           onChange={e => setSearch(e.target.value)}
           sx={{ mr: 2 }}
         />
-        <IconButton onClick={() => dispatch(fetchIRMSNList(search))}>
+        {/* <IconButton onClick={() => dispatch(fetchIRMSNList(search))}>
           <SearchIcon />
-        </IconButton>
+        </IconButton> */}
       </Box>
       <Paper>
         <TableContainer>

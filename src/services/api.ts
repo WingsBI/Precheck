@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import axios from 'axios';
 import { store } from '../store/store';
+import type { DrawingNumber, ProductionSeries, DocumentType } from '../types';
 
 if (!import.meta.env.VITE_API_BASE_URL) {
   console.warn('VITE_API_BASE_URL is not defined in environment variables');
