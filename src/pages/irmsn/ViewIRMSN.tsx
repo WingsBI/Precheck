@@ -5,7 +5,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { fetchIRMSNList, fetchMSNList, clearTables } from '../../store/slices/irmsnSlice';
 import { getAllDepartments, getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
 import type { RootState, AppDispatch } from '../../store/store';
-import debounce from 'lodash.debounce';
+import debounce from 'lodash.debounce'; 
 
 const ViewIRMSN: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
