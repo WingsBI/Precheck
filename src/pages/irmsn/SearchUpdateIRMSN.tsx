@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState, useMemo } from "react";
 import {
   Box,
-  Paper,
   Typography,
   TextField,
   Button,
@@ -17,52 +15,59 @@ import {
   FormControlLabel,
   Radio,
   Alert,
-  IconButton,
-  Tooltip,
   useTheme,
   useMediaQuery,
-  Divider,
   Stack,
   FormLabel,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   CircularProgress,
-} from '@mui/material';
+  Autocomplete,
+  Chip,
+} from "@mui/material";
 import {
-  Search as SearchIcon,
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
-  Refresh as RefreshIcon,
-  Check as CheckIcon,
-  Warning as WarningIcon,
-} from '@mui/icons-material';
-import type { RootState } from '../../store/store';
-import { searchIRMSN, updateIRMSN } from '../../store/slices/irmsnSlice';
+} from "@mui/icons-material";
+import api from "../../services/api";
+import debounce from "lodash/debounce";
 
 interface IRMSNItem {
   id: number;
   irNumber?: string;
   msnNumber?: string;
-  drawingNumber: string;
-  productionSeries: string;
-  nomenclature: string;
-  idNumberRange: string;
+  drawingNumberId: number | null;
+  stage: string | null;
+  productionOrderNumber: string;
+  nomenclatureId: number | null;
+  componentTypeId: number | null;
   quantity: number;
-  projectNumber: string;
-  poNumber: string;
-  stage: string;
-  supplier?: string;
-  remark?: string;
+  remark: string | null;
+  createdBy: number;
   createdDate: string;
-  userName: string;
+  modifiedBy: number | null;
+  modifiedDate: string | null;
+  projectNumber: string;
+  supplier: string | null;
+  isActive: boolean;
+  drawingNumberIdName: string;
+  productionSeriesName: string;
+  nomenclature: string | null;
+  componentType: string;
+  prodSeriesId: number | null;
+  idNumberStart: number | null;
+  idNumberEnd: number | null;
+  userName: string | null;
+  departmentId: number | null;
+  idNumberRange: string;
+  sequenceNo: number | null;
 }
 
 interface SearchFormData {
-  documentType: 'IR' | 'MSN';
+  documentType: "IR" | "MSN";
   searchTerm: string;
 }
 
@@ -76,167 +81,294 @@ interface UpdateFormData {
 
 export default function SearchUpdateIRMSN() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const dispatch = useDispatch();
-  
-  // Update selector to use IRMSN slice
-  const { searchResults, loading: isLoading, error } = useSelector((state: RootState) => state.irmsn);
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<IRMSNItem | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>("");
+  const [numbers, setNumbers] = useState<IRMSNItem[]>([]);
+  const [selectedNumber, setSelectedNumber] = useState<string>("");
 
   // Search form state
   const [searchForm, setSearchForm] = useState<SearchFormData>({
-    documentType: 'IR',
-    searchTerm: '',
+    documentType: "IR",
+    searchTerm: "",
   });
 
   // Update form state
   const [updateForm, setUpdateForm] = useState<UpdateFormData>({
-    stage: '',
+    stage: "",
     quantity: 0,
-    idNumberRange: '',
-    supplier: '',
-    remark: '',
+    idNumberRange: "",
+    supplier: "",
+    remark: "",
   });
 
   // Stage options based on document type
   const IRStages = [
-    "Before Testing", "After Testing", "Final", "T04 Cavity",
-    "Intermediate", "Flower Test", "WPS", "Other"
+    "Before Testing",
+    "After Testing",
+    "Final",
+    "T04 Cavity",
+    "Intermediate",
+    "Flower Test",
+    "WPS",
+    "Other",
   ];
-  
+
   const MSNStages = [
-    "Testing", "Final", "QT", "Intermediate",
-    "Precheck & Final", "Other"
+    "Testing",
+    "Final",
+    "QT",
+    "Intermediate",
+    "Precheck & Final",
+    "Other",
   ];
 
-  const stages = searchForm.documentType === 'IR' ? IRStages : MSNStages;
+  const stages = searchForm.documentType === "IR" ? IRStages : MSNStages;
 
-  // Update search function to use slice
-  const onSearch = async () => {
-    if (!searchForm.searchTerm.trim()) return;
-    try {
-      await dispatch(searchIRMSN(searchForm)).unwrap();
-    } catch (error) {
-      console.error('Error searching:', error);
+  // Fetch numbers based on document type
+  const fetchNumbers = useMemo(
+    () =>
+      debounce(async (query: string) => {
+        if (query.length < 2) return;
+
+        setIsLoading(true);
+        try {
+          const endpoint =
+            searchForm.documentType === "IR"
+              ? "/api/reports/GetAllIRNumber"
+              : "/api/reports/GetAllMSNNumber";
+
+          const response = await api.get(endpoint, {
+            params: { query },
+          });
+          setNumbers(response.data);
+        } catch (error) {
+          console.error("Error fetching numbers:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }, 300),
+    [searchForm.documentType]
+  );
+
+  // Handle number selection
+  const handleNumberSelect = (selectedNumber: string) => {
+    if (!selectedNumber) {
+      setSelectedItem(null);
+      return;
+    }
+
+    const selectedData = numbers.find(
+      (item) => (item.irNumber || item.msnNumber) === selectedNumber
+    );
+
+    if (selectedData) {
+      setSelectedItem(selectedData);
+      setUpdateForm({
+        stage: selectedData.stage || "",
+        quantity: selectedData.quantity,
+        idNumberRange: selectedData.idNumberRange || "",
+        supplier: selectedData.supplier || "",
+        remark: selectedData.remark || "",
+      });
     }
   };
 
-  const handleEdit = (item: IRMSNItem) => {
-    setSelectedItem(item);
-    setUpdateForm({
-      stage: item.stage,
-      quantity: item.quantity,
-      idNumberRange: item.idNumberRange,
-      supplier: item.supplier || '',
-      remark: item.remark || '',
-    });
-    setEditDialogOpen(true);
-  };
-
-  // Update the update function to use slice
+  // Update function
   const onUpdate = async () => {
     if (!selectedItem) return;
     
+    setIsLoading(true);
     try {
-      await dispatch(updateIRMSN({ 
-        id: selectedItem.id,
-        ...updateForm 
-      })).unwrap();
-      
-      setSuccessMessage(`${searchForm.documentType} Number updated successfully!`);
+      const endpoint = searchForm.documentType === "IR"
+        ? "/api/reports/UpdateIRNumber"
+        : "/api/reports/UpdateMSNNumber";
+
+      const payload = {
+        [searchForm.documentType === "IR" ? "irNumber" : "msnNumber"]:
+          searchForm.documentType === "IR"
+            ? selectedItem.irNumber
+            : selectedItem.msnNumber,
+        idNumberRange: updateForm.idNumberRange,
+        quantity: updateForm.quantity,
+        remark: updateForm.remark || null,
+        stage: updateForm.stage,
+        supplier: updateForm.supplier || null,
+        modifiedBy: selectedItem.createdBy,
+      };
+
+      await api.post(endpoint, payload);
+
+      // Update the selected item with new values
+      const updatedItem: IRMSNItem = {
+        ...selectedItem,
+        stage: updateForm.stage,
+        quantity: updateForm.quantity,
+        idNumberRange: updateForm.idNumberRange,
+        supplier: updateForm.supplier || null,
+        remark: updateForm.remark || null,
+      };
+
+      // Update both the numbers array and selected item
+      setNumbers(prevNumbers => 
+        prevNumbers.map(item => 
+          item.id === selectedItem.id 
+            ? updatedItem
+            : item
+        )
+      );
+      setSelectedItem(updatedItem);
+
+      setSuccessMessage(
+        `${searchForm.documentType} Number updated successfully!`
+      );
       setEditDialogOpen(false);
-      setSelectedItem(null);
+
+      // Refresh the search results to show updated data
+      if (selectedNumber) {
+        handleNumberSelect(selectedNumber);
+      }
     } catch (error) {
-      console.error('Error updating:', error);
+      console.error("Error updating:", error);
+      setSuccessMessage("Failed to update. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditDialogOpen(false);
-    setSelectedItem(null);
-    setUpdateForm({
-      stage: '',
-      quantity: 0,
-      idNumberRange: '',
-      supplier: '',
-      remark: '',
+  // Add the calculateQuantity function
+  const calculateQuantity = (range: string) => {
+    if (!range) return 0;
+
+    const parts = range.split(",").map((part) => part.trim());
+    let total = 0;
+
+    parts.forEach((part) => {
+      if (part.includes("-")) {
+        const [start, end] = part.split("-").map(Number);
+        if (!isNaN(start) && !isNaN(end)) {
+          total += end - start + 1;
+        }
+      } else if (!isNaN(Number(part))) {
+        total += 1;
+      }
     });
+
+    return total;
   };
 
   const ResultCard = ({ item }: { item: IRMSNItem }) => (
-    <Card 
-      elevation={1} 
-      sx={{ 
+    <Card
+      elevation={1}
+      sx={{
         mb: 2,
-        '&:hover': { 
+        "&:hover": {
           elevation: 3,
-          transform: 'translateY(-2px)',
-          transition: 'all 0.2s ease-in-out'
-        }
+          transform: "translateY(-2px)",
+          transition: "all 0.2s ease-in-out",
+        },
       }}
     >
       <CardContent>
         <Stack spacing={2}>
           {/* Header with number and edit button */}
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
             <Typography variant="h6" color="primary" fontWeight="bold">
               {item.irNumber || item.msnNumber}
             </Typography>
-            <Tooltip title="Edit">
-              <IconButton 
-                onClick={() => handleEdit(item)}
-                color="primary"
-                size="small"
-              >
-                <EditIcon />
-              </IconButton>
-            </Tooltip>
+            <Button
+              startIcon={<EditIcon />}
+              onClick={() => setEditDialogOpen(true)}
+              variant="outlined"
+              size="small"
+            >
+              Edit
+            </Button>
           </Stack>
 
           {/* Details Grid */}
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">Drawing Number</Typography>
-              <Typography variant="body2" fontWeight="medium">{item.drawingNumber}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                Drawing Number
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {item.drawingNumberIdName}
+              </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">Production Series</Typography>
-              <Typography variant="body2" fontWeight="medium">{item.productionSeries}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                Production Series
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {item.productionSeriesName}
+              </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">Nomenclature</Typography>
-              <Typography variant="body2" fontWeight="medium">{item.nomenclature}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                Nomenclature
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {item.nomenclature || ""}
+              </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">ID Range</Typography>
-              <Typography variant="body2" fontWeight="medium">{item.idNumberRange}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                ID Range
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {item.idNumberRange}
+              </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">Quantity</Typography>
-              <Typography variant="body2" fontWeight="medium">{item.quantity}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                Quantity
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {item.quantity}
+              </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">Stage</Typography>
-              <Chip 
-                label={item.stage} 
-                size="small" 
-                color="primary" 
+              <Typography variant="caption" color="textSecondary">
+                Stage
+              </Typography>
+              <Chip
+                label={item.stage}
+                size="small"
+                color="primary"
                 variant="outlined"
               />
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">PO Number</Typography>
-              <Typography variant="body2" fontWeight="medium">{item.poNumber}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                PO Number
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {item.productionOrderNumber}
+              </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">Project Number</Typography>
-              <Typography variant="body2" fontWeight="medium">{item.projectNumber}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                Project Number
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {item.projectNumber}
+              </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">Created Date</Typography>
-              <Typography variant="body2" fontWeight="medium">{item.createdDate}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                Created Date
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {item.createdDate}
+              </Typography>
             </Grid>
           </Grid>
 
@@ -244,13 +376,17 @@ export default function SearchUpdateIRMSN() {
             <Stack spacing={1}>
               {item.supplier && (
                 <Box>
-                  <Typography variant="caption" color="textSecondary">Supplier</Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    Supplier
+                  </Typography>
                   <Typography variant="body2">{item.supplier}</Typography>
                 </Box>
               )}
               {item.remark && (
                 <Box>
-                  <Typography variant="caption" color="textSecondary">Remark</Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    Remark
+                  </Typography>
                   <Typography variant="body2">{item.remark}</Typography>
                 </Box>
               )}
@@ -263,12 +399,11 @@ export default function SearchUpdateIRMSN() {
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
-   
       {successMessage && (
-        <Alert 
-          severity="success" 
+        <Alert
+          severity="success"
           sx={{ mb: 3 }}
-          onClose={() => setSuccessMessage('')}
+          onClose={() => setSuccessMessage("")}
         >
           {successMessage}
         </Alert>
@@ -277,59 +412,99 @@ export default function SearchUpdateIRMSN() {
       {/* Search Form */}
       <Card elevation={1} sx={{ mb: 3 }}>
         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-          <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 600 }}>
-            Search Criteria
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{ color: "primary.main", fontWeight: 600 }}
+          >
+            Search {searchForm.documentType} Number
           </Typography>
-          
+
           <Grid container spacing={3} alignItems="center">
             {/* Document Type */}
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <FormLabel component="legend" sx={{ mb: 1, color: 'text.primary' }}>
+                <FormLabel
+                  component="legend"
+                  sx={{ mb: 1, color: "text.primary" }}
+                >
                   Document Type *
                 </FormLabel>
-                <RadioGroup 
+                <RadioGroup
                   value={searchForm.documentType}
-                  onChange={(e) => setSearchForm(prev => ({ ...prev, documentType: e.target.value as 'IR' | 'MSN' }))}
+                  onChange={(e) => {
+                    setSearchForm((prev) => ({
+                      ...prev,
+                      documentType: e.target.value as "IR" | "MSN",
+                    }));
+                    setSelectedItem(null);
+                    setNumbers([]);
+                    setSelectedNumber("");
+                  }}
                   row
                 >
-                  <FormControlLabel 
-                    value="IR" 
-                    control={<Radio size={isMobile ? "small" : "medium"} />} 
-                    label="IR Number" 
+                  <FormControlLabel
+                    value="IR"
+                    control={<Radio size={isMobile ? "small" : "medium"} />}
+                    label="IR Number"
                   />
-                  <FormControlLabel 
-                    value="MSN" 
-                    control={<Radio size={isMobile ? "small" : "medium"} />} 
-                    label="MSN Number" 
+                  <FormControlLabel
+                    value="MSN"
+                    control={<Radio size={isMobile ? "small" : "medium"} />}
+                    label="MSN Number"
                   />
                 </RadioGroup>
               </FormControl>
             </Grid>
 
-            {/* Search Term */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                label={`Search ${searchForm.documentType} Number *`}
-                fullWidth
-                value={searchForm.searchTerm}
-                onChange={(e) => setSearchForm(prev => ({ ...prev, searchTerm: e.target.value }))}
-                size={isMobile ? "small" : "medium"}
-                onKeyPress={(e) => e.key === 'Enter' && onSearch()}
+            {/* Number Selection */}
+            <Grid item xs={12} md={5}>
+              <Autocomplete
+                options={numbers}
+                loading={isLoading}
+                value={
+                  numbers.find(
+                    (n) => (n.irNumber || n.msnNumber) === selectedNumber
+                  ) || null
+                }
+                getOptionLabel={(option) =>
+                  option.irNumber || option.msnNumber || ""
+                }
+                onInputChange={(_, value) => {
+                  if (value) fetchNumbers(value);
+                }}
+                onChange={(_, value) => {
+                  const number = value?.irNumber || value?.msnNumber || "";
+                  setSelectedNumber(number);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={`Select ${searchForm.documentType} Number`}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoading ? (
+                            <CircularProgress color="inherit" size={20} />
+                          ) : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
               />
             </Grid>
 
-            {/* Search Button */}
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <Button
                 variant="contained"
-                size={isMobile ? "medium" : "large"}
-                disabled={isLoading || !searchForm.searchTerm.trim()}
-                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
                 fullWidth
-                onClick={onSearch}
+                onClick={() => handleNumberSelect(selectedNumber)}
+                disabled={!selectedNumber || isLoading}
               >
-                {isLoading ? 'Searching...' : 'Search'}
+                View Details
               </Button>
             </Grid>
           </Grid>
@@ -337,68 +512,157 @@ export default function SearchUpdateIRMSN() {
       </Card>
 
       {/* Search Results */}
-      {searchResults.length > 0 && (
-        <Paper elevation={1} sx={{ p: { xs: 2, md: 3 } }}>
-          <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 600 }}>
-            Search Results ({searchResults.length} found)
-          </Typography>
-          
-          <Stack spacing={2}>
-            {searchResults.map((item) => (
-              <ResultCard key={item.id} item={item} />
-            ))}
-          </Stack>
-        </Paper>
+      {selectedItem && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={2}
+            >
+              <Typography variant="h6" color="primary">
+                {selectedItem.irNumber || selectedItem.msnNumber}
+              </Typography>
+              <Button
+                startIcon={<EditIcon />}
+                onClick={() => setEditDialogOpen(true)}
+                variant="outlined"
+                size="small"
+              >
+                Edit
+              </Button>
+            </Stack>
+
+            <Grid container spacing={2}>
+              {/* Read-only fields */}
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Drawing Number"
+                  value={selectedItem.drawingNumberIdName}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Production Series"
+                  value={selectedItem.productionSeriesName}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Nomenclature"
+                  value={selectedItem.nomenclature || ""}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Project Number"
+                  value={selectedItem.projectNumber}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="PO Number"
+                  value={selectedItem.productionOrderNumber}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Created Date"
+                  value={selectedItem.createdDate}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Component Type"
+                  value={selectedItem.componentType}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="ID Range"
+                  value={selectedItem.idNumberRange}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Quantity"
+                  value={selectedItem.quantity}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
       )}
 
       {/* No Results */}
-      {!isLoading && searchResults.length === 0 && searchForm.searchTerm && (
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 4, 
-            textAlign: 'center',
-            bgcolor: 'grey.50',
-            border: '2px dashed',
-            borderColor: 'grey.300'
+      {!isLoading && !selectedItem && searchForm.searchTerm && (
+        <Card
+          elevation={0}
+          sx={{
+            p: 4,
+            textAlign: "center",
+            bgcolor: "grey.50",
+            border: "2px dashed",
+            borderColor: "grey.300",
           }}
         >
-          <SearchIcon sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
-          <Typography variant="h6" color="textSecondary" gutterBottom>
-            No results found
-          </Typography>
-          <Typography variant="body2" color="textSecondary">
-            No {searchForm.documentType} numbers found matching "{searchForm.searchTerm}"
-          </Typography>
-        </Paper>
+          <CardContent>
+            <Typography variant="h6" color="textSecondary" gutterBottom>
+              No results found
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              No {searchForm.documentType} numbers found matching your search
+            </Typography>
+          </CardContent>
+        </Card>
       )}
 
       {/* Initial State */}
-      {!searchForm.searchTerm && searchResults.length === 0 && (
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 4, 
-            textAlign: 'center',
-            bgcolor: 'grey.50',
-            border: '2px dashed',
-            borderColor: 'grey.300'
+      {!searchForm.searchTerm && !selectedItem && (
+        <Card
+          elevation={0}
+          sx={{
+            p: 4,
+            textAlign: "center",
+            bgcolor: "grey.50",
+            border: "2px dashed",
+            borderColor: "grey.300",
           }}
         >
-          <SearchIcon sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
-          <Typography variant="h6" color="textSecondary" gutterBottom>
-            Search IR/MSN Numbers
-          </Typography>
-          <Typography variant="body2" color="textSecondary">
-            Enter search criteria and click "Search" to find {searchForm.documentType} numbers
-          </Typography>
-        </Paper>
+          <CardContent>
+            <Typography variant="h6" color="textSecondary" gutterBottom>
+              Search IR/MSN Numbers
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Enter search criteria to find {searchForm.documentType} numbers
+            </Typography>
+          </CardContent>
+        </Card>
       )}
 
       {/* Edit Dialog */}
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={handleCancelEdit}
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
         maxWidth="md"
         fullWidth
         fullScreen={isMobile}
@@ -411,16 +675,21 @@ export default function SearchUpdateIRMSN() {
             </Typography>
           </Stack>
         </DialogTitle>
-        
+
         <DialogContent>
           <Grid container spacing={3} sx={{ mt: 1 }}>
             {/* Stage */}
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Stage *</InputLabel>
-                <Select 
+                <Select
                   value={updateForm.stage}
-                  onChange={(e) => setUpdateForm(prev => ({ ...prev, stage: e.target.value as string }))}
+                  onChange={(e) =>
+                    setUpdateForm((prev) => ({
+                      ...prev,
+                      stage: e.target.value as string,
+                    }))
+                  }
                   label="Stage *"
                 >
                   {stages.map((stage) => (
@@ -432,26 +701,32 @@ export default function SearchUpdateIRMSN() {
               </FormControl>
             </Grid>
 
-            {/* Quantity */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Quantity *"
-                type="number"
-                fullWidth
-                value={updateForm.quantity}
-                onChange={(e) => setUpdateForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-                inputProps={{ min: 1 }}
-              />
-            </Grid>
-
-            {/* ID Range */}
+            {/* ID Number Range */}
             <Grid item xs={12}>
               <TextField
                 label="ID Number Range"
                 fullWidth
                 value={updateForm.idNumberRange}
-                onChange={(e) => setUpdateForm(prev => ({ ...prev, idNumberRange: e.target.value }))}
+                onChange={(e) => {
+                  const range = e.target.value;
+                  const quantity = calculateQuantity(range);
+                  setUpdateForm((prev) => ({
+                    ...prev,
+                    idNumberRange: range,
+                    quantity: quantity,
+                  }));
+                }}
                 helperText="e.g., 1-100 or 1,2,3"
+              />
+            </Grid>
+
+            {/* Quantity (Read-only) */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Quantity"
+                fullWidth
+                value={updateForm.quantity}
+                InputProps={{ readOnly: true }}
               />
             </Grid>
 
@@ -461,42 +736,51 @@ export default function SearchUpdateIRMSN() {
                 label="Supplier"
                 fullWidth
                 value={updateForm.supplier}
-                onChange={(e) => setUpdateForm(prev => ({ ...prev, supplier: e.target.value }))}
+                onChange={(e) =>
+                  setUpdateForm((prev) => ({
+                    ...prev,
+                    supplier: e.target.value,
+                  }))
+                }
               />
             </Grid>
 
             {/* Remark */}
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <TextField
                 label="Remark"
                 fullWidth
                 multiline
                 rows={2}
                 value={updateForm.remark}
-                onChange={(e) => setUpdateForm(prev => ({ ...prev, remark: e.target.value }))}
+                onChange={(e) =>
+                  setUpdateForm((prev) => ({ ...prev, remark: e.target.value }))
+                }
               />
             </Grid>
           </Grid>
         </DialogContent>
-        
+
         <DialogActions sx={{ p: 3 }}>
-          <Button 
-            onClick={handleCancelEdit}
+          <Button
+            onClick={() => setEditDialogOpen(false)}
             startIcon={<CancelIcon />}
             disabled={isLoading}
           >
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={onUpdate}
             variant="contained"
-            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+            startIcon={
+              isLoading ? <CircularProgress size={20} /> : <SaveIcon />
+            }
             disabled={isLoading || !updateForm.stage}
           >
-            {isLoading ? 'Updating...' : 'Update'}
+            {isLoading ? "Updating..." : "Update"}
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
-} 
+}
