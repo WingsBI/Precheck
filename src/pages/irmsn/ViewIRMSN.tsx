@@ -2,14 +2,14 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, IconButton, CircularProgress, Select, MenuItem, Button, FormControl, InputLabel, Autocomplete } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { fetchIRMSNList } from '../../store/slices/irmsnSlice';
+import { fetchIRMSNList, fetchMSNList, clearTables } from '../../store/slices/irmsnSlice';
 import { getAllDepartments, getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
 import type { RootState, AppDispatch } from '../../store/store';
 import debounce from 'lodash.debounce';
 
 const ViewIRMSN: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { irmsnList, loading } = useSelector((state: RootState) => state.irmsn);
+  const { irmsnList, msnList, loading } = useSelector((state: RootState) => state.irmsn);
   const { departments, productionSeries, drawingNumbers, isLoading: isLoadingCommon } = useSelector((state: RootState) => state.common);
   const [department, setDepartment] = React.useState('');
   const [productionSeriesValue, setProductionSeriesValue] = React.useState('');
@@ -60,6 +60,8 @@ const ViewIRMSN: React.FC = () => {
     setSelectedProductionSeries(null);
     setDrawingNumber('');
     setSelectedDrawing(null);
+    // Clear table data
+    dispatch(clearTables());
   };
 
   const search = `${department} ${productionSeriesValue} ${drawingNumber}`.trim();
@@ -79,15 +81,23 @@ const ViewIRMSN: React.FC = () => {
     }
   }, [departments, department, selectedDepartment]);
 
-  useEffect(() => {
-    dispatch(fetchIRMSNList(search));
-  }, [dispatch, search]);
+  const handleSearch = () => {
+    const params = {
+      drawingNumber: selectedDrawing?.drawingNumber || '',
+      productionSeries: selectedProductionSeries?.productionSeries || '',
+      departmentTypeId: selectedDepartment?.id || '',
+      stage: ''  // Add stage if needed
+    };
+    
+    dispatch(fetchIRMSNList(params));
+    dispatch(fetchMSNList(params));
+  };
 
   return (
-    <Box>
-      <Typography variant="h2" gutterBottom>View IR/MSN</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2 }}>
-        <FormControl sx={{ minWidth: 250 }} size="small">
+    <Box sx={{ p: 1 }}>
+      <Typography variant="h4" gutterBottom>View IR/MSN</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1.5 }}>
+        <FormControl sx={{ minWidth: 200 }} size="small">
           <Autocomplete
             size="small"
             options={departments}
@@ -111,7 +121,7 @@ const ViewIRMSN: React.FC = () => {
             }
             renderOption={(props, option) => (
               <li {...props}>
-                <Typography variant="body1">
+                <Typography variant="body2">
                   {option.name}
                 </Typography>
               </li>
@@ -135,7 +145,7 @@ const ViewIRMSN: React.FC = () => {
             )}
           />
         </FormControl>
-        <FormControl sx={{ minWidth: 250 }} size="small">
+        <FormControl sx={{ minWidth: 200 }} size="small">
           <Autocomplete
             size="small"
             options={productionSeries}
@@ -159,7 +169,7 @@ const ViewIRMSN: React.FC = () => {
             }
             renderOption={(props, option) => (
               <li {...props}>
-                <Typography variant="body1">
+                <Typography variant="body2">
                   {option.productionSeries}
                 </Typography>
               </li>
@@ -183,7 +193,7 @@ const ViewIRMSN: React.FC = () => {
             )}
           />
         </FormControl>
-        <FormControl sx={{ minWidth: 250 }} size="small">
+        <FormControl sx={{ minWidth: 200 }} size="small">
           <Autocomplete
             size="small"
             options={drawingNumbers}
@@ -208,8 +218,8 @@ const ViewIRMSN: React.FC = () => {
             }
             renderOption={(props, option) => (
               <li {...props}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', py: 1 }}>
-                  <Typography variant="body1">
+                <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
+                  <Typography variant="body2">
                     {option.drawingNumber}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
@@ -240,9 +250,9 @@ const ViewIRMSN: React.FC = () => {
         <Button
           variant="contained"
           color="primary"
-          sx={{ minWidth: 100, ml: 2 }}
+          sx={{ minWidth: 80, height: 32 }}
           size="small"
-          onClick={() => dispatch(fetchIRMSNList(search))}
+          onClick={handleSearch}
           disabled={!productionSeriesValue || loading}
         >
           Search
@@ -250,63 +260,101 @@ const ViewIRMSN: React.FC = () => {
         <Button
           variant="contained"
           color="error"
-          sx={{ minWidth: 100, ml: 1 }}
+          sx={{ minWidth: 80, height: 32 }}
           size="small"
           onClick={handleReset}
         >
           Reset
         </Button>
       </Box>
-      
 
       {/* IR Numbers Table */}
-      <Paper sx={{ mt: 4, mb: 4, p: 2, boxShadow: 2 }}>
-        <Typography variant="h6" align="center" fontWeight="bold" gutterBottom>IR Numbers</Typography>
-        <TableContainer>
-          <Table sx={{ minWidth: 900, minHeight: 250 }} size="small">
+      <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2 }}>
+        <Typography variant="subtitle1" align="center" fontWeight="bold" sx={{ mb: 0.5 }}>IR Numbers</Typography>
+        <TableContainer sx={{ maxHeight: 300, overflow: 'auto' }}>
+          <Table stickyHeader sx={{ minWidth: 800 }} size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Sr No</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>IR No</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Drg Number</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>ID Number</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Date</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>UserName</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Stage</TableCell>
+              <TableRow sx={{ backgroundColor: '#f5f5f5', height: 25 }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.4rem' }}>Sr No</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.4rem' }}>IR No</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.4rem' }}>Drg Number</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.4rem' }}>ID Number</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.4rem' }}>Date</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.4rem' }}>UserName</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.4rem' }}>Stage</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {/* Data rows go here. Leave empty for now. */}
-              <TableRow>
-                <TableCell colSpan={7} sx={{ height: 80 }} />
-              </TableRow>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ height: 150 }}>
+                    <CircularProgress size={30} />
+                  </TableCell>
+                </TableRow>
+              ) : irmsnList.length > 0 ? (
+                irmsnList.map((item, index) => (
+                  <TableRow key={item.id} hover>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{index + 1}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.irNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.drawingNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.idNumberRange}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{new Date(item.createdDate).toLocaleDateString()}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.userName}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.stage}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ height: 150 }}>No records found</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
       </Paper>
 
       {/* MSN Numbers Table */}
-      <Paper sx={{ mb: 4, p: 2, boxShadow: 2 }}>
-        <Typography variant="h6" align="center" fontWeight="bold" gutterBottom>MSN Numbers</Typography>
-        <TableContainer>
-          <Table sx={{ minWidth: 900 ,minHeight: 250}} size="small">
+      <Paper sx={{ mb: 1, p: 0.5, boxShadow: 2 }}>
+        <Typography variant="subtitle1" align="center" fontWeight="bold" sx={{ mb: 0.5 }}>MSN Numbers</Typography>
+        <TableContainer sx={{ maxHeight: 300, overflow: 'auto' }}>
+          <Table stickyHeader sx={{ minWidth: 800 }} size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Sr No</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>MSN No</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Drg Number</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>ID Number</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>MRIR No</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Date</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>UserName</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Stage</TableCell>
+              <TableRow sx={{ backgroundColor: '#f5f5f5', height: 30 }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>Sr No</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>MSN No</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>Drg Number</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>ID Number</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>MRIR No</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>Date</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>UserName</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>Stage</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {/* Data rows go here. Leave empty for now. */}
-              <TableRow>
-                <TableCell colSpan={8} sx={{ height: 80 }} />
-              </TableRow>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" sx={{ height: 150 }}>
+                    <CircularProgress size={30} />
+                  </TableCell>
+                </TableRow>
+              ) : msnList.length > 0 ? (
+                msnList.map((item, index) => (
+                  <TableRow key={item.id} hover>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{index + 1}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.msnNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.drawingNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.idNumberRange}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.poNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{new Date(item.createdDate).toLocaleDateString()}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.userName}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.stage}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" sx={{ height: 150 }}>No records found</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
