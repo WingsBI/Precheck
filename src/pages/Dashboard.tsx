@@ -1,211 +1,155 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
-  Paper,
-  Typography,
   Card,
   CardContent,
-  CardHeader,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  Typography,
+  Avatar,
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
+  QrCode as QrCodeIcon,
+  Inventory as InventoryIcon,
+  QrCodeScanner as QrCodeScannerIcon,
   Description as DescriptionIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
+  FolderOpen as ProjectIcon,
 } from '@mui/icons-material';
-import type { RootState } from '../store/store';
-import { viewPrecheckDetails } from '../store/slices/precheckSlice';
-import { getSopForAssembly } from '../store/slices/sopSlice';
-import { fetchDashboardData } from '../store/slices/dashboardSlice';
+
+interface DashboardCard {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+  route: string;
+}
 
 const Dashboard: React.FC = () => {
-  const dispatch = useDispatch();
-  const { precheckDetails, isLoading: isPrecheckLoading } = useSelector(
-    (state: RootState) => state.precheck
-  );
-  const { sopDetails, isLoading: isSopLoading } = useSelector(
-    (state: RootState) => state.sop
-  );
-  const { data: dashboardData, loading } = useSelector((state: RootState) => state.dashboard);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    // Fetch recent precheck and SOP data
-    dispatch(viewPrecheckDetails({ limit: 5 }) as any);
-    dispatch(getSopForAssembly({ limit: 5 }) as any);
-    dispatch(fetchDashboardData() as any);
-  }, [dispatch]);
-
-  const summaryCards = [
+  const dashboardCards: DashboardCard[] = [
     {
-      title: 'Total Prechecks',
-      value: precheckDetails?.length || 0,
-      icon: <AssignmentIcon fontSize="large" color="primary" />,
+      title: 'Make Pre-check',
+      description: 'Access and manage make pre-check related tasks',
+      icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
+      color: '#2196F3', // Blue
+      route: '/precheck/make-order',
     },
     {
-      title: 'Total SOPs',
-      value: sopDetails?.length || 0,
-      icon: <DescriptionIcon fontSize="large" color="secondary" />,
+      title: 'Generate IR, MSN',
+      description: 'Access and manage gen. ir msn no. related tasks',
+      icon: <QrCodeIcon sx={{ fontSize: 40 }} />,
+      color: '#9C27B0', // Purple
+      route: '/irmsn/generate',
     },
     {
-      title: 'Completed',
-      value: precheckDetails?.filter((p: any) => p.status === 'Completed')?.length || 0,
-      icon: <CheckCircleIcon fontSize="large" color="success" />,
+      title: 'Store Consumption',
+      description: 'Access and manage Store Consumption related tasks',
+      icon: <InventoryIcon sx={{ fontSize: 40 }} />,
+      color: '#4CAF50', // Green
+      route: '/precheck/store-in',
     },
     {
-      title: 'Pending',
-      value: precheckDetails?.filter((p: any) => p.status === 'Pending')?.length || 0,
-      icon: <WarningIcon fontSize="large" color="warning" />,
+      title: 'Generate Barcode',
+      description: 'Access and manage Barcode generation related tasks',
+      icon: <QrCodeScannerIcon sx={{ fontSize: 40 }} />,
+      color: '#FF9800', // Orange
+      route: '/qrcode/generate',
+    },
+    {
+      title: 'Generate SOP',
+      description: 'Access and manage SOP Generation related tasks',
+      icon: <DescriptionIcon sx={{ fontSize: 40 }} />,
+      color: '#F44336', // Red
+      route: '/sop/generate',
+    },
+    {
+      title: 'View Precheck',
+      description: 'Access and view precheck details and status',
+      icon: <ProjectIcon sx={{ fontSize: 40 }} />,
+      color: '#3F51B5', // Indigo
+      route: '/precheck/view',
     },
   ];
 
-  if (isPrecheckLoading || isSopLoading || loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const handleCardClick = (route: string) => {
+    navigate(route);
+  };
 
   return (
-    <Box sx={{ flexGrow: 1, p: 1 }}> {/* Minimal padding for content readability */}
-      <Typography variant="h4" gutterBottom component="h2">
+    <Box sx={{ flexGrow: 1, p: 3 }}>
+      <Typography 
+        variant="h4" 
+        gutterBottom 
+        component="h1"
+        sx={{ 
+          fontWeight: 600,
+          color: 'text.primary',
+          mb: 4
+        }}
+      >
         Dashboard
       </Typography>
 
-      {/* Summary Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {summaryCards.map((card) => (
-          <Grid item xs={12} sm={6} md={3} key={card.title}>
-            <Paper
+      <Grid container spacing={3}>
+        {dashboardCards.map((card, index) => (
+          <Grid item xs={12} sm={6} md={4} key={index}>
+            <Card
               sx={{
-                p: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
                 height: '100%',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
+                },
+                border: '1px solid',
+                borderColor: 'divider',
               }}
+              onClick={() => handleCardClick(card.route)}
             >
-              {card.icon}
-              <Typography variant="h6" component="h3" sx={{ mt: 1 }}>
-                {card.title}
-              </Typography>
-              <Typography variant="h4" component="p">
-                {card.value}
-              </Typography>
-            </Paper>
+              <CardContent sx={{ p: 3, height: '100%' }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: card.color,
+                      width: 64,
+                      height: 64,
+                      mr: 2,
+                    }}
+                  >
+                    {card.icon}
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      variant="h6"
+                      component="h3"
+                      sx={{
+                        fontWeight: 600,
+                        color: 'text.primary',
+                        mb: 1,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {card.title}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {card.description}
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
         ))}
       </Grid>
-
-      {/* Recent Activity */}
-      <Grid container spacing={2}>
-        {/* Recent Prechecks */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader title="Recent Prechecks" />
-            <Divider />
-            <CardContent>
-              <List>
-                {precheckDetails?.slice(0, 5).map((precheck: any) => (
-                  <ListItem key={precheck.id}>
-                    <ListItemText
-                      primary={precheck.assemblyNumber}
-                      secondary={`Status: ${precheck.status} | Date: ${new Date(
-                        precheck.createdAt
-                      ).toLocaleDateString()}`}
-                    />
-                  </ListItem>
-                ))}
-                {(!precheckDetails || precheckDetails.length === 0) && (
-                  <ListItem>
-                    <ListItemText primary="No recent prechecks" />
-                  </ListItem>
-                )}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Recent SOPs */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader title="Recent SOPs" />
-            <Divider />
-            <CardContent>
-              <List>
-                {sopDetails?.slice(0, 5).map((sop: any) => (
-                  <ListItem key={sop.id}>
-                    <ListItemText
-                      primary={sop.assemblyNumber}
-                      secondary={`Date: ${new Date(sop.createdAt).toLocaleDateString()}`}
-                    />
-                  </ListItem>
-                ))}
-                {(!sopDetails || sopDetails.length === 0) && (
-                  <ListItem>
-                    <ListItemText primary="No recent SOPs" />
-                  </ListItem>
-                )}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      <Paper sx={{ mt: 3, p: 2 }}>
-        <Typography variant="h5" gutterBottom>
-          Dashboard Data
-        </Typography>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Date</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">
-                    <CircularProgress />
-                  </TableCell>
-                </TableRow>
-              ) : dashboardData && Array.isArray(dashboardData) ? (
-                dashboardData.map((row: any) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.id}</TableCell>
-                    <TableCell>{row.name}</TableCell>
-                    <TableCell>{row.status}</TableCell>
-                    <TableCell>{row.date}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">
-                    No dashboard data available
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
     </Box>
   );
 };
