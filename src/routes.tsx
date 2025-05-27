@@ -25,6 +25,7 @@ import ViewIRMSN from './pages/irmsn/ViewIRMSN';
 import QRCode from './pages/qrcode/QRCode';
 import BarcodeGeneration from './pages/qrcode/BarcodeGeneration';
 import ViewBarcode from './pages/qrcode/ViewBarcode';
+import ViewConsumedIn from './pages/qrcode/ViewConsumedIn';
 
 // SOP Pages
 import SOP from './pages/sop/SOP';
@@ -57,7 +58,7 @@ export default function AppRoutes() {
           <Route path="make" element={<MakePrecheck />} />
           <Route path="store-in" element={<StoreIn />} />
           <Route path="make-order" element={<MakeOrder />} />
-          <Route path="consumed" element={<Precheck />} />
+          <Route path="consumed" element={<ViewConsumedIn />} />
         </Route>
         
         {/* IR/MSN Module */}
