@@ -3,12 +3,14 @@ import api from '../../services/api';
 
 interface QRCodeState {
   qrcodeList: any[];
+  barcodeDetails: any | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: QRCodeState = {
   qrcodeList: [],
+  barcodeDetails: null,
   loading: false,
   error: null,
 };
@@ -25,6 +27,14 @@ export const createQRCode = createAsyncThunk(
   'qrcode/createQRCode',
   async (data: any) => {
     const response = await api.post('/api/qrcode', data);
+    return response.data;
+  }
+);
+
+export const getBarcodeDetails = createAsyncThunk(
+  'qrcode/getBarcodeDetails',
+  async (qrCodeNumber: string) => {
+    const response = await api.get(`/api/QRCode/GetBarcodeDetails?QRCodeNumber=${qrCodeNumber}`);
     return response.data;
   }
 );
@@ -56,6 +66,18 @@ const qrcodeSlice = createSlice({
       .addCase(createQRCode.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to create QR code';
+      })
+      .addCase(getBarcodeDetails.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getBarcodeDetails.fulfilled, (state, action) => {
+        state.loading = false;
+        state.barcodeDetails = action.payload;
+      })
+      .addCase(getBarcodeDetails.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch barcode details';
       });
   },
 });

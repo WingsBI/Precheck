@@ -2,10 +2,10 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, CircularProgress } from '@mui/material';
 import { fetchQRCodeList } from '../../store/slices/qrcodeSlice';
-import type { RootState } from '../../store/store';
+import type { AppDispatch, RootState } from '../../store/store';
 
 const ViewQRCode: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { qrcodeList, loading } = useSelector((state: RootState) => state.qrcode);
 
   useEffect(() => {
