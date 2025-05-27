@@ -80,13 +80,13 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, p: 3 }}>
+    <Box sx={{ flexGrow: 1, p: 1 }}> {/* Minimal padding for content readability */}
       <Typography variant="h4" gutterBottom component="h2">
         Dashboard
       </Typography>
 
       {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
         {summaryCards.map((card) => (
           <Grid item xs={12} sm={6} md={3} key={card.title}>
             <Paper
@@ -111,7 +111,7 @@ const Dashboard: React.FC = () => {
       </Grid>
 
       {/* Recent Activity */}
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         {/* Recent Prechecks */}
         <Grid item xs={12} md={6}>
           <Card>
@@ -165,7 +165,7 @@ const Dashboard: React.FC = () => {
         </Grid>
       </Grid>
 
-      <Paper sx={{ mt: 4, p: 2 }}>
+      <Paper sx={{ mt: 3, p: 2 }}>
         <Typography variant="h5" gutterBottom>
           Dashboard Data
         </Typography>
