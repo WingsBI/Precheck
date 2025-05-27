@@ -184,7 +184,7 @@ export default function Layout() {
       icon: <AssignmentIcon />,
       path: "/precheck",
       subItems: [
-        { text: "View Precheck", icon: <VisibilityIcon />, path: "/precheck" },
+        { text: "View Precheck", icon: <VisibilityIcon />, path: "/precheck/view" },
         {
           text: "View Consumed In",
           icon: <VisibilityIcon />,

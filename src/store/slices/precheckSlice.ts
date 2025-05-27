@@ -115,6 +115,20 @@ export const storeInPrecheck = createAsyncThunk(
   }
 );
 
+export const exportPrecheckDetails = createAsyncThunk(
+  'precheck/exportPrecheckDetails',
+  async (exportData: any, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/Precheck/ExportPrecheckdetails', exportData, {
+        responseType: 'blob', // For file download
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to export precheck details');
+    }
+  }
+);
+
 const precheckSlice = createSlice({
   name: 'precheck',
   initialState,
@@ -238,6 +252,19 @@ const precheckSlice = createSlice({
         state.error = null;
       })
       .addCase(storeInPrecheck.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Export Precheck Details
+      .addCase(exportPrecheckDetails.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(exportPrecheckDetails.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(exportPrecheckDetails.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

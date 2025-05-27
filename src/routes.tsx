@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 
 // Precheck Pages
 import Precheck from './pages/precheck/Precheck';
+import ViewPrecheck from './pages/precheck/ViewPrecheck';
 import MakePrecheck from './pages/precheck/MakePrecheck';
 import StoreIn from './pages/precheck/StoreIn';
 import MakeOrder from './pages/precheck/MakeOrder';
@@ -52,6 +53,7 @@ export default function AppRoutes() {
         {/* Precheck Module */}
         <Route path="precheck">
           <Route index element={<Precheck />} />
+          <Route path="view" element={<ViewPrecheck />} />
           <Route path="make" element={<MakePrecheck />} />
           <Route path="store-in" element={<StoreIn />} />
           <Route path="make-order" element={<MakeOrder />} />
