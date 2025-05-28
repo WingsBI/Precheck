@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -12,14 +12,19 @@ import {
   InputAdornment,
   IconButton,
   MenuItem,
+  Alert,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { forgetPassword } from '../../store/slices/authSlice';
+import { getSecurityQuestions } from '../../store/slices/commonSlice';
+import { CustomMessageBox } from '../../utils/notifications';
 import type { RootState } from '../../store/store';
 
 const ForgetPassword: React.FC = () => {
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
+  const { securityQuestions, isLoading: isLoadingCommon } = useSelector((state: RootState) => state.common);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -33,22 +38,22 @@ const ForgetPassword: React.FC = () => {
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  const securityQuestions = [
-    { id: 1, question: 'What is your mother\'s maiden name?' },
-    { id: 2, question: 'What was your first pet\'s name?' },
-    { id: 3, question: 'In which city were you born?' },
-    { id: 4, question: 'What is your favorite movie?' },
-  ];
+  useEffect(() => {
+    dispatch(getSecurityQuestions() as any);
+  }, [dispatch]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData.userId) errors.userId = 'User ID is required';
+    if (!formData.userId.trim()) errors.userId = 'User ID is required';
     if (!formData.securityQuestion) errors.securityQuestion = 'Security question is required';
-    if (!formData.securityAnswer) errors.securityAnswer = 'Security answer is required';
-    if (!formData.newPassword) errors.newPassword = 'New password is required';
-    if (!formData.confirmPassword) errors.confirmPassword = 'Please confirm your password';
+    if (!formData.securityAnswer.trim()) errors.securityAnswer = 'Security answer is required';
+    if (!formData.newPassword.trim()) errors.newPassword = 'New password is required';
+    if (!formData.confirmPassword.trim()) errors.confirmPassword = 'Please confirm your password';
     if (formData.newPassword !== formData.confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
+    }
+    if (formData.newPassword.length < 6) {
+      errors.newPassword = 'Password must be at least 6 characters long';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -58,12 +63,31 @@ const ForgetPassword: React.FC = () => {
     e.preventDefault();
     if (validateForm()) {
       try {
-        await dispatch(forgetPassword({
+        const resultAction = await dispatch(forgetPassword({
           userId: formData.userId,
           securityQuestion: formData.securityQuestion,
           securityAnswer: formData.securityAnswer,
           newPassword: formData.newPassword
         }) as any);
+
+        if (forgetPassword.fulfilled.match(resultAction)) {
+          CustomMessageBox.ShowSuccess('Password has been reset successfully! You can now login with your new password.');
+          
+          // Clear form
+          setFormData({
+            userId: '',
+            securityQuestion: '',
+            securityAnswer: '',
+            newPassword: '',
+            confirmPassword: '',
+          });
+          setFormErrors({});
+
+          // Navigate to login after 3 seconds
+          setTimeout(() => {
+            navigate('/login');
+          }, 3000);
+        }
       } catch (err) {
         // Error handling is managed by the Redux slice
       }
@@ -92,6 +116,14 @@ const ForgetPassword: React.FC = () => {
   const handleToggleConfirmPassword = () => {
     setShowConfirmPassword(!showConfirmPassword);
   };
+
+  if (isLoadingCommon) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -125,13 +157,13 @@ const ForgetPassword: React.FC = () => {
         >
           <Box
             component="img"
-            src="/logo.jpg"
+            src="/assets/logo.jpg"
             alt="Logo"
             sx={{
               height: 50,
               width: 'auto',
               mb: 1,
-              borderRadius: 10
+              borderRadius: 2
             }}
           />
           <Typography variant="h5" color="white" fontWeight="600">
@@ -187,9 +219,9 @@ const ForgetPassword: React.FC = () => {
                     }
                   }}
                 >
-                  {securityQuestions.map((option) => (
+                  {securityQuestions.map((option: any) => (
                     <MenuItem key={option.id} value={option.id}>
-                      {option.question}
+                      {option.question || option.securityQuestion}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -290,9 +322,9 @@ const ForgetPassword: React.FC = () => {
             </Grid>
 
             {error && (
-              <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
+              <Alert severity="error" sx={{ mb: 2 }}>
                 {error}
-              </Typography>
+              </Alert>
             )}
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
@@ -325,7 +357,7 @@ const ForgetPassword: React.FC = () => {
                   '&:hover': { backgroundColor: '#8e004b' }
                 }}
               >
-                {isLoading ? 'Resetting...' : 'Reset'}
+                {isLoading ? 'Resetting...' : 'Reset Password'}
               </Button>
             </Box>
           </form>

@@ -87,8 +87,8 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Catch all route */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* Fallback route */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 } 

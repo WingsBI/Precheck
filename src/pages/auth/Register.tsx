@@ -14,6 +14,7 @@ import {
   InputAdornment,
   IconButton,
   MenuItem,
+  Alert,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { register } from '../../store/slices/authSlice';
@@ -23,6 +24,7 @@ import {
   getSecurityQuestions,
   getPlants,
 } from '../../store/slices/commonSlice';
+import { CustomMessageBox } from '../../utils/notifications';
 import type { RootState } from '../../store/store';
 
 interface RegisterFormValues {
@@ -39,10 +41,18 @@ interface RegisterFormValues {
 }
 
 const validationSchema = Yup.object({
-  username: Yup.string().required('Username is required'),
-  email: Yup.string().email('Invalid email').required('Email is required'),
-  userId: Yup.string().required('User ID is required'),
-  password: Yup.string().required('Password is required'),
+  username: Yup.string()
+    .min(3, 'Username must be at least 3 characters')
+    .required('Username is required'),
+  email: Yup.string()
+    .email('Invalid email format')
+    .required('Email is required'),
+  userId: Yup.string()
+    .min(3, 'User ID must be at least 3 characters')
+    .required('User ID is required'),
+  password: Yup.string()
+    .min(6, 'Password must be at least 6 characters')
+    .required('Password is required'),
   confirmPassword: Yup.string()
     .oneOf([Yup.ref('password')], 'Passwords must match')
     .required('Please confirm your password'),
@@ -50,7 +60,9 @@ const validationSchema = Yup.object({
   department: Yup.string().required('Department is required'),
   plant: Yup.string().required('Plant is required'),
   securityQuestion: Yup.string().required('Security question is required'),
-  securityAnswer: Yup.string().required('Security answer is required'),
+  securityAnswer: Yup.string()
+    .min(2, 'Security answer must be at least 2 characters')
+    .required('Security answer is required'),
 });
 
 const getFieldError = (touched: boolean | undefined, error: string | undefined): string => {
@@ -94,7 +106,7 @@ const Register = () => {
       securityAnswer: '',
     },
     validationSchema,
-    onSubmit: async (values) => {
+    onSubmit: async (values, { resetForm }) => {
       try {
         const { confirmPassword, ...registerData } = values;
         const transformedData = {
@@ -109,12 +121,19 @@ const Register = () => {
           email: registerData.email,
           plantId: Number(registerData.plant)
         };
+        
         const resultAction = await dispatch(register(transformedData) as any);
         if (register.fulfilled.match(resultAction)) {
-          navigate('/login');
+          CustomMessageBox.ShowSuccess('Registration successful! You can now login with your credentials.');
+          resetForm();
+          
+          // Navigate to login after 3 seconds
+          setTimeout(() => {
+            navigate('/login');
+          }, 3000);
         }
       } catch (err) {
-        // Error handling is managed by the Redux slice
+        console.error('Registration error:', err);
       }
     },
   });
@@ -130,7 +149,7 @@ const Register = () => {
   if (isLoadingCommon) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>Loading...</Typography>
+        <Typography>Loading registration data...</Typography>
       </Box>
     );
   }
@@ -167,7 +186,7 @@ const Register = () => {
         >
           <Box
             component="img"
-            src="/src/assets/logo.jpg"
+            src="/assets/logo.jpg"
             alt="Godrej Logo"
             sx={{
               height: 50,
@@ -200,6 +219,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.username && Boolean(formik.errors.username)}
                     helperText={getFieldError(formik.touched.username, formik.errors.username as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -223,6 +243,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.email && Boolean(formik.errors.email)}
                     helperText={getFieldError(formik.touched.email, formik.errors.email as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -246,6 +267,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.userId && Boolean(formik.errors.userId)}
                     helperText={getFieldError(formik.touched.userId, formik.errors.userId as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -269,6 +291,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.securityQuestion && Boolean(formik.errors.securityQuestion)}
                     helperText={getFieldError(formik.touched.securityQuestion, formik.errors.securityQuestion as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -276,9 +299,9 @@ const Register = () => {
                       }
                     }}
                   >
-                    {securityQuestions.map((option) => (
+                    {securityQuestions.map((option: any) => (
                       <MenuItem key={option.id} value={option.id}>
-                        {option.question}
+                        {option.question || option.securityQuestion}
                       </MenuItem>
                     ))}
                   </TextField>
@@ -299,6 +322,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.password && Boolean(formik.errors.password)}
                     helperText={getFieldError(formik.touched.password, formik.errors.password as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -336,6 +360,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.role && Boolean(formik.errors.role)}
                     helperText={getFieldError(formik.touched.role, formik.errors.role as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -343,9 +368,9 @@ const Register = () => {
                       }
                     }}
                   >
-                    {userRoles.map((option) => (
+                    {userRoles.filter((role: any) => role.role !== "Admin").map((option: any) => (
                       <MenuItem key={option.id} value={option.id}>
-                        {option.name}
+                        {option.role || option.name}
                   </MenuItem>
                 ))}
                   </TextField>
@@ -365,6 +390,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.department && Boolean(formik.errors.department)}
                     helperText={getFieldError(formik.touched.department, formik.errors.department as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -372,7 +398,7 @@ const Register = () => {
                       }
                     }}
                   >
-                    {departments.map((option) => (
+                    {departments.filter((dept: any) => dept.name !== "Admin").map((option: any) => (
                       <MenuItem key={option.id} value={option.id}>
                         {option.name}
                   </MenuItem>
@@ -394,6 +420,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.plant && Boolean(formik.errors.plant)}
                     helperText={getFieldError(formik.touched.plant, formik.errors.plant as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -401,7 +428,7 @@ const Register = () => {
                       }
                     }}
                   >
-                    {plants.map((option) => (
+                    {plants.map((option: any) => (
                       <MenuItem key={option.id} value={option.id}>
                         {option.name || option.plantname}
                   </MenuItem>
@@ -423,6 +450,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.securityAnswer && Boolean(formik.errors.securityAnswer)}
                     helperText={getFieldError(formik.touched.securityAnswer, formik.errors.securityAnswer as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -447,6 +475,7 @@ const Register = () => {
                     onBlur={formik.handleBlur}
                     error={formik.touched.confirmPassword && Boolean(formik.errors.confirmPassword)}
                     helperText={getFieldError(formik.touched.confirmPassword, formik.errors.confirmPassword as string)}
+                    disabled={isLoading}
                     InputProps={{
                       sx: {
                         borderRadius: 1.5,
@@ -470,9 +499,9 @@ const Register = () => {
             </Grid>
 
             {error && (
-              <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
+              <Alert severity="error" sx={{ mb: 2 }}>
                 {error}
-              </Typography>
+              </Alert>
             )}
 
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, gap: 2 }}>
@@ -495,7 +524,7 @@ const Register = () => {
               type="submit"
               variant="contained"
                 color="primary"
-              disabled={isLoading}
+              disabled={isLoading || !formik.isValid}
                 sx={{
                   py: 1.5,
                   px: 4,

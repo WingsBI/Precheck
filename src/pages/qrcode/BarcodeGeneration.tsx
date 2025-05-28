@@ -397,7 +397,7 @@ export default function BarcodeGeneration() {
         <Card elevation={2} sx={{ mb: 3 }}>
           <CardContent sx={{ p: { xs: 2, md: 3 } }}>
             <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 600, mb: 3 }}>
-              Generate QR Code
+             Add Manufacturing Item
             </Typography>
             
             <form onSubmit={handleSubmit(onSubmit)}>
