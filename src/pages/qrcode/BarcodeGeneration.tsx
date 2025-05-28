@@ -39,6 +39,8 @@ import {
   Checkbox,
   TablePagination,
   Fab,
+  Autocomplete,
+  FormHelperText,
 } from '@mui/material';
 import {
   QrCode as QrCodeIcon,
@@ -57,7 +59,12 @@ import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import QRCode from 'qrcode';
-import type { RootState } from '../../store/store';
+import type { RootState, AppDispatch } from '../../store/store';
+import { generateQRCode, exportQRCode, exportBulkQRCodes } from '../../store/slices/qrcodeSlice';
+import type { DrawingNumber } from '../../types';
+import debounce from 'lodash/debounce';
+import { getDrawingNumbers, getAllProductionSeries, getAllUnits } from '../../store/slices/commonSlice';
+import api from '../../services/api';
 
 // Validation schema
 const schema = yup.object().shape({
@@ -69,6 +76,9 @@ const schema = yup.object().shape({
   endRange: yup.number().min(1, 'End range is required').required('End range is required'),
   barcodeType: yup.string().required('Barcode type is required'),
   printFormat: yup.string().required('Print format is required'),
+  unit: yup.string().required('Unit is required'),
+  lnItemCode: yup.string(),
+  componentType: yup.string(),
 });
 
 interface BarcodeItem {
@@ -96,13 +106,20 @@ interface BarcodeFormData {
   includeText: boolean;
   includeDate: boolean;
   customText?: string;
+  lnItemCode: string;
+  componentType: string;
+  unit: string;
 }
+
+// Create typed versions of the hooks
+const useAppDispatch: () => AppDispatch = useDispatch;
 
 export default function BarcodeGeneration() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const printRef = useRef<HTMLDivElement>(null);
+  const { qrcodeList, loading, error } = useSelector((state: RootState) => state.qrcode);
   
   // State
   const [barcodes, setBarcodes] = useState<BarcodeItem[]>([]);
@@ -114,6 +131,16 @@ export default function BarcodeGeneration() {
   const [selectedBarcode, setSelectedBarcode] = useState<BarcodeItem | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [componentType, setComponentType] = useState<'ID' | 'BATCH' | 'FIM' | 'SI'>('ID');
+  const [isSeriesMode, setIsSeriesMode] = useState(true);
+  const [drawingNumbers, setDrawingNumbers] = useState([]);
+  const [productionSeries, setProductionSeries] = useState([]);
+  const [units, setUnits] = useState([]);
+  const [batchItems, setBatchItems] = useState([]);
+  const [localLoading, setLocalLoading] = useState(false);
+  const [selectedDrawing, setSelectedDrawing] = useState<DrawingNumber | null>(null);
+  const [searchResults, setSearchResults] = useState<DrawingNumber[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Form
   const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm<BarcodeFormData>({
@@ -140,6 +167,29 @@ export default function BarcodeGeneration() {
       setValue('endRange', endRange);
     }
   }, [watchQuantity, watchStartRange, setValue]);
+
+  // Load initial data
+  useEffect(() => {
+    dispatch(getAllProductionSeries());
+    dispatch(getAllUnits());
+  }, [dispatch]);
+
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    async (search: string) => {
+      if (search.length < 3) return;
+      dispatch(getDrawingNumbers({ search }));
+    },
+    [dispatch]
+  );
+
+  // Handle component type change
+  const handleComponentTypeChange = (type: 'ID' | 'BATCH' | 'FIM' | 'SI') => {
+    setComponentType(type);
+    if (type === 'ID') {
+      setIsSeriesMode(true);
+    }
+  };
 
   // Generate QR Code
   const generateQRCode = async (data: string): Promise<string> => {
@@ -251,26 +301,14 @@ export default function BarcodeGeneration() {
     if (selectedBarcodes.length === 0) return;
     
     try {
-      // Create a downloadable file with selected barcodes
-      const selectedBarcodesData = barcodes.filter(b => selectedBarcodes.includes(b.id));
-      const csvContent = [
-        'Serial Number,Drawing Number,Nomenclature,Production Series,QR Data,Created Date',
-        ...selectedBarcodesData.map(b => 
-          `${b.serialNumber},${b.drawingNumber},${b.nomenclature},${b.productionSeries},"${b.qrCodeData}",${b.createdDate}`
-        )
-      ].join('\n');
+      const selectedQRCodes = qrcodeList
+        .filter(qr => selectedBarcodes.includes(qr.id))
+        .map(qr => qr.qrCodeNumber);
       
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `barcodes_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      
-      setSuccessMessage('Barcodes downloaded successfully!');
+      await dispatch(exportBulkQRCodes(selectedQRCodes)).unwrap();
+      setSuccessMessage('QR codes downloaded successfully!');
     } catch (error) {
-      console.error('Error downloading barcodes:', error);
+      console.error('Error downloading:', error);
     }
   };
 
@@ -419,18 +457,102 @@ export default function BarcodeGeneration() {
           <form onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
               {/* Drawing Number */}
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="drawingNumber"
+                  control={control}
+                  render={({ field: { onChange, ...field } }) => (
+                    <Autocomplete
+                      {...field}
+                      options={searchResults}
+                      getOptionLabel={(option) => {
+                        if (typeof option === "string") return option;
+                        return option.drawingNumber;
+                      }}
+                      value={selectedDrawing}
+                      loading={localLoading}
+                      size="small"
+                      onInputChange={(_, value) => {
+                        setSearchTerm(value);
+                        if (value.length >= 3) {
+                          debouncedSearch(value);
+                        }
+                      }}
+                      onChange={(_, value) => {
+                        setSelectedDrawing(value);
+                        onChange(value ? value.drawingNumber : "");
+                        if (value) {
+                          setValue('lnItemCode', value.lnItemCode || '');
+                          setValue('componentType', value.componentType || '');
+                        }
+                      }}
+                      renderOption={(props, option) => (
+                        <li {...props}>
+                          <Box sx={{ display: "flex", flexDirection: "column", py: 1 }}>
+                            <Typography variant="body1">{option.drawingNumber}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {option.nomenclature} | {option.componentType}
+                            </Typography>
+                          </Box>
+                        </li>
+                      )}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Drawing Number *"
+                          error={!!errors.drawingNumber}
+                          helperText={errors.drawingNumber?.message}
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {localLoading ? (
+                                  <CircularProgress color="inherit" size={16} />
+                                ) : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                />
+              </Grid>
+
+              {/* LN Itemcode */}
+              <Grid item xs={12} md={4}>
+                <Controller
+                  name="lnItemCode"
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Drawing Number *"
+                      label="LN Itemcode"
                       fullWidth
-                      error={!!errors.drawingNumber}
-                      helperText={errors.drawingNumber?.message}
-                      size={isMobile ? "small" : "medium"}
+                      size="small"
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
+
+              {/* Component Type */}
+              <Grid item xs={12} md={4}>
+                <Controller
+                  name="componentType"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Component Type"
+                      fullWidth
+                      size="small"
+                      InputProps={{
+                        readOnly: true,
+                      }}
                     />
                   )}
                 />
@@ -460,14 +582,16 @@ export default function BarcodeGeneration() {
                   name="productionSeries"
                   control={control}
                   render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Production Series *"
-                      fullWidth
-                      error={!!errors.productionSeries}
-                      helperText={errors.productionSeries?.message}
-                      size={isMobile ? "small" : "medium"}
-                    />
+                    <FormControl fullWidth error={!!errors.productionSeries}>
+                      <InputLabel>Production Series *</InputLabel>
+                      <Select {...field} label="Production Series *">
+                        {productionSeries.map((ps: any) => (
+                          <MenuItem key={ps.id} value={ps.id}>
+                            {ps.productionSeries}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   )}
                 />
               </Grid>

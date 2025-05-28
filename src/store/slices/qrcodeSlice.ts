@@ -2,44 +2,124 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
 interface QRCodeState {
-  qrcodeList: any[];
+  qrcodeList: QRCodeItem[];
   consumedInList: any[];
-  barcodeDetails: any | null;
+  barcodeDetails: BarcodeDetails | null;
   loading: boolean;
   error: string | null;
+  generatedNumber: string | null;
+}
+
+interface QRCodeItem {
+  id: number;
+  serialNumber: string;
+  qrCodeData: string;
+  qrCodeImage: string;
+  drawingNumber: string;
+  nomenclature: string;
+  productionSeries: string;
+  createdDate: string;
+  isSelected: boolean;
+  status: 'pending' | 'printed' | 'used';
+}
+
+interface BarcodeDetails {
+  qrCodeNumber: string;
+  productionSeriesId: number;
+  drawingNumber: string;
+  nomenclature: string;
+  consumedInDrawing: string;
+  qrCodeStatus: string;
+  irNumber: string;
+  msnNumber: string;
+  mrirNumber: string;
+  quantity: number;
+  disposition: string;
+  users: string;
+}
+
+interface QRCodePayload {
+  productionSeriesId: number;
+  componentTypeId: number;
+  nomenclatureId: number;
+  lnItemCodeId: number;
+  rackLocationId: number;
+  irNumberId: number;
+  msnNumberId: number;
+  disposition: string;
+  productionOrderNumber: string;
+  projectNumber: string;
+  expiryDate: string;
+  manufacturingDate: string;
+  drawingNumberId: number;
+  unitId: number;
+  mrirNumber: string;
+  remark: string;
+  quantity: number;
+  ids: number[];
+  idNumber?: string;
+  batchIds: BatchInfo[];
+}
+
+interface BatchInfo {
+  quantity: number;
+  batchQuantity: number;
+  assemblyDrawingId: number;
 }
 
 const initialState: QRCodeState = {
   qrcodeList: [],
-  barcodeDetails: null,
   consumedInList: [],
+  barcodeDetails: null,
   loading: false,
   error: null,
+  generatedNumber: null
 };
 
-export const fetchQRCodeList = createAsyncThunk(
-  'qrcode/fetchQRCodeList',
-  async () => {
-    const response = await api.get('/api/qrcode');
+// Thunks
+export const generateQRCode = createAsyncThunk(
+  'qrcode/generateQRCode',
+  async (payload: QRCodePayload) => {
+    const response = await api.post('/api/QRCode/GenerateQRCode', payload);
     return response.data;
   }
 );
 
-export const createQRCode = createAsyncThunk(
-  'qrcode/createQRCode',
-  async (data: any) => {
-    const response = await api.post('/api/qrcode', data);
+export const getBarcodeDetails = createAsyncThunk(
+  'qrcode/getBarcodeDetails',
+  async (qrCodeNumber: string) => {
+    const response = await api.get(`/api/QRCode/GetBarcodeDetails?QRCodeNumber=${qrCodeNumber}`);
     return response.data;
   }
 );
 
-    export const getBarcodeDetails = createAsyncThunk(
-      'qrcode/getBarcodeDetails',
-      async (qrCodeNumber: string) => {
-        const response = await api.get(`/api/QRCode/GetBarcodeDetails?QRCodeNumber=${qrCodeNumber}`);
-        return response.data;
-      }
-    );
+export const generateBatchQRCode = createAsyncThunk(
+  'qrcode/generateBatchQRCode',
+  async (payload: { drawingNumberId: number, quantity: number }) => {
+    const response = await api.post('/api/QRCode/GenerateBatchQRCode', payload);
+    return response.data;
+  }
+);
+
+export const exportQRCode = createAsyncThunk(
+  'qrcode/exportQRCode',
+  async (qrCodeId: string) => {
+    const response = await api.get(`/api/QRCode/ExportQRCode?qrCodeId=${qrCodeId}`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+);
+
+export const exportBulkQRCodes = createAsyncThunk(
+  'qrcode/exportBulkQRCodes',
+  async (qrCodes: string[]) => {
+    const response = await api.post('/api/QRCode/ExportBulkQRCodes', qrCodes, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+);
 
     export const getConsumedIn = createAsyncThunk(
       'qrcode/getConsumedIn',
@@ -63,29 +143,6 @@ export const createQRCode = createAsyncThunk(
       reducers: {},
       extraReducers: (builder) => {
         builder
-          .addCase(fetchQRCodeList.pending, (state) => {
-            state.loading = true;
-          })
-          .addCase(fetchQRCodeList.fulfilled, (state, action) => {
-            state.loading = false;
-            state.qrcodeList = action.payload;
-          })
-          .addCase(fetchQRCodeList.rejected, (state, action) => {
-            state.loading = false;
-            state.error = action.error.message || 'Failed to fetch QR code list';
-          })
-          .addCase(createQRCode.pending, (state) => {
-            state.loading = true;
-          })
-          .addCase(createQRCode.fulfilled, (state, action) => {
-            state.loading = false;
-            state.qrcodeList.push(action.payload);
-          })
-          .addCase(createQRCode.rejected, (state, action) => {
-            state.loading = false;
-            state.error = action.error.message || 'Failed to create QR code';
-          })
-
           .addCase(getBarcodeDetails.pending, (state) => {
             state.loading = true;
             state.error = null;
@@ -115,4 +172,4 @@ export const createQRCode = createAsyncThunk(
       },
     });
 
-    export default qrcodeSlice.reducer; 
+export default qrcodeSlice.reducer; 
