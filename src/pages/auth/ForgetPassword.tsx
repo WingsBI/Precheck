@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -13,27 +13,29 @@ import {
   IconButton,
   MenuItem,
   Alert,
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { forgetPassword } from '../../store/slices/authSlice';
-import { getSecurityQuestions } from '../../store/slices/commonSlice';
-import { CustomMessageBox } from '../../utils/notifications';
-import type { RootState } from '../../store/store';
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { forgetPassword } from "../../store/slices/authSlice";
+import { getSecurityQuestions } from "../../store/slices/commonSlice";
+import { CustomMessageBox } from "../../utils/notifications";
+import type { RootState } from "../../store/store";
 
 const ForgetPassword: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
-  const { securityQuestions, isLoading: isLoadingCommon } = useSelector((state: RootState) => state.common);
+  const { securityQuestions, isLoading: isLoadingCommon } = useSelector(
+    (state: RootState) => state.common
+  );
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
-    userId: '',
-    securityQuestion: '',
-    securityAnswer: '',
-    newPassword: '',
-    confirmPassword: '',
+    userId: "",
+    securityQuestion: "",
+    securityAnswer: "",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -44,16 +46,20 @@ const ForgetPassword: React.FC = () => {
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData.userId.trim()) errors.userId = 'User ID is required';
-    if (!formData.securityQuestion) errors.securityQuestion = 'Security question is required';
-    if (!formData.securityAnswer.trim()) errors.securityAnswer = 'Security answer is required';
-    if (!formData.newPassword.trim()) errors.newPassword = 'New password is required';
-    if (!formData.confirmPassword.trim()) errors.confirmPassword = 'Please confirm your password';
+    if (!formData.userId.trim()) errors.userId = "User ID is required";
+    if (!formData.securityQuestion)
+      errors.securityQuestion = "Security question is required";
+    if (!formData.securityAnswer.trim())
+      errors.securityAnswer = "Security answer is required";
+    if (!formData.newPassword.trim())
+      errors.newPassword = "New password is required";
+    if (!formData.confirmPassword.trim())
+      errors.confirmPassword = "Please confirm your password";
     if (formData.newPassword !== formData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
+      errors.confirmPassword = "Passwords do not match";
     }
     if (formData.newPassword.length < 6) {
-      errors.newPassword = 'Password must be at least 6 characters long';
+      errors.newPassword = "Password must be at least 6 characters long";
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -63,29 +69,33 @@ const ForgetPassword: React.FC = () => {
     e.preventDefault();
     if (validateForm()) {
       try {
-        const resultAction = await dispatch(forgetPassword({
-          userId: formData.userId,
-          securityQuestion: formData.securityQuestion,
-          securityAnswer: formData.securityAnswer,
-          newPassword: formData.newPassword
-        }) as any);
+        const resultAction = await dispatch(
+          forgetPassword({
+            userId: formData.userId,
+            securityQuestion: formData.securityQuestion,
+            securityAnswer: formData.securityAnswer,
+            newPassword: formData.newPassword,
+          }) as any
+        );
 
         if (forgetPassword.fulfilled.match(resultAction)) {
-          CustomMessageBox.ShowSuccess('Password has been reset successfully! You can now login with your new password.');
-          
+          CustomMessageBox.ShowSuccess(
+            "Password has been reset successfully! You can now login with your new password."
+          );
+
           // Clear form
           setFormData({
-            userId: '',
-            securityQuestion: '',
-            securityAnswer: '',
-            newPassword: '',
-            confirmPassword: '',
+            userId: "",
+            securityQuestion: "",
+            securityAnswer: "",
+            newPassword: "",
+            confirmPassword: "",
           });
           setFormErrors({});
 
           // Navigate to login after 3 seconds
           setTimeout(() => {
-            navigate('/login');
+            navigate("/login");
           }, 3000);
         }
       } catch (err) {
@@ -96,15 +106,15 @@ const ForgetPassword: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     // Clear error when user starts typing
     if (formErrors[name]) {
-      setFormErrors(prev => ({
+      setFormErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: "",
       }));
     }
   };
@@ -119,7 +129,14 @@ const ForgetPassword: React.FC = () => {
 
   if (isLoadingCommon) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
         <Typography>Loading...</Typography>
       </Box>
     );
@@ -128,54 +145,63 @@ const ForgetPassword: React.FC = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
-        width: '100vw',
-        background: 'linear-gradient(135deg, #a8005a 0%, #c2185b 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        minHeight: "100vh",
+        width: "100vw",
+        background: "linear-gradient(135deg, #a8005a 0%, #c2185b 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
       <Card
         sx={{
           maxWidth: 520,
-          width: '100%',
+          width: "100%",
           mx: 2,
-          boxShadow: '0px 10px 30px rgba(0, 0, 0, 0.1)',
-          borderRadius: 4,
-          overflow: 'hidden',
+          boxShadow: "0px 10px 30px rgba(0, 0, 0, 0.1)",
+          borderRadius: 2,
+          overflow: "hidden",
         }}
       >
         {/* Header */}
         <Box
           sx={{
-            bgcolor: 'primary.main',
-            background: 'linear-gradient(90deg, #800B4C 0%, #B5106D 100%)',
+            bgcolor: "primary.main",
+            background: "linear-gradient(90deg, #800B4C 0%, #B5106D 100%)",
             p: 3,
             pb: 4,
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center", // vertically center-align items
           }}
         >
+          <Typography variant="h5" color="white" fontWeight="600">
+            Reset Password
+          </Typography>
+
           <Box
             component="img"
             src="/assets/logo.jpg"
             alt="Logo"
             sx={{
               height: 50,
-              width: 'auto',
-              mb: 1,
-              borderRadius: 2
+              width: "auto",
+              borderRadius: 2,
             }}
           />
-          <Typography variant="h5" color="white" fontWeight="600">
-            Reset Password
-          </Typography>
         </Box>
 
         {/* Form */}
         <CardContent sx={{ p: 3, pt: 4 }}>
           <form onSubmit={handleSubmit}>
             <Box mb={3}>
-              <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+              <Typography
+                variant="subtitle1"
+                fontWeight="600"
+                color="secondary.main"
+                mb={1}
+              >
                 User ID
               </Typography>
               <TextField
@@ -191,15 +217,20 @@ const ForgetPassword: React.FC = () => {
                 InputProps={{
                   sx: {
                     borderRadius: 1.5,
-                    bgcolor: 'background.default',
-                  }
+                    bgcolor: "background.default",
+                  },
                 }}
               />
             </Box>
 
             <Grid container spacing={2} mb={3}>
               <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="600"
+                  color="secondary.main"
+                  mb={1}
+                >
                   Security Question
                 </Typography>
                 <TextField
@@ -215,8 +246,8 @@ const ForgetPassword: React.FC = () => {
                   InputProps={{
                     sx: {
                       borderRadius: 1.5,
-                      bgcolor: 'background.default',
-                    }
+                      bgcolor: "background.default",
+                    },
                   }}
                 >
                   {securityQuestions.map((option: any) => (
@@ -227,7 +258,12 @@ const ForgetPassword: React.FC = () => {
                 </TextField>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="600"
+                  color="secondary.main"
+                  mb={1}
+                >
                   Security Answer
                 </Typography>
                 <TextField
@@ -243,8 +279,8 @@ const ForgetPassword: React.FC = () => {
                   InputProps={{
                     sx: {
                       borderRadius: 1.5,
-                      bgcolor: 'background.default',
-                    }
+                      bgcolor: "background.default",
+                    },
                   }}
                 />
               </Grid>
@@ -252,14 +288,19 @@ const ForgetPassword: React.FC = () => {
 
             <Grid container spacing={2} mb={3}>
               <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="600"
+                  color="secondary.main"
+                  mb={1}
+                >
                   New Password
                 </Typography>
                 <TextField
                   fullWidth
                   id="newPassword"
                   name="newPassword"
-                  type={showNewPassword ? 'text' : 'password'}
+                  type={showNewPassword ? "text" : "password"}
                   placeholder="Enter new password"
                   value={formData.newPassword}
                   onChange={handleChange}
@@ -269,7 +310,7 @@ const ForgetPassword: React.FC = () => {
                   InputProps={{
                     sx: {
                       borderRadius: 1.5,
-                      bgcolor: 'background.default',
+                      bgcolor: "background.default",
                     },
                     endAdornment: (
                       <InputAdornment position="end">
@@ -286,14 +327,19 @@ const ForgetPassword: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle1" fontWeight="600" color="secondary.main" mb={1}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="600"
+                  color="secondary.main"
+                  mb={1}
+                >
                   Confirm Password
                 </Typography>
                 <TextField
                   fullWidth
                   id="confirmPassword"
                   name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm new password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -303,7 +349,7 @@ const ForgetPassword: React.FC = () => {
                   InputProps={{
                     sx: {
                       borderRadius: 1.5,
-                      bgcolor: 'background.default',
+                      bgcolor: "background.default",
                     },
                     endAdornment: (
                       <InputAdornment position="end">
@@ -312,7 +358,11 @@ const ForgetPassword: React.FC = () => {
                           onClick={handleToggleConfirmPassword}
                           edge="end"
                         >
-                          {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                          {showConfirmPassword ? (
+                            <VisibilityOff />
+                          ) : (
+                            <Visibility />
+                          )}
                         </IconButton>
                       </InputAdornment>
                     ),
@@ -327,7 +377,9 @@ const ForgetPassword: React.FC = () => {
               </Alert>
             )}
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}
+            >
               <Button
                 component={RouterLink}
                 to="/login"
@@ -337,12 +389,12 @@ const ForgetPassword: React.FC = () => {
                   py: 1.5,
                   px: 3,
                   fontWeight: 600,
-                  minWidth: '120px',
+                  minWidth: "120px",
                 }}
               >
                 Back to Login
               </Button>
-             
+
               <Button
                 type="submit"
                 variant="contained"
@@ -352,12 +404,12 @@ const ForgetPassword: React.FC = () => {
                   py: 1.5,
                   px: 4,
                   fontWeight: 600,
-                  minWidth: '120px',
-                  backgroundColor: '#a8005a',
-                  '&:hover': { backgroundColor: '#8e004b' }
+                  minWidth: "120px",
+                  backgroundColor: "#a8005a",
+                  "&:hover": { backgroundColor: "#8e004b" },
                 }}
               >
-                {isLoading ? 'Resetting...' : 'Reset Password'}
+                {isLoading ? "Resetting..." : "Reset Password"}
               </Button>
             </Box>
           </form>
@@ -367,4 +419,4 @@ const ForgetPassword: React.FC = () => {
   );
 };
 
-export default ForgetPassword; 
+export default ForgetPassword;

@@ -53,7 +53,7 @@ const Login: React.FC = () => {
       try {
         // Clear any previous errors
         dispatch(clearError());
-        
+
         const resultAction = await dispatch(login(formData) as any);
         console.log("Login result:", resultAction);
 
@@ -106,7 +106,7 @@ const Login: React.FC = () => {
     >
       <Card
         sx={{
-          maxWidth: 420,
+          maxWidth: 420,  
           width: "100%",
           mx: 2,
           boxShadow: "0px 10px 30px rgba(0, 0, 0, 0.1)",
@@ -130,7 +130,6 @@ const Login: React.FC = () => {
               justifyContent: "space-between",
             }}
           >
-
             <Box
               component="img"
               src="/assets/logo.jpg"
@@ -142,14 +141,6 @@ const Login: React.FC = () => {
               }}
             />
           </Box>
-          <Typography 
-            variant="h5" 
-            color="white" 
-            fontWeight="600"
-            sx={{ mt: 2 }}
-          >
-            Login
-          </Typography>
         </Box>
 
         {/* Form */}
