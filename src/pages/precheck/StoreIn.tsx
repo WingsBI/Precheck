@@ -63,13 +63,22 @@ const StoreIn: React.FC = () => {
       <Typography variant="h4" gutterBottom color="primary.main" fontWeight={600}>
         Store In
       </Typography>
-      <Typography variant="body1" color="text.secondary" gutterBottom>
-        Scan QR code to store items
-      </Typography>
 
       {/* QR Code Scanning Section */}
       <Paper sx={{ p: 2, mt: 3 }}>
-        <Box sx={{ mb: 3 }}>
+        {/* QR Code Input and Label in Single Line */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+          <Typography 
+            variant="h6" 
+            color="primary.main"
+            sx={{ 
+              fontWeight: 600,
+              minWidth: 'fit-content',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Scanned QR Code Details:
+          </Typography>
           <TextField
             fullWidth
             placeholder="Scan QR Code"
@@ -87,9 +96,6 @@ const StoreIn: React.FC = () => {
         </Box>
 
         {/* First Table - Barcode Details */}
-        <Typography variant="h6" gutterBottom color="primary.main">
-          Scanned QR Code Details
-        </Typography>
         <TableContainer>
           <Table size="small">
             <TableHead>

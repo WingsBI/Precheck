@@ -27,8 +27,10 @@ import ViewBarcode from './pages/qrcode/ViewBarcode';
 import ViewConsumedIn from './pages/qrcode/ViewConsumedIn';
 
 // SOP Pages
-import SOP from './pages/sop/SOP';
-import SOPGeneration from './pages/sop/SOPGeneration';
+import SOP from './pages/sop/ViewSOP';
+// import SOPGeneration from './pages/sop/SOPGeneration';
+// import SOPAssemblyGeneration from './pages/sop/SOPAssemblyGeneration';
+import ViewSOP from './pages/sop/ViewSOP';
 
 // Settings Pages
 import Settings from './pages/settings/Settings';
@@ -78,7 +80,9 @@ export default function AppRoutes() {
         {/* SOP Module */}
         <Route path="sop">
           <Route index element={<SOP />} />
-          <Route path="generate" element={<SOPGeneration />} />
+          <Route path="view" element={<ViewSOP />} />
+          {/* <Route path="generate" element={<SOPGeneration />} />
+          <Route path="assembly" element={<SOPAssemblyGeneration />} /> */}
         </Route>
         
         {/* Settings Module */}
