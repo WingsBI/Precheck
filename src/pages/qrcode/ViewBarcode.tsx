@@ -15,9 +15,13 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  IconButton,
+  Collapse,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { getBarcodeDetails } from '../../store/slices/qrcodeSlice';
 import { type RootState } from '../../store/store';
 import { useDispatch, useSelector } from "react-redux";
@@ -38,6 +42,65 @@ interface QRCodeData {
   disposition: string;
   username: string;
 }
+
+const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
+        <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.qrCodeNumber}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>{barcodeDetails.productionSeriesId}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails.drawingNumber}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.nomenclature}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '250px' }}>{barcodeDetails.consumedInDrawing}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.qrCodeStatus}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>
+          <IconButton
+            aria-label="expand row"
+            size="small"
+            onClick={() => setOpen(!open)}
+          >
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          </IconButton>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ margin: 1 }}>
+              <Typography variant="h6" gutterBottom component="div">
+                
+              </Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>IR Number</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>MSN Number</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>MRIR Number</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Quantity</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Disposition</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Username</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.irNumber}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.msnNumber}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.mrirNumber}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.quantity}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.disposition}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.users}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </>
+  );
+};
 
 const ViewBarcode: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -175,8 +238,8 @@ const ViewBarcode: React.FC = () => {
         View and download existing QR codes
       </Typography>
       
-      <Paper sx={{ p: 0.5, mt: 3 ,pl: 2 ,pr: 2, width: '75vw'}}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1 , alignItems: 'center' }}>
+      <Paper sx={{ p: 0.5, mt: 3, pl: 2, pr: 2, width: '77vw' }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1, alignItems: 'center' }}>
           <TextField
             sx={{width: '40vw'}}
             variant="outlined"
@@ -209,7 +272,7 @@ const ViewBarcode: React.FC = () => {
             color="primary"
             startIcon={<DownloadIcon />}
             onClick={handleDownload}
-            sx={{ minWidth: '120px',marginLeft: 'auto'  }}
+            sx={{ minWidth: '120px', marginLeft: 'auto' }}
             size="small"
           >
             Download
@@ -226,31 +289,11 @@ const ViewBarcode: React.FC = () => {
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Nomenclature</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>ConsumedInDrawing</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>IR Number</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>MSN Number</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>MRIR Number</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Quantity</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Disposition</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Username</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '50px', textAlign: 'center' }}>Details</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {barcodeDetails && (
-                <TableRow>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.qrCodeNumber}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>{barcodeDetails.productionSeriesId}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails.drawingNumber}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.nomenclature}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '250px' }}>{barcodeDetails.consumedInDrawing}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.qrCodeStatus}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails.irNumber}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails.msnNumber}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.mrirNumber}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.quantity}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.disposition}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.users}</TableCell>
-                </TableRow>
-              )}
+              {barcodeDetails && <Row barcodeDetails={barcodeDetails} />}
             </TableBody>
           </Table>
         </TableContainer>
