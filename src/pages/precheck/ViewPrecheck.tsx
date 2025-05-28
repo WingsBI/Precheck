@@ -15,8 +15,14 @@ import {
   FormControl, 
   Autocomplete, 
   CircularProgress,
-  TableSortLabel
+  TableSortLabel,
+  TablePagination
 } from '@mui/material';
+import {
+  Visibility as VisibilityIcon,
+  FileDownload as FileDownloadIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 import { viewPrecheckDetails, exportPrecheckDetails } from '../../store/slices/precheckSlice';
 import { getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
 import type { RootState, AppDispatch } from '../../store/store';
@@ -44,6 +50,10 @@ const ViewPrecheck: React.FC = () => {
   // Sorting state
   const [orderBy, setOrderBy] = useState<string>('');
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Debounced search functions
   const debouncedDrawingSearch = useMemo(
@@ -103,6 +113,23 @@ const ViewPrecheck: React.FC = () => {
       }
     });
   }, [searchResults, orderBy, order]);
+
+  // Pagination handlers
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Paginated results
+  const paginatedResults = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return sortedResults.slice(startIndex, endIndex);
+  }, [sortedResults, page, rowsPerPage]);
 
   const handleViewPrecheck = () => {
     // According to the API spec, the ViewPrecheck endpoint expects these parameters:
@@ -171,6 +198,7 @@ const ViewPrecheck: React.FC = () => {
     setShowResults(false);
     setOrderBy('');
     setOrder('asc');
+    setPage(0);
   };
 
   return (
@@ -186,27 +214,19 @@ const ViewPrecheck: React.FC = () => {
       >
         View Precheck
       </Typography>
+      
+      {/* Form Controls */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1.5 }}>
-        <FormControl sx={{ minWidth: 150 }} size="small">
+        <FormControl sx={{ minWidth: 175 }} size="small">
           <TextField
             size="small"
-            label="Production Order"
+            label="Production Order Number"
             value={productionOrder}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProductionOrder(e.target.value)}
+            onChange={(e) => setProductionOrder(e.target.value)}
             variant="outlined"
           />
         </FormControl>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            fontWeight: 'bold',
-            color: 'text.secondary',
-            fontSize: '0.875rem',
-            px: 0.5
-          }}
-        >
-          OR
-        </Typography>
+        
         <FormControl sx={{ minWidth: 175 }} size="small">
           <Autocomplete
             size="small"
@@ -259,6 +279,7 @@ const ViewPrecheck: React.FC = () => {
             )}
           />
         </FormControl>
+        
         <FormControl sx={{ minWidth: 175 }} size="small">
           <Autocomplete
             size="small"
@@ -270,7 +291,7 @@ const ViewPrecheck: React.FC = () => {
             value={selectedProductionSeries}
             loading={prodSeriesLoading}
             onInputChange={(_, value) => {
-              if (value.length >= 2) {
+              if (value.length >= 1) {
                 debouncedProdSeriesSearch(value);
               }
             }}
@@ -306,23 +327,27 @@ const ViewPrecheck: React.FC = () => {
             )}
           />
         </FormControl>
-        <FormControl sx={{ minWidth: 120 }} size="small">
+        
+        <FormControl sx={{ minWidth: 100 }} size="small">
           <TextField
             size="small"
             label="ID Number"
             value={idNumber}
             onChange={(e) => setIdNumber(e.target.value)}
             variant="outlined"
+            sx={{ width: 100 }}
           />
         </FormControl>
+        
         <Button
           variant="contained"
           color="primary"
-          sx={{ minWidth: 130, height: 32 }}
+          sx={{ minWidth: 170, height: 32 }}
           size="small"
           onClick={handleViewPrecheck}
           disabled={isLoading}
         >
+          <VisibilityIcon sx={{ mr: 1 }} />
           View Precheck
         </Button>
         <Button
@@ -332,6 +357,7 @@ const ViewPrecheck: React.FC = () => {
           size="small"
           onClick={handleExport}
         >
+          <FileDownloadIcon sx={{ mr: 1 }} />
           Export
         </Button>
         <Button
@@ -341,92 +367,103 @@ const ViewPrecheck: React.FC = () => {
           size="small"
           onClick={handleReset}
         >
+          <RefreshIcon sx={{ mr: 1 }} />
           Reset
         </Button>
       </Box>
 
+      {/* Results Display */}
+      {showResults && (
+        <Typography
+          variant="body2"
+          sx={{ mb: 1, fontWeight: 'medium' }}
+        >
+          Showing results for Production Order: {productionOrder || 'All'} / Drawing: {selectedDrawing?.drawingNumber || 'All'} / Production Series: {selectedProductionSeries?.productionSeries || 'All'} / ID: {idNumber || 'All'}
+        </Typography>
+      )}
+
       {/* Results Table */}
       <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2 }}>
-        <TableContainer sx={{ maxHeight: 300, overflow: 'auto' }}>
+        <TableContainer sx={{ maxHeight: 500, overflow: 'auto' }}>
           <Table stickyHeader sx={{ minWidth: 800 }} size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5', height: 25 }}>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+              <TableRow sx={{ backgroundColor: '#f5f5f5', height: 24 }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'sr'}
                     direction={orderBy === 'sr' ? order : 'asc'}
                     onClick={() => handleRequestSort('sr')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Sr No
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'drawingNumber'}
                     direction={orderBy === 'drawingNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('drawingNumber')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Drawing Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'nomenclature'}
                     direction={orderBy === 'nomenclature' ? order : 'asc'}
                     onClick={() => handleRequestSort('nomenclature')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Nomenclature
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'quantity'}
                     direction={orderBy === 'quantity' ? order : 'asc'}
                     onClick={() => handleRequestSort('quantity')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Quantity
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'idNumber'}
                     direction={orderBy === 'idNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('idNumber')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     ID Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'ir'}
                     direction={orderBy === 'ir' ? order : 'asc'}
                     onClick={() => handleRequestSort('ir')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     IR
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'msn'}
                     direction={orderBy === 'msn' ? order : 'asc'}
                     onClick={() => handleRequestSort('msn')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     MSN
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'mrirNumber'}
                     direction={orderBy === 'mrirNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('mrirNumber')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     MRIR Number
                   </TableSortLabel>
@@ -440,17 +477,17 @@ const ViewPrecheck: React.FC = () => {
                     <CircularProgress size={30} />
                   </TableCell>
                 </TableRow>
-              ) : sortedResults.length > 0 ? (
-                sortedResults.map((item, index) => (
-                  <TableRow key={index} hover>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.sr}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.drawingNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.nomenclature}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.quantity}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.idNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.ir || '-'}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.msn || '-'}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.mrirNumber || '-'}</TableCell>
+              ) : paginatedResults.length > 0 ? (
+                paginatedResults.map((item, index) => (
+                  <TableRow key={index} hover sx={{ height: 36 }}>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.sr}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.nomenclature}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.quantity}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.ir || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.msn || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.mrirNumber || '-'}</TableCell>
                   </TableRow>
                 ))
               ) : showResults ? (
@@ -467,6 +504,28 @@ const ViewPrecheck: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        
+        {/* Pagination */}
+        {searchResults.length > 0 && (
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            component="div"
+            count={searchResults.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{ 
+              borderTop: '1px solid #e0e0e0',
+              '& .MuiTablePagination-toolbar': {
+                minHeight: 48
+              },
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                fontSize: '0.8rem'
+              }
+            }}
+          />
+        )}
       </Paper>
     </Box>
   );

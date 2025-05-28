@@ -15,8 +15,13 @@ import {
   FormControl, 
   Autocomplete, 
   CircularProgress,
-  TableSortLabel
+  TableSortLabel,
+  TablePagination
 } from '@mui/material';
+import {
+  Search as SearchIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 import { getConsumedIn } from '../../store/slices/qrcodeSlice';
 import { getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
 import type { RootState, AppDispatch } from '../../store/store';
@@ -44,6 +49,10 @@ const ViewConsumedIn: React.FC = () => {
   // Sorting state
   const [orderBy, setOrderBy] = useState<string>('');
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Debounced search functions
   const debouncedDrawingSearch = useMemo(
@@ -104,6 +113,23 @@ const ViewConsumedIn: React.FC = () => {
     });
   }, [searchResults, orderBy, order]);
 
+  // Pagination handlers
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Paginated results
+  const paginatedResults = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return sortedResults.slice(startIndex, endIndex);
+  }, [sortedResults, page, rowsPerPage]);
+
   const handleViewConsumption = () => {
     // Validate required fields
     if (!selectedDrawing || !selectedProductionSeries) {
@@ -154,6 +180,7 @@ const ViewConsumedIn: React.FC = () => {
     setShowResults(false);
     setOrderBy('');
     setOrder('asc');
+    setPage(0);
   };
 
   return (
@@ -299,6 +326,7 @@ const ViewConsumedIn: React.FC = () => {
           onClick={handleViewConsumption}
           disabled={loading}
         >
+          <SearchIcon sx={{ mr: 1 }} />
           View Consumption
         </Button>
         <Button
@@ -308,92 +336,103 @@ const ViewConsumedIn: React.FC = () => {
           size="small"
           onClick={handleReset}
         >
+          <RefreshIcon sx={{ mr: 1 }} />
           Reset
         </Button>
       </Box>
 
+      {/* Results Display */}
+      {showResults && (
+        <Typography
+          variant="body2"
+          sx={{ mb: 1, fontWeight: 'medium' }}
+        >
+          Showing consumption results for {selectedDrawing?.drawingNumber || ''} / {selectedProductionSeries?.productionSeries || ''}
+        </Typography>
+      )}
+
       {/* Results Table */}
       <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2 }}>
-        <TableContainer sx={{ maxHeight: 300, overflow: 'auto' }}>
+        <TableContainer sx={{ maxHeight: 500, overflow: 'auto' }}>
           <Table stickyHeader sx={{ minWidth: 800 }} size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5', height: 25 }}>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+              <TableRow sx={{ backgroundColor: '#f5f5f5', height: 24 }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'sr'}
                     direction={orderBy === 'sr' ? order : 'asc'}
                     onClick={() => handleRequestSort('sr')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Sr No
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'idNumber'}
                     direction={orderBy === 'idNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('idNumber')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     ID Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'consumedInDrawingNumber'}
                     direction={orderBy === 'consumedInDrawingNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('consumedInDrawingNumber')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Consumed IN Drawing Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'poNumber'}
                     direction={orderBy === 'poNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('poNumber')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     PO Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'irNumber'}
                     direction={orderBy === 'irNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('irNumber')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     IR Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'msnNumber'}
                     direction={orderBy === 'msnNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('msnNumber')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     MSN Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'date'}
                     direction={orderBy === 'date' ? order : 'asc'}
                     onClick={() => handleRequestSort('date')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Date
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, fontSize: '0.8rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
                   <TableSortLabel
                     active={orderBy === 'username'}
                     direction={orderBy === 'username' ? order : 'asc'}
                     onClick={() => handleRequestSort('username')}
-                    sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Username
                   </TableSortLabel>
@@ -407,17 +446,17 @@ const ViewConsumedIn: React.FC = () => {
                     <CircularProgress size={30} />
                   </TableCell>
                 </TableRow>
-              ) : sortedResults.length > 0 ? (
-                sortedResults.map((item, index) => (
-                  <TableRow key={index} hover>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.sr}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.idNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.consumedInDrawingNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.poNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.irNumber || '-'}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.msnNumber || '-'}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.date || '-'}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.8rem' }}>{item.username || '-'}</TableCell>
+              ) : paginatedResults.length > 0 ? (
+                paginatedResults.map((item, index) => (
+                  <TableRow key={index} hover sx={{ height: 36 }}>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.sr}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.consumedInDrawingNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.poNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.irNumber || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.msnNumber || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.date || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.username || '-'}</TableCell>
                   </TableRow>
                 ))
               ) : showResults ? (
@@ -434,6 +473,28 @@ const ViewConsumedIn: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        
+        {/* Pagination */}
+        {searchResults.length > 0 && (
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            component="div"
+            count={searchResults.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{ 
+              borderTop: '1px solid #e0e0e0',
+              '& .MuiTablePagination-toolbar': {
+                minHeight: 48
+              },
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                fontSize: '0.8rem'
+              }
+            }}
+          />
+        )}
       </Paper>
     </Box>
   );
