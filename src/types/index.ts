@@ -158,6 +158,10 @@ export interface BarcodeDetails {
   quantity: number;
   disposition: string;
   users: string;
+  productionOrderNumber: string;
+  projectNumber: string;
+  idNumber: string;
+  productionSeries: string;
 }
 
 export interface QRCodeFormData {
