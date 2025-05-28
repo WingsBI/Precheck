@@ -95,8 +95,8 @@ const ViewIRMSN: React.FC = () => {
 
   return (
     <Box sx={{ p: 1 }}>
-      <Typography variant="h4" gutterBottom>View IR/MSN</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1.5 }}>
+      <Typography variant="h4" gutterBottom color="primary.main">View IR/MSN</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1.5 ,mt: 2}}>
         <FormControl sx={{ minWidth: 200 }} size="small">
           <Autocomplete
             size="small"
