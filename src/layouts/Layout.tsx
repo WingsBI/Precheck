@@ -45,6 +45,7 @@ import {
   Visibility as VisibilityIcon,
   Store as StoreIcon,
   ShoppingCart as ShoppingCartIcon,
+  Article as ArticleIcon,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import type { RootState } from "../store/store";
@@ -187,7 +188,7 @@ export default function Layout() {
         { text: "View Precheck", icon: <VisibilityIcon />, path: "/precheck/view" },
         {
           text: "View Consumed In",
-          icon: <VisibilityIcon />,
+          icon: <SearchIcon />,
           path: "/precheck/consumed",
         },
         {
@@ -201,7 +202,7 @@ export default function Layout() {
     },
     {
       text: "SOP",
-      icon: <DescriptionIcon />,
+      icon: <ArticleIcon />,
       path: "/sop",
       subItems: [
         { text: "View SOP", icon: <VisibilityIcon />, path: "/sop/generate" },

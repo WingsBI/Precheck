@@ -1,779 +1,988 @@
-import { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Box,
-  Paper,
   Typography,
+  Paper, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
   TextField,
   Button,
-  Grid,
-  Card,
-  CardContent,
   FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
   Autocomplete,
-  IconButton,
-  Tooltip,
-  Skeleton,
-  useTheme,
-  useMediaQuery,
-  Divider,
-  Stack,
-  FormLabel,
-  Chip,
+  CircularProgress,
+  TableSortLabel,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
-  Checkbox,
-  FormControlLabel as MuiFormControlLabel,
+  Alert,
+  IconButton,
+  Chip,
+  Collapse,
+  TablePagination
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
-  Refresh as RefreshIcon,
-  Check as CheckIcon,
-  Warning as WarningIcon,
-  PlayArrow as PlayIcon,
-  Stop as StopIcon,
+  ExpandMore as ExpandMoreIcon, 
+  ExpandLess as ExpandLessIcon,
+  Inventory as InventoryIcon,
   QrCode as QrCodeIcon,
-  Print as PrintIcon,
+  Category as CategoryIcon,
+  Settings as SettingsIcon,
+  QrCodeScanner as QrCodeScannerIcon,
+  Refresh as RefreshIcon,
+  Send as SendIcon
 } from '@mui/icons-material';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import type { RootState } from '../../store/store';
+import { viewPrecheckDetails, getAvailableComponents, makePrecheck } from '../../store/slices/precheckSlice';
+import { getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
+import type { RootState, AppDispatch } from '../../store/store';
+import debounce from 'lodash.debounce';
 
-// Validation schema
-const schema = yup.object().shape({
-  drawingNumber: yup.string().required('Drawing Number is required'),
-  nomenclature: yup.string().required('Nomenclature is required'),
-  productionSeries: yup.string().required('Production Series is required'),
-  quantity: yup.number().min(1, 'Quantity must be at least 1').required('Quantity is required'),
-  poNumber: yup.string().required('PO Number is required'),
-  projectNumber: yup.string().required('Project Number is required'),
-  startRange: yup.number().min(1, 'Start range is required').required('Start range is required'),
-  endRange: yup.number().min(1, 'End range is required').required('End range is required'),
-  department: yup.string().required('Department is required'),
-  stage: yup.string().required('Stage is required'),
-});
-
-interface PrecheckItem {
-  id: number;
-  serialNumber: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'failed';
-  checkpoints: PrecheckCheckpoint[];
-  startTime?: string;
-  endTime?: string;
-  remarks?: string;
+interface BarcodeDetails {
+  qrCodeStatusId: number;
+  drawingNumberId: number;
+  drawingNumber: string;
+  idNumber: string;
+  quantity: number;
+  irNumber: string;
+  msnNumber: string;
+  irNumberId: number;
+  msnNumberId: number;
+  idNumbers: number;
+  productionSeriesId: number;
+  componentType: string;
+  mrirNumber: string;
+  remark: string;
 }
 
-interface PrecheckCheckpoint {
-  id: number;
-  name: string;
-  description: string;
-  isCompleted: boolean;
-  isRequired: boolean;
-  result?: 'pass' | 'fail' | 'na';
-  remarks?: string;
-}
-
-interface PrecheckFormData {
+interface GridItem {
+  sr: number;
   drawingNumber: string;
   nomenclature: string;
-  productionSeries: string;
   quantity: number;
-  poNumber: string;
-  projectNumber: string;
-  startRange: number;
-  endRange: number;
-  department: string;
-  stage: string;
+  idNumber: string;
+  ir: string;
+  msn: string;
+  mrirNumber: string;
+  drawingNumberId: number;
+  prodSeriesId: number;
+  isPrecheckComplete: boolean;
+  isUpdated: boolean;
+  qrCode?: string;
+  componentType?: string;
+  username?: string;
+  modifiedDate?: string;
   remarks?: string;
+  expanded?: boolean;
 }
 
-export default function MakePrecheck() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const dispatch = useDispatch();
+const MakePrecheck: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { isLoading } = useSelector((state: RootState) => state.precheck);
+  const { productionSeries, drawingNumbers } = useSelector((state: RootState) => state.common);
   
-  // State
-  const [precheckItems, setPrecheckItems] = useState<PrecheckItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<PrecheckItem | null>(null);
-  const [activeStep, setActiveStep] = useState(0);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string>('');
-  const [precheckDialogOpen, setPrecheckDialogOpen] = useState(false);
-  const [assemblyNumber, setAssemblyNumber] = useState('');
+  // Form state
+  const [selectedDrawing, setSelectedDrawing] = useState<any>(null);
+  const [selectedProductionSeries, setSelectedProductionSeries] = useState<any>(null);
+  const [idNumber, setIdNumber] = useState('');
+  
+  // Loading states
+  const [drawingLoading, setDrawingLoading] = useState(false);
+  const [prodSeriesLoading, setProdSeriesLoading] = useState(false);
+  
+  // Search results
+  const [searchResults, setSearchResults] = useState<GridItem[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  
+  // QR Code scanner state
+  const [barcodeText, setBarcodeText] = useState('');
+  const [isSubmitEnabled, setIsSubmitEnabled] = useState(false);
+  
+  // Quantity dialog state
+  const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
+  const [maxQuantity, setMaxQuantity] = useState(0);
+  const [selectedQuantity, setSelectedQuantity] = useState(0);
+  const [pendingBarcodeData, setPendingBarcodeData] = useState<any>(null);
+  
+  // Alert state
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertSeverity, setAlertSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+  const [showAlert, setShowAlert] = useState(false);
+  
+  // Sorting state
+  const [orderBy, setOrderBy] = useState<string>('');
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
-  // Stage options
-  const stages = [
-    "Initial Check", "In-Process Check", "Final Check", 
-    "Quality Check", "Assembly Check", "Testing Check"
-  ];
+  // Expanded rows state
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
-  // Departments
-  const departments = [
-    "Production", "Quality Control", "Assembly", 
-    "Testing", "Finishing", "Packaging"
-  ];
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Standard checkpoints
-  const standardCheckpoints: Omit<PrecheckCheckpoint, 'id'>[] = [
-    { name: "Visual Inspection", description: "Check for visual defects and damages", isCompleted: false, isRequired: true },
-    { name: "Dimensional Check", description: "Verify dimensions according to drawing", isCompleted: false, isRequired: true },
-    { name: "Material Verification", description: "Confirm material specifications", isCompleted: false, isRequired: true },
-    { name: "Surface Finish", description: "Check surface finish quality", isCompleted: false, isRequired: false },
-    { name: "Functionality Test", description: "Test basic functionality", isCompleted: false, isRequired: true },
-    { name: "Documentation", description: "Verify all required documentation", isCompleted: false, isRequired: true },
-  ];
+  // Selected row state
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
-  const { control, handleSubmit, watch, reset, formState: { errors } } = useForm<PrecheckFormData>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      quantity: 1,
-      startRange: 1,
-      endRange: 1,
-    }
-  });
-
-  const watchQuantity = watch('quantity');
-  const watchStartRange = watch('startRange');
-
-  // Auto-update end range when quantity or start range changes
-  useEffect(() => {
-    if (watchQuantity && watchStartRange) {
-      const endRange = watchStartRange + watchQuantity - 1;
-      // Use setValue to update endRange
-    }
-  }, [watchQuantity, watchStartRange]);
-
-  const onSubmit = async (data: PrecheckFormData) => {
-    setIsCreating(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const newItems: PrecheckItem[] = [];
-      for (let i = 0; i < data.quantity; i++) {
-        const serialNumber = `${data.drawingNumber}-${String(data.startRange + i).padStart(4, '0')}`;
-        newItems.push({
-          id: Date.now() + i,
-          serialNumber,
-          status: 'pending',
-          checkpoints: standardCheckpoints.map((cp, index) => ({
-            ...cp,
-            id: index + 1,
-          })),
-        });
-      }
-      
-      setPrecheckItems(newItems);
-      setSuccessMessage(`Successfully created ${data.quantity} precheck items!`);
-      setActiveStep(1);
-    } catch (error) {
-      console.error('Error creating precheck:', error);
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const startPrecheck = (item: PrecheckItem) => {
-    setSelectedItem({
-      ...item,
-      status: 'in-progress',
-      startTime: new Date().toISOString(),
-    });
-    setPrecheckDialogOpen(true);
-  };
-
-  const updateCheckpoint = (checkpointId: number, updates: Partial<PrecheckCheckpoint>) => {
-    if (!selectedItem) return;
-    
-    setSelectedItem({
-      ...selectedItem,
-      checkpoints: selectedItem.checkpoints.map(cp =>
-        cp.id === checkpointId ? { ...cp, ...updates } : cp
-      ),
-    });
-  };
-
-  const completePrecheck = async () => {
-    if (!selectedItem) return;
-    
-    setIsProcessing(true);
-    try {
-      const allRequiredCompleted = selectedItem.checkpoints
-        .filter(cp => cp.isRequired)
-        .every(cp => cp.isCompleted);
-      
-      const updatedItem = {
-        ...selectedItem,
-        status: allRequiredCompleted ? 'completed' : 'failed',
-        endTime: new Date().toISOString(),
-      } as PrecheckItem;
-      
-      setPrecheckItems(prev => prev.map(item => 
-        item.id === selectedItem.id ? updatedItem : item
-      ));
-      
-      setPrecheckDialogOpen(false);
-      setSelectedItem(null);
-      setSuccessMessage(`Precheck ${allRequiredCompleted ? 'completed' : 'failed'}!`);
-    } catch (error) {
-      console.error('Error completing precheck:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const getStatusColor = (status: PrecheckItem['status']) => {
-    switch (status) {
-      case 'completed': return 'success';
-      case 'failed': return 'error';
-      case 'in-progress': return 'warning';
-      default: return 'default';
-    }
-  };
-
-  const getStatusIcon = (status: PrecheckItem['status']) => {
-    switch (status) {
-      case 'completed': return <CheckIcon />;
-      case 'failed': return <WarningIcon />;
-      case 'in-progress': return <PlayIcon />;
-      default: return <StopIcon />;
-    }
-  };
-
-  const PrecheckItemCard = ({ item }: { item: PrecheckItem }) => (
-    <Card 
-      elevation={1} 
-      sx={{ 
-        mb: 2,
-        border: item.status === 'in-progress' ? 2 : 1,
-        borderColor: item.status === 'in-progress' ? 'warning.main' : 'divider',
-        '&:hover': { 
-          elevation: 3,
-          transform: 'translateY(-2px)',
-          transition: 'all 0.2s ease-in-out'
-        }
-      }}
-    >
-      <CardContent>
-        <Stack spacing={2}>
-          {/* Header */}
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6" color="primary" fontWeight="bold">
-              {item.serialNumber}
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Chip 
-                label={item.status.replace('-', ' ').toUpperCase()}
-                color={getStatusColor(item.status)}
-                icon={getStatusIcon(item.status)}
-                size="small"
-              />
-              {item.status === 'pending' && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<PlayIcon />}
-                  onClick={() => startPrecheck(item)}
-                >
-                  Start
-                </Button>
-              )}
-            </Stack>
-          </Stack>
-
-          {/* Progress */}
-          <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-              <Typography variant="body2" color="textSecondary">
-                Progress
-              </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {item.checkpoints.filter(cp => cp.isCompleted).length} / {item.checkpoints.length}
-              </Typography>
-            </Stack>
-            <Box sx={{ 
-              width: '100%', 
-              height: 8, 
-              bgcolor: 'grey.200', 
-              borderRadius: 1,
-              overflow: 'hidden'
-            }}>
-              <Box sx={{
-                width: `${(item.checkpoints.filter(cp => cp.isCompleted).length / item.checkpoints.length) * 100}%`,
-                height: '100%',
-                bgcolor: getStatusColor(item.status) + '.main',
-                transition: 'width 0.3s ease'
-              }} />
-            </Box>
-          </Box>
-
-          {/* Timing */}
-          {(item.startTime || item.endTime) && (
-            <Grid container spacing={2}>
-              {item.startTime && (
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="textSecondary">Start Time</Typography>
-                  <Typography variant="body2" fontWeight="medium">
-                    {new Date(item.startTime).toLocaleTimeString()}
-                  </Typography>
-                </Grid>
-              )}
-              {item.endTime && (
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="textSecondary">End Time</Typography>
-                  <Typography variant="body2" fontWeight="medium">
-                    {new Date(item.endTime).toLocaleTimeString()}
-                  </Typography>
-                </Grid>
-              )}
-            </Grid>
-          )}
-        </Stack>
-      </CardContent>
-    </Card>
+  // Debounced search functions
+  const debouncedDrawingSearch = useMemo(
+    () =>
+      debounce((searchValue: string) => {
+        setDrawingLoading(true);
+        dispatch(getDrawingNumbers({ search: searchValue }))
+          .finally(() => setDrawingLoading(false));
+      }, 300),
+    [dispatch]
   );
 
-  const steps = [
-    {
-      label: 'Create Precheck',
-      content: (
-        <Card elevation={1}>
-          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <Grid container spacing={3}>
-                {/* Drawing Number */}
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="drawingNumber"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Drawing Number *"
-                        fullWidth
-                        error={!!errors.drawingNumber}
-                        helperText={errors.drawingNumber?.message}
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    )}
-                  />
-                </Grid>
+  const debouncedProdSeriesSearch = useMemo(
+    () =>
+      debounce((searchValue: string) => {
+        setProdSeriesLoading(true);
+        dispatch(getAllProductionSeries())
+          .finally(() => setProdSeriesLoading(false));
+      }, 300),
+    [dispatch]
+  );
 
-                {/* Nomenclature */}
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="nomenclature"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Nomenclature *"
-                        fullWidth
-                        error={!!errors.nomenclature}
-                        helperText={errors.nomenclature?.message}
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    )}
-                  />
-                </Grid>
+  // Load initial data
+  useEffect(() => {
+    dispatch(getAllProductionSeries());
+    dispatch(getDrawingNumbers({}));
+  }, [dispatch]);
 
-                {/* Production Series */}
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="productionSeries"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Production Series *"
-                        fullWidth
-                        error={!!errors.productionSeries}
-                        helperText={errors.productionSeries?.message}
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    )}
-                  />
-                </Grid>
+  // Auto-hide alert after 5 seconds
+  useEffect(() => {
+    if (showAlert) {
+      const timer = setTimeout(() => {
+        setShowAlert(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showAlert]);
 
-                {/* Department */}
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="department"
-                    control={control}
-                    render={({ field }) => (
-                      <FormControl fullWidth error={!!errors.department} size={isMobile ? "small" : "medium"}>
-                        <InputLabel>Department *</InputLabel>
-                        <Select {...field} label="Department *">
-                          {departments.map((dept) => (
-                            <MenuItem key={dept} value={dept}>
-                              {dept}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.department && (
-                          <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                            {errors.department.message}
-                          </Typography>
-                        )}
-                      </FormControl>
-                    )}
-                  />
-                </Grid>
+  const showAlertMessage = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setAlertMessage(message);
+    setAlertSeverity(severity);
+    setShowAlert(true);
+  };
 
-                {/* Stage */}
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="stage"
-                    control={control}
-                    render={({ field }) => (
-                      <FormControl fullWidth error={!!errors.stage} size={isMobile ? "small" : "medium"}>
-                        <InputLabel>Stage *</InputLabel>
-                        <Select {...field} label="Stage *">
-                          {stages.map((stage) => (
-                            <MenuItem key={stage} value={stage}>
-                              {stage}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.stage && (
-                          <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                            {errors.stage.message}
-                          </Typography>
-                        )}
-                      </FormControl>
-                    )}
-                  />
-                </Grid>
+  // Sorting functions
+  const handleRequestSort = (property: string) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
 
-                {/* PO Number */}
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="poNumber"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="PO Number *"
-                        fullWidth
-                        error={!!errors.poNumber}
-                        helperText={errors.poNumber?.message}
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    )}
-                  />
-                </Grid>
+  const sortedResults = useMemo(() => {
+    if (!orderBy) return searchResults;
+    
+    return [...searchResults].sort((a, b) => {
+      let aValue = a[orderBy as keyof GridItem];
+      let bValue = b[orderBy as keyof GridItem];
+      
+      // Handle numeric values
+      if (orderBy === 'sr' || orderBy === 'quantity') {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+      } else {
+        // Handle string values
+        aValue = String(aValue || '').toLowerCase();
+        bValue = String(bValue || '').toLowerCase();
+      }
+      
+      if (order === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+  }, [searchResults, orderBy, order]);
 
-                {/* Project Number */}
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="projectNumber"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Project Number *"
-                        fullWidth
-                        error={!!errors.projectNumber}
-                        helperText={errors.projectNumber?.message}
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    )}
-                  />
-                </Grid>
+  const handleMakePrecheck = () => {
+    // Validate required fields first
+    if (!selectedDrawing || !selectedProductionSeries || !idNumber) {
+      showAlertMessage('Please fill all required fields: Drawing Number, Production Series, and ID Number', 'error');
+      return;
+    }
 
-                {/* Quantity */}
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="quantity"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Quantity *"
-                        type="number"
-                        fullWidth
-                        error={!!errors.quantity}
-                        helperText={errors.quantity?.message}
-                        inputProps={{ min: 1 }}
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    )}
-                  />
-                </Grid>
+    // Using the same API as ViewPrecheck with the same parameter structure
+    const params = {
+      ProductionOrderNumber: undefined, // Not used in MakePrecheck
+      ProductionSeriesId: selectedProductionSeries?.id || undefined,
+      Id: idNumber ? parseInt(idNumber) : undefined,
+      DrawingNumberId: selectedDrawing?.id || undefined
+    };
+    
+    console.log('Making precheck with params:', params); // Debug log
+    
+    // Only call API if we have at least one parameter
+    if (params.ProductionSeriesId || params.Id || params.DrawingNumberId) {
+      dispatch(viewPrecheckDetails(params)).then((result: any) => {
+        console.log('API Response:', result); // Debug log
+        
+        if (result.payload && Array.isArray(result.payload)) {
+          // Map the API response to our table format (same as ViewPrecheck)
+          const mappedResults = result.payload.map((item: any, index: number) => ({
+            sr: index + 1,
+            drawingNumber: item.drawingNumber || item.consumedDrawingNo || '',
+            nomenclature: item.nomenclature || '',
+            quantity: item.quantity || 0,
+            idNumber: item.idNumbers || item.idNumber || '',
+            ir: item.irNumber || '',
+            msn: item.msnNumber || '',
+            mrirNumber: item.mrirNumber || '',
+            drawingNumberId: item.drawingNumberId || 0,
+            prodSeriesId: item.prodSeriesId || 0,
+            isPrecheckComplete: item.isPrecheckComplete || false,
+            isUpdated: false,
+            componentType: item.componentType || '',
+            username: item.username || '',
+            modifiedDate: item.modifiedDate || '',
+            remarks: item.remarks || ''
+          }));
+          setSearchResults(mappedResults);
+          setIsSubmitEnabled(false);
+          showAlertMessage(`Loaded ${mappedResults.length} components successfully`, 'success');
+        } else {
+          setSearchResults([]);
+          showAlertMessage('No data found for the specified criteria', 'info');
+        }
+        setShowResults(true);
+      }).catch((error) => {
+        console.error('API Error:', error); // Debug log
+        setSearchResults([]);
+        setShowResults(true);
+        showAlertMessage('Error loading precheck data. Please try again.', 'error');
+      });
+    } else {
+      showAlertMessage('Please provide valid search criteria', 'error');
+    }
+  };
 
-                {/* Start Range */}
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="startRange"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Start Range *"
-                        type="number"
-                        fullWidth
-                        error={!!errors.startRange}
-                        helperText={errors.startRange?.message}
-                        inputProps={{ min: 1 }}
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    )}
-                  />
-                </Grid>
+  const handleReset = () => {
+    setSelectedDrawing(null);
+    setSelectedProductionSeries(null);
+    setIdNumber('');
+    setSearchResults([]);
+    setShowResults(false);
+    setOrderBy('');
+    setOrder('asc');
+    setBarcodeText('');
+    setIsSubmitEnabled(false);
+    setShowAlert(false);
+    setExpandedRows(new Set());
+    setPage(0);
+    setSelectedRow(null);
+  };
 
-                {/* End Range */}
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="endRange"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="End Range *"
-                        type="number"
-                        fullWidth
-                        error={!!errors.endRange}
-                        helperText={errors.endRange?.message}
-                        inputProps={{ min: 1 }}
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    )}
-                  />
-                </Grid>
+  const processBarcodeAsync = async (barcode: string) => {
+    try {
+      const result = await dispatch(getAvailableComponents(barcode));
+      const qrCodeDetails = result.payload as BarcodeDetails;
 
-                {/* Remarks */}
-                <Grid item xs={12}>
-                  <Controller
-                    name="remarks"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Remarks"
-                        fullWidth
-                        multiline
-                        rows={3}
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    )}
-                  />
-                </Grid>
+      if (!qrCodeDetails) {
+        showAlertMessage('Invalid QR code or no data found', 'error');
+        return;
+      }
 
-                {/* Submit Button */}
-                <Grid item xs={12}>
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    size={isMobile ? "medium" : "large"}
-                    disabled={isCreating}
-                    startIcon={isCreating ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
-                    fullWidth
-                  >
-                    {isCreating ? 'Creating...' : 'Create Precheck Items'}
-                  </Button>
-                </Grid>
-              </Grid>
-            </form>
-          </CardContent>
-        </Card>
-      ),
-    },
-    {
-      label: 'Execute Precheck',
-      content: (
-        <Stack spacing={2}>
-          {precheckItems.map((item) => (
-            <PrecheckItemCard key={item.id} item={item} />
-          ))}
-          
-          {precheckItems.length === 0 && (
-            <Paper 
-              elevation={0} 
-              sx={{ 
-                p: 4, 
-                textAlign: 'center',
-                bgcolor: 'grey.50',
-                border: '2px dashed',
-                borderColor: 'grey.300'
-              }}
-            >
-              <Typography variant="h6" color="textSecondary" gutterBottom>
-                No precheck items created yet
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Complete Step 1 to create precheck items
-              </Typography>
-            </Paper>
-          )}
-        </Stack>
-      ),
-    },
-  ];
+      if (qrCodeDetails.qrCodeStatusId === 3) {
+        showAlertMessage('QR code not stored in.', 'info');
+        return;
+      } else if (qrCodeDetails.qrCodeStatusId !== 1) {
+        showAlertMessage('This barcode has already been consumed.', 'info');
+        return;
+      }
+
+      // Find potential matches
+      const potentialMatches = searchResults
+        .map((item, index) => ({ item, index }))
+        .filter(x => x.item.drawingNumberId === qrCodeDetails.drawingNumberId);
+
+      if (!potentialMatches.length) {
+        showAlertMessage(`No components found with drawing number ${qrCodeDetails.drawingNumber}.`, 'info');
+        return;
+      }
+
+      // Check for ID component type
+      if (potentialMatches.some(x => x.item.componentType?.toUpperCase() === 'ID')) {
+        const idAlreadyAssigned = searchResults.some(item =>
+          item.idNumber === qrCodeDetails.idNumber &&
+          item.drawingNumberId === qrCodeDetails.drawingNumberId
+        );
+        
+        if (idAlreadyAssigned) {
+          showAlertMessage(`ID ${qrCodeDetails.idNumber} has already been assigned to a component with drawing number ${qrCodeDetails.drawingNumber}.`, 'success');
+          return;
+        }
+      }
+
+      // Find unprocessed item
+      const matchingItem = potentialMatches.find(x => 
+        !x.item.isPrecheckComplete &&
+        !x.item.isUpdated &&
+        !x.item.idNumber
+      );
+
+      if (!matchingItem) {
+        const totalMatchingItems = potentialMatches.length;
+        const processedMatchingItems = potentialMatches.filter(x => 
+          x.item.isPrecheckComplete || x.item.isUpdated || x.item.idNumber
+        ).length;
+
+        if (totalMatchingItems > 0 && processedMatchingItems === totalMatchingItems) {
+          showAlertMessage(`All components with drawing number ${qrCodeDetails.drawingNumber} have already been processed.`, 'info');
+        } else {
+          showAlertMessage('No matching unprocessed component found for the scanned barcode.', 'info');
+        }
+        return;
+      }
+
+      // Handle quantity selection
+      if (qrCodeDetails.componentType?.toUpperCase() !== 'ID') {
+        const maxQty = matchingItem.item.quantity || 0;
+        setMaxQuantity(maxQty);
+        setSelectedQuantity(maxQty);
+        setPendingBarcodeData({ qrCodeDetails, matchingItem });
+        setQuantityDialogOpen(true);
+      } else {
+        updateGridItem(qrCodeDetails, matchingItem, qrCodeDetails.quantity);
+      }
+
+    } catch (error) {
+      console.error('Error processing barcode:', error);
+      showAlertMessage('Error processing barcode', 'error');
+    }
+  };
+
+  const updateGridItem = (qrCodeDetails: BarcodeDetails, matchingItem: any, quantity: number) => {
+    const updatedResults = [...searchResults];
+    const item = updatedResults[matchingItem.index];
+    
+    // Update the item
+    item.qrCode = pendingBarcodeData?.qrCodeDetails?.idNumber || qrCodeDetails.idNumber;
+    item.isPrecheckComplete = false;
+    item.isUpdated = true;
+    item.ir = qrCodeDetails.irNumber;
+    item.msn = qrCodeDetails.msnNumber;
+    item.idNumber = qrCodeDetails.idNumber;
+    item.quantity = quantity;
+    item.componentType = qrCodeDetails.componentType;
+    item.mrirNumber = qrCodeDetails.mrirNumber;
+    item.remarks = qrCodeDetails.remark;
+    item.username = 'Current User'; // Replace with actual user
+    item.modifiedDate = new Date().toISOString().split('T')[0];
+
+    setSearchResults(updatedResults);
+    
+    // Check if submit should be enabled
+    const hasUpdatedItems = updatedResults.some(item => item.isUpdated && !item.isPrecheckComplete);
+    setIsSubmitEnabled(hasUpdatedItems);
+
+    // Check if all items are processed
+    const unprocessedItems = updatedResults.filter(item => 
+      !item.isPrecheckComplete && !item.isUpdated
+    );
+
+    if (unprocessedItems.length === 0) {
+      showAlertMessage('All components have been pre-checked!', 'success');
+    }
+  };
+
+  const handleQuantityConfirm = () => {
+    if (pendingBarcodeData) {
+      updateGridItem(
+        pendingBarcodeData.qrCodeDetails,
+        pendingBarcodeData.matchingItem,
+        selectedQuantity
+      );
+      setPendingBarcodeData(null);
+    }
+    setQuantityDialogOpen(false);
+  };
+
+  const handleBarcodeChange = (value: string) => {
+    setBarcodeText(value);
+    
+    // Auto-process when barcode length is 12 or 15 digits
+    if ((value.length === 12 || value.length === 15) && /^\d+$/.test(value)) {
+      processBarcodeAsync(value);
+      setBarcodeText(''); // Clear after processing
+    }
+  };
+
+  const handleSubmitPrecheck = async () => {
+    try {
+      const componentsToSubmit = searchResults
+        .filter(item => item.isUpdated && !item.isPrecheckComplete)
+        .map(item => ({
+          consumedDrawingNo: `${selectedProductionSeries?.productionSeries}/${selectedDrawing?.drawingNumber}/${idNumber}`,
+          consumedInDrawingNumberID: selectedDrawing?.id,
+          consumedInProdSeriesID: selectedProductionSeries?.id,
+          consumedInId: parseInt(idNumber) || 0,
+          qrCodeNumber: item.qrCode,
+          quantity: item.quantity,
+          irNumber: item.ir,
+          msnNumber: item.msn,
+          drawingNumberId: item.drawingNumberId,
+          productionSeriesId: item.prodSeriesId,
+          remarks: item.remarks,
+          componentType: item.componentType,
+          idNumbers: item.idNumber,
+          mrirNumber: item.mrirNumber
+        }));
+
+      if (!componentsToSubmit.length) {
+        showAlertMessage('No new components to submit', 'info');
+        return;
+      }
+
+      const result = await dispatch(makePrecheck(componentsToSubmit));
+      
+      if (result.payload) {
+        // Update grid items as submitted
+        const updatedResults = searchResults.map(item => {
+          if (item.isUpdated && !item.isPrecheckComplete) {
+            return {
+              ...item,
+              isPrecheckComplete: true,
+              isUpdated: false
+            };
+          }
+          return item;
+        });
+        
+        setSearchResults(updatedResults);
+        setIsSubmitEnabled(false);
+        showAlertMessage('Precheck submitted successfully!', 'success');
+      }
+    } catch (error) {
+      console.error('Error submitting precheck:', error);
+      showAlertMessage('Error submitting precheck', 'error');
+    }
+  };
+
+  // Helper function to get component type icon and color
+  const getComponentTypeChip = (componentType: string) => {
+    const type = componentType?.toUpperCase();
+    switch (type) {
+      case 'ID':
+        return <Chip icon={<QrCodeIcon />} label="ID" size="small" color="primary" variant="outlined" />;
+      case 'BATCH':
+        return <Chip icon={<InventoryIcon />} label="BATCH" size="small" color="secondary" variant="outlined" />;
+      case 'FIM':
+        return <Chip icon={<CategoryIcon />} label="FIM" size="small" color="success" variant="outlined" />;
+      case 'SI':
+        return <Chip icon={<SettingsIcon />} label="SI" size="small" color="warning" variant="outlined" />;
+      default:
+        return <Chip label={type || 'N/A'} size="small" variant="outlined" />;
+    }
+  };
+
+  // Handle row expansion
+  const handleRowExpand = (index: number) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(index)) {
+      newExpandedRows.delete(index);
+    } else {
+      newExpandedRows.add(index);
+    }
+    setExpandedRows(newExpandedRows);
+  };
+
+  // Handle row selection on double-click
+  const handleRowDoubleClick = (index: number) => {
+    const actualIndex = page * rowsPerPage + index;
+    setSelectedRow(selectedRow === actualIndex ? null : actualIndex);
+  };
+
+  // Pagination handlers
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Paginated results
+  const paginatedResults = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return sortedResults.slice(startIndex, endIndex);
+  }, [sortedResults, page, rowsPerPage]);
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
-      {/* Header */}
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: { xs: 2, md: 3 }, 
-          mb: 3, 
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: 'white',
-          borderRadius: 2
+    <Box sx={{ p: 1 }}>
+      <Typography
+        variant="h6"
+        gutterBottom
+      sx={{ 
+          color: "primary.main",
+          fontWeight: 600,
+        mb: 2,
         }}
       >
-        <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold" gutterBottom>
-          Make Precheck
-        </Typography>
-        <Typography variant="body1" sx={{ opacity: 0.9 }}>
-          Create and execute precheck procedures for production items
-        </Typography>
-      </Paper>
-
-      {/* Success Message */}
-      {successMessage && (
+        Make Precheck
+            </Typography>
+      
+      {/* Alert */}
+      {showAlert && (
         <Alert 
-          severity="success" 
-          sx={{ mb: 3 }}
-          onClose={() => setSuccessMessage('')}
+          severity={alertSeverity} 
+          sx={{ mb: 2 }}
+          onClose={() => setShowAlert(false)}
         >
-          {successMessage}
+          {alertMessage}
         </Alert>
       )}
-
-      {/* Stepper */}
-      <Stepper activeStep={activeStep} orientation={isMobile ? "vertical" : "horizontal"}>
-        {steps.map((step, index) => (
-          <Step key={step.label}>
-            <StepLabel
-              onClick={() => setActiveStep(index)}
-              sx={{ cursor: 'pointer' }}
-            >
-              {step.label}
-            </StepLabel>
-            {isMobile && (
-              <StepContent>
-                {step.content}
-              </StepContent>
+      
+      {/* Form Controls */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1.5 }}>
+        <FormControl sx={{ minWidth: 175 }} size="small">
+          <Autocomplete
+            size="small"
+            options={drawingNumbers}
+            getOptionLabel={(option) => {
+              if (typeof option === "string") return option;
+              return option.drawingNumber || '';
+            }}
+            value={selectedDrawing}
+            loading={drawingLoading}
+            onInputChange={(_: any, value: string) => {
+              if (value.length >= 3) {
+                debouncedDrawingSearch(value);
+              }
+            }}
+            onChange={(_: any, value: any) => {
+              setSelectedDrawing(value);
+            }}
+            isOptionEqualToValue={(option, value) =>
+              option.id === (value?.id || '')
+            }
+            renderOption={(props: any, option: any) => (
+              <li {...props}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
+                  <Typography variant="body2">
+                    {option.drawingNumber}
+              </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {option.nomenclature || ''} | {option.componentType || ''}
+              </Typography>
+            </Box>
+              </li>
             )}
-          </Step>
-        ))}
-      </Stepper>
+            renderInput={(params: any) => (
+                      <TextField
+                {...params}
+                        label="Drawing Number *"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {drawingLoading ? (
+                        <CircularProgress color="inherit" size={16} />
+                      ) : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+                      />
+                    )}
+                  />
+        </FormControl>
+        
+        <FormControl sx={{ minWidth: 175 }} size="small">
+          <Autocomplete
+            size="small"
+            options={productionSeries}
+            getOptionLabel={(option) => {
+              if (typeof option === "string") return option;
+              return option.productionSeries || '';
+            }}
+            value={selectedProductionSeries}
+            loading={prodSeriesLoading}
+            onInputChange={(_, value) => {
+              if (value.length >= 1) {
+                debouncedProdSeriesSearch(value);
+              }
+            }}
+            onChange={(_, value) => {
+              setSelectedProductionSeries(value);
+            }}
+            isOptionEqualToValue={(option, value) =>
+              option.id === (value?.id || '')
+            }
+            renderOption={(props, option) => (
+              <li {...props}>
+                <Typography variant="body2">
+                  {option.productionSeries}
+                </Typography>
+              </li>
+            )}
+            renderInput={(params) => (
+                      <TextField
+                {...params}
+                        label="Production Series *"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {prodSeriesLoading ? (
+                        <CircularProgress color="inherit" size={16} />
+                      ) : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+                      />
+                    )}
+                  />
+                      </FormControl>
+        
+        <FormControl sx={{ minWidth: 120 }} size="small">
+                      <TextField
+            size="small"
+            label="ID Number *"
+            value={idNumber}
+            onChange={(e) => setIdNumber(e.target.value)}
+            variant="outlined"
+          />
+        </FormControl>
+        
+        <Button
+          variant="contained"
+          color="primary"
+          sx={{ minWidth: 130, height: 32 }}
+          size="small"
+          onClick={handleMakePrecheck}
+          disabled={isLoading}
+        >
+          <QrCodeScannerIcon sx={{ mr: 1 }} />
+          Make Precheck
+        </Button>
+        
+        <Button
+          variant="contained"
+          color="error"
+          sx={{ minWidth: 130, height: 32 }}
+          size="small"
+          onClick={handleReset}
+        >
+          <RefreshIcon sx={{ mr: 1 }} />
+          Reset
+        </Button>
+        
+        <Button
+          variant="contained"
+          color="success"
+          sx={{ minWidth: 130, height: 32 }}
+          size="small"
+          onClick={handleSubmitPrecheck}
+          disabled={!isSubmitEnabled}
+        >
+          <SendIcon sx={{ mr: 1 }} />
+          Submit
+        </Button>
+      </Box>
 
-      {/* Step Content for Desktop */}
-      {!isMobile && (
-        <Box sx={{ mt: 3 }}>
-          {steps[activeStep].content}
-        </Box>
+      {/* QR Code Scanner Section */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1.5 }}>
+        <Typography 
+          variant="body2" 
+              sx={{ 
+            fontWeight: 'bold',
+            fontSize: '0.875rem',
+            minWidth: 'auto'
+          }}
+        >
+          Scan Qr Code:
+              </Typography>
+        <TextField
+          size="small"
+          value={barcodeText}
+          onChange={(e) => handleBarcodeChange(e.target.value)}
+          placeholder="Scan or enter QR code (12 or 15 digits)"
+          sx={{ width: 300 }}
+          disabled={!showResults || searchResults.length === 0}
+          autoFocus={showResults && searchResults.length > 0}
+        />
+        <Typography 
+          variant="body2" 
+        sx={{ 
+            fontWeight: 'bold',
+            fontSize: '0.875rem',
+            ml: 2
+          }}
+        >
+          <span>BOM Details of </span>
+          <span style={{ color: '#1976d2' }}>
+            {selectedDrawing?.drawingNumber || ''}
+          </span>
+        </Typography>
+      </Box>
+
+      {/* Results Display */}
+      {showResults && (
+        <Typography
+          variant="body2"
+          sx={{ mb: 1, fontWeight: 'medium' }}
+        >
+          Showing results for {selectedProductionSeries?.productionSeries || 'A'} / {selectedDrawing?.drawingNumber || ''} / {idNumber || ''}
+        </Typography>
       )}
 
-      {/* Precheck Dialog */}
-      <Dialog 
-        open={precheckDialogOpen} 
-        onClose={() => setPrecheckDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <CheckIcon color="primary" />
-            <Typography variant="h6">
-              Precheck: {selectedItem?.serialNumber}
-            </Typography>
-          </Stack>
-        </DialogTitle>
-        
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            {selectedItem?.checkpoints.map((checkpoint) => (
-              <Card key={checkpoint.id} elevation={1}>
-                <CardContent>
-                  <Stack spacing={2}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography variant="h6" fontWeight="medium">
-                        {checkpoint.name}
-                        {checkpoint.isRequired && (
-                          <Chip label="Required" size="small" color="primary" sx={{ ml: 1 }} />
-                        )}
-                      </Typography>
-                      <Checkbox
-                        checked={checkpoint.isCompleted}
-                        onChange={(e) => updateCheckpoint(checkpoint.id, { isCompleted: e.target.checked })}
-                        color="primary"
-                      />
-                    </Stack>
-                    
-                    <Typography variant="body2" color="textSecondary">
-                      {checkpoint.description}
-                    </Typography>
-                    
-                    {checkpoint.isCompleted && (
-                      <Stack spacing={2}>
-                        <FormControl size="small">
-                          <InputLabel>Result</InputLabel>
-                          <Select
-                            value={checkpoint.result || ''}
-                            onChange={(e) => updateCheckpoint(checkpoint.id, { result: e.target.value as any })}
-                            label="Result"
-                          >
-                            <MenuItem value="pass">Pass</MenuItem>
-                            <MenuItem value="fail">Fail</MenuItem>
-                            <MenuItem value="na">N/A</MenuItem>
-                          </Select>
-                        </FormControl>
-                        
-                        <TextField
-                          label="Remarks"
-                          value={checkpoint.remarks || ''}
-                          onChange={(e) => updateCheckpoint(checkpoint.id, { remarks: e.target.value })}
-                          multiline
-                          rows={2}
+      {/* BOM Details Table */}
+      <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2 }}>
+        <TableContainer sx={{ maxHeight: 500, overflow: 'auto' }}>
+          <Table stickyHeader sx={{ minWidth: 1000 }} size="small">
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#f5f5f5', height: 24 }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 20 }}>
+                  <TableSortLabel
+                    active={orderBy === 'sr'}
+                    direction={orderBy === 'sr' ? order : 'asc'}
+                    onClick={() => handleRequestSort('sr')}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                  >
+                    SR
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 80 }}>
+                  <TableSortLabel
+                    active={orderBy === 'drawingNumber'}
+                    direction={orderBy === 'drawingNumber' ? order : 'asc'}
+                    onClick={() => handleRequestSort('drawingNumber')}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                  >
+                    Drawing Number
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 100 }}>
+                  <TableSortLabel
+                    active={orderBy === 'nomenclature'}
+                    direction={orderBy === 'nomenclature' ? order : 'asc'}
+                    onClick={() => handleRequestSort('nomenclature')}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                  >
+                    Nomenclature
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 40 }}>
+                  <TableSortLabel
+                    active={orderBy === 'quantity'}
+                    direction={orderBy === 'quantity' ? order : 'asc'}
+                    onClick={() => handleRequestSort('quantity')}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                  >
+                    Qty
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 80 }}>
+                  <TableSortLabel
+                    active={orderBy === 'idNumber'}
+                    direction={orderBy === 'idNumber' ? order : 'asc'}
+                    onClick={() => handleRequestSort('idNumber')}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                  >
+                    ID Number
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 60 }}>
+                  <TableSortLabel
+                    active={orderBy === 'ir'}
+                    direction={orderBy === 'ir' ? order : 'asc'}
+                    onClick={() => handleRequestSort('ir')}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                  >
+                    IR
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 60 }}>
+                  <TableSortLabel
+                    active={orderBy === 'msn'}
+                    direction={orderBy === 'msn' ? order : 'asc'}
+                    onClick={() => handleRequestSort('msn')}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                  >
+                    MSN
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 80 }}>
+                  <TableSortLabel
+                    active={orderBy === 'mrirNumber'}
+                    direction={orderBy === 'mrirNumber' ? order : 'asc'}
+                    onClick={() => handleRequestSort('mrirNumber')}
+                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                  >
+                    MRIR Number
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 80 }}>
+                  Type
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 40 }}>
+                  Details
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={10} align="center" sx={{ height: 150 }}>
+                    <CircularProgress size={30} />
+                  </TableCell>
+                </TableRow>
+              ) : paginatedResults.length > 0 ? (
+                paginatedResults.map((item, index) => (
+                  <React.Fragment key={index}>
+                    <TableRow 
+                      hover
+                      onDoubleClick={() => handleRowDoubleClick(index)}
+                      sx={{
+                        backgroundColor: item.isPrecheckComplete 
+                          ? '#f0f0f0' 
+                          : selectedRow === (page * rowsPerPage + index)
+                            ? '#e3f2fd'
+                            : 'inherit',
+                        opacity: item.isPrecheckComplete ? 0.7 : 1,
+                        height: 36,
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: item.isPrecheckComplete 
+                            ? '#f0f0f0' 
+                            : selectedRow === (page * rowsPerPage + index)
+                              ? '#bbdefb'
+                              : '#f5f5f5'
+                        }
+                      }}
+                    >
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.sr}</TableCell>
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumber}</TableCell>
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.nomenclature}</TableCell>
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.quantity}</TableCell>
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumber || '-'}</TableCell>
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.ir || '-'}</TableCell>
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.msn || '-'}</TableCell>
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.mrirNumber || '-'}</TableCell>
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>
+                        {getComponentTypeChip(item.componentType || '')}
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>
+                        <IconButton
                           size="small"
-                        />
-                      </Stack>
-                    )}
-                  </Stack>
-                </CardContent>
-              </Card>
-            ))}
-          </Stack>
-        </DialogContent>
+                          onClick={() => handleRowExpand(index)}
+                          sx={{ p: 0.2 }}
+                        >
+                          {expandedRows.has(index) ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={10}>
+                        <Collapse in={expandedRows.has(index)} timeout="auto" unmountOnExit>
+                          <Box sx={{ margin: 0.5 }}>
+                            <Table size="small" aria-label="additional-details">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0.2, px: 0.8 }}>Remarks</TableCell>
+                                  <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0.2, px: 0.8 }}>User</TableCell>
+                                  <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0.2, px: 0.8 }}>Date</TableCell>
+                                  <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0.2, px: 0.8 }}>Status</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                <TableRow>
+                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>
+                                    {item.remarks || '-'}
+                                  </TableCell>
+                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>{item.username || '-'}</TableCell>
+                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>{item.modifiedDate || '-'}</TableCell>
+                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>
+                                    <Chip 
+                                      label={item.isPrecheckComplete ? 'Completed' : item.isUpdated ? 'Updated' : 'Pending'} 
+                                      size="small"
+                                      color={item.isPrecheckComplete ? 'success' : item.isUpdated ? 'warning' : 'default'}
+                                      variant="outlined"
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              </TableBody>
+                            </Table>
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
+                ))
+              ) : showResults ? (
+                <TableRow>
+                  <TableCell colSpan={10} align="center" sx={{ height: 150 }}>No records found</TableCell>
+                </TableRow>
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={10} align="center" sx={{ height: 150, color: 'text.secondary' }}>
+                    Enter search criteria and click "Make Precheck" to see BOM details
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
         
-        <DialogActions sx={{ p: 3 }}>
-          <Button 
-            onClick={() => setPrecheckDialogOpen(false)}
-            startIcon={<CancelIcon />}
-            disabled={isProcessing}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={completePrecheck}
-            variant="contained"
-            startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />}
-            disabled={isProcessing}
-          >
-            {isProcessing ? 'Completing...' : 'Complete Precheck'}
-          </Button>
+        {/* Pagination */}
+        {searchResults.length > 0 && (
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            component="div"
+            count={searchResults.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{ 
+              borderTop: '1px solid #e0e0e0',
+              '& .MuiTablePagination-toolbar': {
+                minHeight: 48
+              },
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                fontSize: '0.8rem'
+              }
+            }}
+          />
+        )}
+      </Paper>
+
+      {/* Quantity Selection Dialog */}
+      <Dialog open={quantityDialogOpen} onClose={() => setQuantityDialogOpen(false)}>
+        <DialogTitle>Select Quantity</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Maximum quantity available: {maxQuantity}
+                      </Typography>
+                        <TextField
+            autoFocus
+            margin="dense"
+            label="Quantity"
+            type="number"
+            fullWidth
+            variant="outlined"
+            value={selectedQuantity}
+            onChange={(e) => setSelectedQuantity(Math.min(parseInt(e.target.value) || 0, maxQuantity))}
+            inputProps={{ min: 1, max: maxQuantity }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setQuantityDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleQuantityConfirm} variant="contained">Confirm</Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
-} 
+};
+
+export default MakePrecheck; 
