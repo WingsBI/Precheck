@@ -54,7 +54,7 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
         <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails.drawingNumber}</TableCell>
         <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.nomenclature}</TableCell>
         <TableCell sx={{ textAlign: 'center', minWidth: '250px' }}>{barcodeDetails.consumedInDrawing}</TableCell>
-        <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.qrCodeStatus}</TableCell>
+        
         <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>
           <IconButton
             aria-label="expand row"
@@ -75,6 +75,7 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
               <Table size="small">
                 <TableHead>
                   <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Status</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>IR Number</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>MSN Number</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>MRIR Number</TableCell>
@@ -84,7 +85,8 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  <TableRow>
+                  <TableRow> 
+                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.qrCodeStatus}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.irNumber}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.msnNumber}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.mrirNumber}</TableCell>
@@ -238,7 +240,7 @@ const ViewBarcode: React.FC = () => {
         View and download existing QR codes
       </Typography>
       
-      <Paper sx={{ p: 0.5, mt: 3, pl: 2, pr: 2, width: '77vw' }}>
+      <Paper sx={{ p: 0.5, mt: 3, pl: 2, pr: 2 }}>
         <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1, alignItems: 'center' }}>
           <TextField
             sx={{width: '40vw'}}
@@ -280,7 +282,7 @@ const ViewBarcode: React.FC = () => {
         </Box>
 
         <TableContainer>
-          <Table sx={{ minWidth: 650 }} aria-label="QR codes table">
+          <Table sx={{ maxWidth: 850 }} aria-label="QR codes table">
             <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>QRCode ID</TableCell>
@@ -288,7 +290,7 @@ const ViewBarcode: React.FC = () => {
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '180px', textAlign: 'center' }}>Drawing Number</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Nomenclature</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>ConsumedInDrawing</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Status</TableCell>
+                
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '50px', textAlign: 'center' }}>Details</TableCell>
               </TableRow>
             </TableHead>

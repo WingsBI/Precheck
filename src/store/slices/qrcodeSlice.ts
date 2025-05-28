@@ -1,17 +1,86 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
-import type { QRCodeItem, BarcodeDetails, QRCodePayload, BatchInfo, IRNumber, MSNNumber } from '../../types';
+import type { 
+  QRCodeItem as ImportedQRCodeItem,
+  BarcodeDetails as ImportedBarcodeDetails,
+  QRCodePayload as ImportedQRCodePayload,
+  BatchInfo as ImportedBatchInfo,
+  IRNumber,
+  MSNNumber 
+} from '../../types';
 
 interface QRCodeState {
-  qrcodeList: QRCodeItem[];
+  qrcodeList: ImportedQRCodeItem[];
   consumedInList: any[];
-  barcodeDetails: BarcodeDetails | null;
+  barcodeDetails: ImportedBarcodeDetails | null;
   irNumbers: IRNumber[];
   msnNumbers: MSNNumber[];
-  batchItems: BatchInfo[];
+  batchItems: ImportedBatchInfo[];
   loading: boolean;
   error: string | null;
   generatedNumber: string | null;
+  isDownloading: boolean;
+}
+
+interface QRCodeItem {
+  id: number;
+  serialNumber: string;
+  qrCodeData: string;
+  qrCodeImage: string;
+  drawingNumber: string;
+  nomenclature: string;
+  productionSeries: string;
+  createdDate: string;
+  isSelected: boolean;
+  status: 'pending' | 'printed' | 'used';
+}
+
+interface BarcodeDetails {
+  qrCodeNumber: string;
+  productionSeriesId: number;
+  drawingNumber: string;
+  nomenclature: string;
+  consumedInDrawing: string;
+  qrCodeStatus: string;
+  irNumber: string;
+  msnNumber: string;
+  mrirNumber: string;
+  quantity: number;
+  disposition: string;
+  users: string;
+  productionOrderNumber: string;
+  projectNumber: string;
+  idNumber: string;
+  productionSeries: string;
+}
+
+interface QRCodePayload {
+  productionSeriesId: number;
+  componentTypeId: number;
+  nomenclatureId: number;
+  lnItemCodeId: number;
+  rackLocationId: number;
+  irNumberId: number;
+  msnNumberId: number;
+  disposition: string;
+  productionOrderNumber: string;
+  projectNumber: string;
+  expiryDate: string;
+  manufacturingDate: string;
+  drawingNumberId: number;
+  unitId: number;
+  mrirNumber: string;
+  remark: string;
+  quantity: number;
+  ids: number[];
+  idNumber?: string;
+  batchIds: BatchInfo[];
+}
+
+interface BatchInfo {
+  quantity: number;
+  batchQuantity: number;
+  assemblyDrawingId: number;
   isDownloading: boolean;
 }
 
@@ -75,7 +144,7 @@ export const exportQRCode = createAsyncThunk(
       const response = await api.get(`/api/QRCode/ExportQRCode?qrCodeId=${qrCodeId}`, {
         responseType: 'blob'
       });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -85,7 +154,7 @@ export const exportQRCode = createAsyncThunk(
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to export QR code');
@@ -101,7 +170,7 @@ export const exportBulkQRCodes = createAsyncThunk(
       const response = await api.post('/api/QRCode/ExportBulkQRCodes', qrCodes, {
         responseType: 'blob'
       });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -111,7 +180,7 @@ export const exportBulkQRCodes = createAsyncThunk(
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to export bulk QR codes');
@@ -150,14 +219,14 @@ export const fetchIRNumbers = createAsyncThunk(
           DepartmentTypeId: ''
         }
       });
-      
+
       let filteredData = response.data;
       if (searchText && searchText.length >= 3) {
         filteredData = response.data.filter((item: IRNumber) =>
           item.irNumber?.toLowerCase().includes(searchText.toLowerCase())
         );
       }
-      
+
       return filteredData;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch IR numbers');
@@ -178,14 +247,14 @@ export const fetchMSNNumbers = createAsyncThunk(
           DepartmentTypeId: ''
         }
       });
-      
+
       let filteredData = response.data;
       if (searchText && searchText.length >= 3) {
         filteredData = response.data.filter((item: MSNNumber) =>
           item.msnNumber?.toLowerCase().includes(searchText.toLowerCase())
         );
       }
-      
+
       return filteredData;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch MSN numbers');
@@ -226,7 +295,7 @@ const qrcodeSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      
+
       // Get Barcode Details
       .addCase(getBarcodeDetails.pending, (state) => {
         state.loading = true;
