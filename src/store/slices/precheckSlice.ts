@@ -79,6 +79,18 @@ export const getAvailableComponents = createAsyncThunk(
   }
 );
 
+export const getStoreAvailableComponents = createAsyncThunk(
+  'precheck/getStoreAvailableComponents',
+  async (qrCode: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/Precheck/GetStoreAvailablComponents/${qrCode}`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get store available components');
+    }
+  }
+);
+
 export const getAvailableComponentsForBOM = createAsyncThunk(
   'precheck/getAvailableComponentsForBOM',
   async (requestData: {
@@ -234,6 +246,20 @@ const precheckSlice = createSlice({
         state.error = null;
       })
       .addCase(getAvailableComponents.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Get Store Available Components
+      .addCase(getStoreAvailableComponents.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getStoreAvailableComponents.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.availableComponents = action.payload;
+        state.error = null;
+      })
+      .addCase(getStoreAvailableComponents.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       })
