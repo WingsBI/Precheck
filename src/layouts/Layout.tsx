@@ -205,7 +205,7 @@ export default function Layout() {
       icon: <ArticleIcon />,
       path: "/sop",
       subItems: [
-        { text: "View SOP", icon: <VisibilityIcon />, path: "/sop/generate" },
+        { text: "View SOP", icon: <VisibilityIcon />, path: "/sop/view" },
       ],
     },
   ];

@@ -659,14 +659,13 @@ const ViewSOP: React.FC = () => {
             )}
           </Box>
         </Fade>
-
         {/* Search Filters Card */}
         <Card
           elevation={0}
           sx={{
-            mb: 3,
+            mb: 2,
             border: "1px solid #e2e8f0",
-            borderRadius: 3,
+            borderRadius: 2,
             overflow: "hidden",
             background: "white",
           }}
@@ -684,19 +683,21 @@ const ViewSOP: React.FC = () => {
               sx={{
                 backgroundColor: "#f8fafc",
                 borderBottom: "1px solid #e2e8f0",
-                py: { xs: 1.5, md: 2 },
+                py: { xs: 1, md: 1.5 },
+                minHeight: { xs: 40, md: 48 },
                 "& .MuiAccordionSummary-content": {
                   alignItems: "center",
+                  margin: "8px 0",
                 },
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <FilterIcon sx={{ color: "#A8005A" }} />
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <FilterIcon sx={{ color: "#A8005A", fontSize: 20 }} />
                 <Typography
                   variant="h6"
                   sx={{
-                    fontSize: { xs: "1rem", md: "1.125rem" },
-                    fontWeight: 600,
+                    fontSize: { xs: "0.9rem", md: "1rem" },
+                    fontWeight: 500,
                     color: "#1e293b",
                   }}
                 >
@@ -705,34 +706,20 @@ const ViewSOP: React.FC = () => {
               </Box>
             </AccordionSummary>
 
-            <AccordionDetails sx={{ p: { xs: 1.5, md: 2 } }}>
-              <Grid container spacing={{ xs: 1.5, md: 2 }} alignItems="end">
+            <AccordionDetails sx={{ p: { xs: 2, md: 3 } }}>
+              <Grid container spacing={2} alignItems="end">
                 {/* Production Series */}
-                <Grid item xs={12} sm={6} lg={3}>
+                <Grid item xs={12} sm={6} md={3}>
                   <Controller
                     name="prodSeriesId"
                     control={control}
                     render={({ field }) => (
                       <FormControl fullWidth size="small">
-                        <Typography
-                          variant="body2"
-                          fontWeight={600}
-                          sx={{
-                            mb: 0.5,
-                            color: "#374151",
-                            fontSize: { xs: "0.75rem", md: "0.8rem" },
-                          }}
-                        >
-                          Production Series{" "}
-                          <span style={{ color: "#ef4444" }}>*</span>
-                        </Typography>
+                        <InputLabel>Production Series *</InputLabel>
                         <Select
                           {...field}
-                          displayEmpty
+                          label="Production Series *"
                           sx={{
-                            height: { xs: 32, md: 36 },
-                            borderRadius: 1.5,
-                            fontSize: { xs: "0.75rem", md: "0.875rem" },
                             "& .MuiOutlinedInput-notchedOutline": {
                               borderColor: "#d1d5db",
                             },
@@ -741,11 +728,11 @@ const ViewSOP: React.FC = () => {
                             },
                           }}
                         >
-                          <MenuItem value={0} sx={{ fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
+                          <MenuItem value={0}>
                             <em>Select Production Series</em>
                           </MenuItem>
                           {productionSeries.map((series: any) => (
-                            <MenuItem key={series.id} value={series.id} sx={{ fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
+                            <MenuItem key={series.id} value={series.id}>
                               {series.productionSeries}
                             </MenuItem>
                           ))}
@@ -756,18 +743,7 @@ const ViewSOP: React.FC = () => {
                 </Grid>
 
                 {/* Drawing Number */}
-                <Grid item xs={12} sm={6} lg={4}>
-                  <Typography
-                    variant="body2"
-                    fontWeight={600}
-                    sx={{
-                      mb: 0.5,
-                      color: "#374151",
-                      fontSize: { xs: "0.75rem", md: "0.8rem" },
-                    }}
-                  >
-                    Drawing Number <span style={{ color: "#ef4444" }}>*</span>
-                  </Typography>
+                <Grid item xs={12} sm={6} md={3}>
                   <Autocomplete
                     options={drawingNumbers || []}
                     getOptionLabel={(option: any) => option.drawingNumber || ""}
@@ -785,17 +761,13 @@ const ViewSOP: React.FC = () => {
                     onOpen={() => setIsDRWDropDownOpen(true)}
                     onClose={() => setIsDRWDropDownOpen(false)}
                     loading={commonLoading}
+                    size="small"
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        size="small"
-                        placeholder="Type at least 3 characters..."
+                        label="Drawing Number *"
+                        placeholder="Type 3+ characters..."
                         sx={{
-                          "& .MuiInputBase-root": {
-                            height: { xs: 32, md: 36 },
-                            borderRadius: 1.5,
-                            fontSize: { xs: "0.75rem", md: "0.875rem" },
-                          },
                           "& .MuiOutlinedInput-notchedOutline": {
                             borderColor: "#d1d5db",
                           },
@@ -818,138 +790,123 @@ const ViewSOP: React.FC = () => {
                     )}
                     renderOption={(props, option: any) => (
                       <li {...props}>
-                        <Typography variant="body2" sx={{ fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                          {option.drawingNumber}
-                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', py: 1 }}>
+                          <Typography variant="body1">
+                            {option.drawingNumber}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {option.nomenclature}
+                          </Typography>
+                        </Box>
                       </li>
                     )}
                     noOptionsText={
                       drwDisplayText.length < 3
-                        ? "Type at least 3 characters"
+                        ? "Type 3+ characters"
                         : "No drawing numbers found"
                     }
                   />
                 </Grid>
 
                 {/* Assembly ID Number */}
-                <Grid item xs={12} sm={6} lg={3}>
+                <Grid item xs={12} sm={6} md={2}>
                   <Controller
                     name="assemblyNumber"
                     control={control}
                     render={({ field }) => (
-                      <Box>
-                        <Typography
-                          variant="body2"
-                          fontWeight={600}
-                          sx={{
-                            mb: 0.5,
-                            color: "#374151",
-                            fontSize: { xs: "0.75rem", md: "0.8rem" },
-                          }}
-                        >
-                          Assembly ID Number
-                        </Typography>
-                        <TextField
-                          {...field}
-                          size="small"
-                          fullWidth
-                          placeholder="Enter assembly ID..."
-                          sx={{
-                            "& .MuiInputBase-root": {
-                              height: { xs: 32, md: 36 },
-                              borderRadius: 1.5,
-                              fontSize: { xs: "0.75rem", md: "0.875rem" },
-                            },
-                            "& .MuiOutlinedInput-notchedOutline": {
-                              borderColor: "#d1d5db",
-                            },
-                            "&:hover .MuiOutlinedInput-notchedOutline": {
-                              borderColor: "#A8005A",
-                            },
-                          }}
-                        />
-                      </Box>
+                      <TextField
+                        {...field}
+                        label="Assembly ID Number"
+                        placeholder="Enter assembly ID..."
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#d1d5db",
+                          },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#A8005A",
+                          },
+                        }}
+                      />
                     )}
                   />
                 </Grid>
 
                 {/* Action Buttons */}
-                <Grid item xs={12} lg={2}>
-                  <Stack
-                    direction={{ xs: "row", lg: "column" }}
-                    spacing={1}
-                    sx={{ width: "100%" }}
+                <Grid item xs={12} sm={6} md={4}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 1,
+                      justifyContent: { xs: "center", md: "flex-start" },
+                      flexWrap: "wrap",
+                    }}
                   >
                     <Button
-                      variant="contained"
-                      startIcon={<SearchIcon sx={{ fontSize: { xs: 16, md: 18 } }} />}
-                      onClick={executeSearch}
-                      disabled={isLoading}
-                      fullWidth
+                      variant="outlined"
+                      startIcon={<ResetIcon />}
+                      onClick={executeReset}
+                      size="small"
                       sx={{
-                        backgroundColor: "#2563eb",
-                        "&:hover": { backgroundColor: "#1d4ed8" },
-                        height: { xs: 32, md: 36 },
-                        fontWeight: 600,
-                        borderRadius: 1.5,
-                        textTransform: "none",
-                        fontSize: { xs: "0.75rem", md: "0.8rem" },
-                        boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
-                        minWidth: { xs: "auto", lg: "100%" },
+                        minWidth: { xs: 80, md: 90 },
+                        py: 0.75,
+                        px: 1.5,
+                        borderColor: "#6b7280",
+                        color: "#6b7280",
+                        fontSize: "0.75rem",
+                        "&:hover": {
+                          borderColor: "#374151",
+                          backgroundColor: "#f9fafb",
+                          color: "#374151",
+                        },
                       }}
                     >
-                      Search
+                      Reset
                     </Button>
 
                     <Button
                       variant="contained"
-                      startIcon={<ExportIcon sx={{ fontSize: { xs: 16, md: 18 } }} />}
+                      startIcon={<SearchIcon />}
+                      onClick={executeSearch}
+                      disabled={isLoading}
+                      size="small"
+                      sx={{
+                        minWidth: { xs: 90, md: 100 },
+                        py: 0.75,
+                        px: 1.5,
+                        fontSize: "0.75rem",
+                        backgroundColor: "#2563eb",
+                        "&:hover": { backgroundColor: "#1d4ed8" },
+                        boxShadow: "0 1px 4px rgba(37, 99, 235, 0.3)",
+                      }}
+                    >
+                      {isLoading ? "Searching..." : "Search"}
+                    </Button>
+
+                    <Button
+                      variant="contained"
+                      startIcon={<ExportIcon />}
                       onClick={executeExport}
                       disabled={
                         isExporting ||
                         !assemblyData ||
                         assemblyData.length === 0
                       }
-                      fullWidth
+                      size="small"
                       sx={{
+                        minWidth: { xs: 90, md: 100 },
+                        py: 0.75,
+                        px: 1.5,
+                        fontSize: "0.75rem",
                         backgroundColor: "#A8005A",
                         "&:hover": { backgroundColor: "#920050" },
-                        height: { xs: 32, md: 36 },
-                        fontWeight: 600,
-                        borderRadius: 1.5,
-                        textTransform: "none",
-                        fontSize: { xs: "0.75rem", md: "0.8rem" },
-                        boxShadow: "0 2px 8px rgba(168, 0, 90, 0.3)",
-                        minWidth: { xs: "auto", lg: "100%" },
+                        boxShadow: "0 1px 4px rgba(168, 0, 90, 0.3)",
                       }}
                     >
-                      Export
+                      {isExporting ? "Exporting..." : "Export"}
                     </Button>
-
-                    <Button
-                      variant="outlined"
-                      startIcon={<ResetIcon sx={{ fontSize: { xs: 16, md: 18 } }} />}
-                      onClick={executeReset}
-                      fullWidth
-                      sx={{
-                        borderColor: "#6b7280",
-                        color: "#6b7280",
-                        "&:hover": {
-                          borderColor: "#374151",
-                          backgroundColor: "#f9fafb",
-                          color: "#374151",
-                        },
-                        height: { xs: 32, md: 36 },
-                        fontWeight: 600,
-                        borderRadius: 1.5,
-                        textTransform: "none",
-                        fontSize: { xs: "0.75rem", md: "0.8rem" },
-                        minWidth: { xs: "auto", lg: "100%" },
-                      }}
-                    >
-                      Reset
-                    </Button>
-                  </Stack>
+                  </Box>
                 </Grid>
               </Grid>
             </AccordionDetails>
