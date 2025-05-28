@@ -3,6 +3,7 @@ import api from '../../services/api';
 
 interface QRCodeState {
   qrcodeList: QRCodeItem[];
+  consumedInList: any[];
   barcodeDetails: BarcodeDetails | null;
   loading: boolean;
   error: string | null;
@@ -68,6 +69,7 @@ interface BatchInfo {
 
 const initialState: QRCodeState = {
   qrcodeList: [],
+  consumedInList: [],
   barcodeDetails: null,
   loading: false,
   error: null,
@@ -119,14 +121,6 @@ export const exportBulkQRCodes = createAsyncThunk(
   }
 );
 
-    export const getBarcodeDetails = createAsyncThunk(
-      'qrcode/getBarcodeDetails',
-      async (qrCodeNumber: string) => {
-        const response = await api.get(`/api/QRCode/GetBarcodeDetails?QRCodeNumber=${qrCodeNumber}`);
-        return response.data;
-      }
-    );
-
     export const getConsumedIn = createAsyncThunk(
       'qrcode/getConsumedIn',
       async (params: {
@@ -149,29 +143,6 @@ export const exportBulkQRCodes = createAsyncThunk(
       reducers: {},
       extraReducers: (builder) => {
         builder
-          .addCase(fetchQRCodeList.pending, (state) => {
-            state.loading = true;
-          })
-          .addCase(fetchQRCodeList.fulfilled, (state, action) => {
-            state.loading = false;
-            state.qrcodeList = action.payload;
-          })
-          .addCase(fetchQRCodeList.rejected, (state, action) => {
-            state.loading = false;
-            state.error = action.error.message || 'Failed to fetch QR code list';
-          })
-          .addCase(createQRCode.pending, (state) => {
-            state.loading = true;
-          })
-          .addCase(createQRCode.fulfilled, (state, action) => {
-            state.loading = false;
-            state.qrcodeList.push(action.payload);
-          })
-          .addCase(createQRCode.rejected, (state, action) => {
-            state.loading = false;
-            state.error = action.error.message || 'Failed to create QR code';
-          })
-
           .addCase(getBarcodeDetails.pending, (state) => {
             state.loading = true;
             state.error = null;
@@ -201,5 +172,4 @@ export const exportBulkQRCodes = createAsyncThunk(
       },
     });
 
-export const { clearError, clearGeneratedNumber } = qrcodeSlice.actions;
 export default qrcodeSlice.reducer; 
