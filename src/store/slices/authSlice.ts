@@ -17,13 +17,93 @@ interface AuthState {
   } | null;
   isLoading: boolean;
   error: string | null;
+  isInitialized: boolean;
 }
 
+// Helper function to get initial auth state from localStorage
+const getInitialAuthState = () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const decodedToken = decodeJwt(token);
+      if (decodedToken) {
+        // Check if token is not expired
+        const currentTime = Date.now() / 1000;
+        if (decodedToken.exp && decodedToken.exp > currentTime) {
+          return {
+            token,
+            id: decodedToken.id,
+            userid: decodedToken.userid,
+            username: decodedToken.username,
+            roleid: decodedToken.roleid,
+            role: decodedToken.role,
+            plantid: decodedToken.plantid,
+            email: decodedToken.email,
+            deptid: decodedToken.deptid,
+            department: decodedToken.department,
+          };
+        } else {
+          // Token expired, remove it
+          localStorage.removeItem('token');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error initializing auth state:', error);
+    localStorage.removeItem('token');
+  }
+  return null;
+};
+
 const initialState: AuthState = {
-  user: null,
+  user: getInitialAuthState(),
   isLoading: false,
   error: null,
+  isInitialized: true,
 };
+
+// Initialize authentication from localStorage
+export const initializeAuth = createAsyncThunk(
+  'auth/initialize',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return null;
+      }
+
+      const decodedToken = decodeJwt(token);
+      if (!decodedToken) {
+        localStorage.removeItem('token');
+        return null;
+      }
+
+      // Check if token is expired
+      const currentTime = Date.now() / 1000;
+      if (decodedToken.exp && decodedToken.exp <= currentTime) {
+        localStorage.removeItem('token');
+        return null;
+      }
+
+      // Token is valid, return user data
+      return {
+        token,
+        id: decodedToken.id,
+        userid: decodedToken.userid,
+        username: decodedToken.username,
+        roleid: decodedToken.roleid,
+        role: decodedToken.role,
+        plantid: decodedToken.plantid,
+        email: decodedToken.email,
+        deptid: decodedToken.deptid,
+        department: decodedToken.department,
+      };
+    } catch (error) {
+      localStorage.removeItem('token');
+      return rejectWithValue('Failed to initialize authentication');
+    }
+  }
+);
 
 export const login = createAsyncThunk(
   'auth/login',
@@ -143,14 +223,37 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.error = null;
+      state.isInitialized = true;
       localStorage.removeItem('token');
     },
     clearError: (state) => {
       state.error = null;
     },
+    setAuthFromStorage: (state, action) => {
+      state.user = action.payload;
+      state.isInitialized = true;
+    },
   },
   extraReducers: (builder) => {
     builder
+      // Initialize Auth
+      .addCase(initializeAuth.pending, (state) => {
+        state.isLoading = true;
+        state.isInitialized = false;
+      })
+      .addCase(initializeAuth.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload;
+        state.isInitialized = true;
+        state.error = null;
+      })
+      .addCase(initializeAuth.rejected, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.isInitialized = true;
+        state.error = null;
+      })
+      // Login
       .addCase(login.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -159,6 +262,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload;
         state.error = null;
+        state.isInitialized = true;
         localStorage.setItem('token', action.payload.token);
       })
       .addCase(login.rejected, (state, action) => {
@@ -207,5 +311,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, setAuthFromStorage } = authSlice.actions;
 export default authSlice.reducer; 

@@ -57,6 +57,8 @@ export default function GenerateIRMSN() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const dispatch = useAppDispatch();
   const [localLoading, setLocalLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string>("N/A");
 
   // Update selectors
   const { loading: isLoading, generatedNumber, error } = useSelector((state: RootState) => state.irmsn);
@@ -71,10 +73,26 @@ export default function GenerateIRMSN() {
   const [stages, setStages] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Load initial data
+  // Load initial data and fetch current user
   useEffect(() => {
     dispatch(getAllDocumentTypes());
     dispatch(getAllProductionSeries());
+    
+    // Fetch current user information
+    const fetchCurrentUser = async () => {
+      try {
+        // You may need to adjust this API endpoint based on your backend
+        const response = await api.get("/api/auth/currentuser");
+        setCurrentUser(response.data.userName || response.data.name || "N/A");
+      } catch (error) {
+        console.error("Error fetching current user:", error);
+        // Fallback to check localStorage or other sources
+        const storedUser = localStorage.getItem("userName") || localStorage.getItem("currentUser");
+        setCurrentUser(storedUser || "N/A");
+      }
+    };
+
+    fetchCurrentUser();
   }, [dispatch]);
 
   // Debounced search function with local state
@@ -174,6 +192,8 @@ export default function GenerateIRMSN() {
   const handleCopy = () => {
     if (generatedNumber) {
       navigator.clipboard.writeText(generatedNumber);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -181,6 +201,8 @@ export default function GenerateIRMSN() {
     reset();
     dispatch(clearGeneratedNumber());
     setSearchResults([]);
+    setSelectedDrawing(null);
+    setSearchTerm("");
   };
 
   // Stage options based on document type
@@ -207,65 +229,39 @@ export default function GenerateIRMSN() {
   return (
     <Box
       sx={{
-        width: "98%",
+        width: "100%",
         maxWidth: "100%",
+        mx: "auto",
+        p: { xs: 0.25, md: 0.5 },
+        height: "100vh",
+        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        // marginLeft: "-3%",
-        mx: "auto",
-        p: { xs: 2, md: 1 },
       }}
     >
-      <form onSubmit={handleSubmit(onSubmit)} style={{ width: "100%" }}>
-        <Card>
-          <CardContent sx={{ p: { xs: 2, md: 2 } }}>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{
-                color: "primary.main",
-                fontWeight: 600,
-                mb: 2,
-              }}
-            >
-              Generate IR/MSN Number
-            </Typography>
+      <Typography
+        variant="h6"
+        sx={{
+          color: "primary.main",
+          fontWeight: 600,
+          mb: 0.5,
+          textAlign: "left",
+          fontSize: "1.1rem",
+        }}
+      >
+        Create
+      </Typography>
 
-            <Grid container spacing={3}>
+      <form onSubmit={handleSubmit(onSubmit)} style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}>
+        <Card elevation={2} sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <CardContent sx={{ p: { xs: 1, md: 1.5 }, flex: 1, overflow: "auto" }}>
+            <Grid container spacing={1}>
               {/* First Row */}
-              <Grid item xs={12} md={3.5}>
-                <Controller
-                  name="documentType"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControl
-                      fullWidth
-                      error={!!errors.documentType}
-                      size="small"
-                    >
-                      <InputLabel>Document Type *</InputLabel>
-                      <Select {...field} label="Document Type *">
-                        {documentTypes.map((type) => (
-                          <MenuItem key={type.id} value={type.documentType}>
-                            {type.documentType}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      {errors.documentType && (
-                        <FormHelperText>
-                          {errors.documentType.message}
-                        </FormHelperText>
-                      )}
-                    </FormControl>
-                  )}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={5}>
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="drawingNumber"
                   control={control}
+                  rules={{ required: "Drawing number is required" }}
                   render={({ field: { onChange, ...field } }) => (
                     <Autocomplete
                       {...field}
@@ -286,6 +282,9 @@ export default function GenerateIRMSN() {
                       onChange={(_, value) => {
                         setSelectedDrawing(value);
                         onChange(value ? value.drawingNumber : "");
+                        if (value) {
+                          setValue("nomenclature", value.nomenclature || "");
+                        }
                       }}
                       isOptionEqualToValue={(option, value) =>
                         option.drawingNumber ===
@@ -299,15 +298,17 @@ export default function GenerateIRMSN() {
                             sx={{
                               display: "flex",
                               flexDirection: "column",
-                              py: 1,
+                              py: 0.5,
+                              width: "100%",
                             }}
                           >
-                            <Typography variant="body1">
+                            <Typography variant="body2" noWrap>
                               {option.drawingNumber}
                             </Typography>
                             <Typography
                               variant="caption"
                               color="text.secondary"
+                              noWrap
                             >
                               {option.nomenclature} | {option.componentType}
                             </Typography>
@@ -338,20 +339,50 @@ export default function GenerateIRMSN() {
                 />
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={4}>
+                <Controller
+                  name="documentType"
+                  control={control}
+                  rules={{ required: "Document type is required" }}
+                  render={({ field }) => (
+                    <FormControl
+                      fullWidth
+                      error={!!errors.documentType}
+                      size="small"
+                    >
+                      <InputLabel>Document Type *</InputLabel>
+                      <Select {...field} label="Document Type *">
+                        {documentTypes.map((type) => (
+                          <MenuItem key={type.id} value={type.documentType}>
+                            {type.documentType}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {errors.documentType && (
+                        <FormHelperText>
+                          {errors.documentType.message}
+                        </FormHelperText>
+                      )}
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="productionSeries"
                   control={control}
+                  rules={{ required: "Production series is required" }}
                   render={({ field }) => (
                     <FormControl
                       fullWidth
                       error={!!errors.productionSeries}
                       size="small"
                     >
-                      <InputLabel>Production Series *</InputLabel>
+                      <InputLabel>Prod Series *</InputLabel>
                       <Select
                         {...field}
-                        label="Production Series *"
+                        label="Prod Series *"
                         onChange={(e) => {
                           field.onChange(e);
                           handleProductionSeriesChange(e);
@@ -377,58 +408,69 @@ export default function GenerateIRMSN() {
               </Grid>
 
               {/* Second Row */}
-              <Grid item xs={12} md={3.5}>
+              <Grid item xs={12} md={4}>
                 <Controller
-                  name="stage"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControl fullWidth error={!!errors.stage} size="small">
-                      <InputLabel>Stage *</InputLabel>
-                      <Select {...field} label="Stage *">
-                        {stages.map((stage) => (
-                          <MenuItem key={stage} value={stage}>
-                            {stage}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      {errors.stage && (
-                        <FormHelperText>{errors.stage.message}</FormHelperText>
-                      )}
-                    </FormControl>
-                  )}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={5}>
-                <Controller
-                  name="idRange"
+                  name="nomenclature"
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="ID Range *"
+                      label="Nomenclature"
                       fullWidth
                       size="small"
-                      error={!!errors.idRange}
-                      helperText={errors.idRange?.message || "Format: 1,2,3-5"}
+                      InputProps={{ 
+                        readOnly: true,
+                        sx: { fontSize: "0.75rem" }
+                      }}
+                      sx={{ 
+                        "& .MuiInputBase-input": { 
+                          backgroundColor: "grey.50",
+                          fontSize: "0.75rem"
+                        } 
+                      }}
                     />
                   )}
                 />
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={4}>
                 <Controller
-                  name="quantity"
+                  name="idRange"
                   control={control}
+                  rules={{ required: "ID Nos is required" }}
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Quantity"
+                      label="ID Nos *"
+                      fullWidth
+                      size="small"
+                      error={!!errors.idRange}
+                      helperText={errors.idRange?.message}
+                      placeholder="e.g., 1,2,3-5"
+                    />
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <Controller
+                  name="quantity"
+                  control={control}
+                  rules={{ required: "Quantity is required" }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Quantity *"
                       type="number"
                       fullWidth
                       size="small"
                       InputProps={{
                         readOnly: true,
+                      }}
+                      sx={{ 
+                        "& .MuiInputBase-input": { 
+                          backgroundColor: "grey.50" 
+                        } 
                       }}
                     />
                   )}
@@ -436,27 +478,11 @@ export default function GenerateIRMSN() {
               </Grid>
 
               {/* Third Row */}
-              <Grid item xs={12} md={3.5}>
-                <Controller
-                  name="poNumber"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="PO Number *"
-                      fullWidth
-                      size="small"
-                      error={!!errors.poNumber}
-                      helperText={errors.poNumber?.message}
-                    />
-                  )}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={5}>
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="projectNumber"
                   control={control}
+                  rules={{ required: "Project number is required" }}
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -470,7 +496,62 @@ export default function GenerateIRMSN() {
                 />
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={4}>
+                <Controller
+                  name="poNumber"
+                  control={control}
+                  rules={{ required: "PO number is required" }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="PO Number *"
+                      fullWidth
+                      size="small"
+                      error={!!errors.poNumber}
+                      helperText={errors.poNumber?.message}
+                    />
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <Controller
+                  name="stage"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Stage</InputLabel>
+                      <Select {...field} label="Stage">
+                        {stages.map((stage) => (
+                          <MenuItem key={stage} value={stage}>
+                            {stage}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+
+              {/* Fourth Row */}
+              <Grid item xs={12} md={4}>
+                <Box sx={{ mt: 0.25 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", display: "block", mb: 0.25, fontSize: "0.7rem" }}
+                  >
+                    Generated by
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 500, color: "text.primary", fontSize: "0.8rem" }}
+                  >
+                    {currentUser}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="supplier"
                   control={control}
@@ -485,8 +566,7 @@ export default function GenerateIRMSN() {
                 />
               </Grid>
 
-              {/* Fourth Row - Remarks */}
-              <Grid item xs={11.5}>
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="remark"
                   control={control}
@@ -496,87 +576,121 @@ export default function GenerateIRMSN() {
                       label="Remark"
                       fullWidth
                       size="small"
-                      multiline
-                      rows={2}
                     />
                   )}
                 />
               </Grid>
             </Grid>
+
+            {/* Generated IR/MSN Number Display */}
+            {generatedNumber && (
+              <Box
+                sx={{
+                  mt: 1,
+                  p: 1,
+                  backgroundColor: "primary.50",
+                  border: "1px solid",
+                  borderColor: "primary.200",
+                  borderRadius: 1,
+                }}
+              >
+                <Stack direction="row" alignItems="center" spacing={1.5}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600, color: "primary.main", fontSize: "0.8rem" }}
+                  >
+                    IR/MSN Number
+                  </Typography>
+                  <Box
+                    sx={{
+                      flex: 1,
+                      p: 1,
+                      backgroundColor: "white",
+                      border: "1px solid",
+                      borderColor: "grey.300",
+                      borderRadius: 1,
+                      fontFamily: "monospace",
+                      fontSize: "0.9rem",
+                      fontWeight: "bold",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span>{generatedNumber}</span>
+                    <Tooltip title={copied ? "Copied!" : "Copy"}>
+                      <IconButton
+                        onClick={handleCopy}
+                        size="small"
+                        sx={{
+                          color: copied ? "success.main" : "primary.main",
+                          p: 0.5,
+                        }}
+                      >
+                        <CopyIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Stack>
+              </Box>
+            )}
           </CardContent>
         </Card>
 
         {/* Action Buttons */}
-        <Box sx={{ mt: 1.8, display: "flex", justifyContent: "center", gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            size="small"
-            disabled={localLoading}
-            startIcon={
-              localLoading ? (
-                <RefreshIcon className="animate-spin" />
-              ) : (
-                <AddIcon />
-              )
-            }
-            sx={{ minWidth: 120 }}
-          >
-            {localLoading ? "Generating..." : "Generate Number"}
-          </Button>
-
+        <Box
+          sx={{
+            mt: 0.5,
+            display: "flex",
+            justifyContent: "center",
+            gap: 2,
+            pb: 0.25,
+          }}
+        >
           <Button
             type="button"
             variant="outlined"
             size="small"
             onClick={handleReset}
             startIcon={<RefreshIcon />}
-            sx={{ minWidth: 100 }}
+            sx={{
+              minWidth: 100,
+              height: 32,
+              borderColor: "error.main",
+              color: "error.main",
+              "&:hover": {
+                borderColor: "error.dark",
+                backgroundColor: "error.50",
+              },
+            }}
           >
             Reset
           </Button>
-        </Box>
 
-        {/* Generated Result */}
-        {generatedNumber && (
-          <Card
+          <Button
+            type="submit"
+            variant="contained"
+            size="small"
+            disabled={isLoading}
+            startIcon={
+              isLoading ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <AddIcon />
+              )
+            }
             sx={{
-              mt: 1.8,
-              width: "100%",
-              bgcolor: "success.50",
-              border: "1px solid",
-              borderColor: "success.200",
-              px: 1,
-              py: 0.5,
+              minWidth: 100,
+              height: 32,
+              backgroundColor: "purple",
+              "&:hover": {
+                backgroundColor: "darkpurple",
+              },
             }}
           >
-            <CardContent sx={{ py: 0.5, "&:last-child": { pb: 0.5 } }}>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <CheckIcon color="success" fontSize="small" />
-                <Typography
-                  color="success.main"
-                  fontSize="0.85rem"
-                  fontWeight={500}
-                >
-                  Generated:
-                </Typography>
-                <Typography
-                  variant="body2"
-                  fontFamily="monospace"
-                  fontWeight="bold"
-                  sx={{ flex: 1 }}
-                >
-                  {generatedNumber}
-                </Typography>
-                <Tooltip title="Copy">
-                  <IconButton onClick={handleCopy} size="small">
-                    <CopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-            </CardContent>
-          </Card>
-        )}
+            {isLoading ? "Generating..." : "Generate"}
+          </Button>
+        </Box>
       </form>
     </Box>
   );

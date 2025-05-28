@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
   Paper,
@@ -21,14 +21,9 @@ import {
   Tooltip,
   useTheme,
   useMediaQuery,
-  Divider,
   Stack,
   FormLabel,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   CircularProgress,
   Table,
   TableBody,
@@ -38,223 +33,317 @@ import {
   TableRow,
   Checkbox,
   TablePagination,
-  Fab,
   Autocomplete,
   FormHelperText,
-} from '@mui/material';
+  Backdrop,
+  Divider,
+} from "@mui/material";
 import {
   QrCode as QrCodeIcon,
-  Print as PrintIcon,
   Download as DownloadIcon,
   Refresh as RefreshIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Add as AddIcon,
-  Visibility as ViewIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
   ContentCopy as CopyIcon,
-} from '@mui/icons-material';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import QRCode from 'qrcode';
-import type { RootState, AppDispatch } from '../../store/store';
-import { generateQRCode, exportQRCode, exportBulkQRCodes } from '../../store/slices/qrcodeSlice';
-import type { DrawingNumber } from '../../types';
-import debounce from 'lodash/debounce';
-import { getDrawingNumbers, getAllProductionSeries, getAllUnits } from '../../store/slices/commonSlice';
-import api from '../../services/api';
-
-// Validation schema
-const schema = yup.object().shape({
-  drawingNumber: yup.string().required('Drawing Number is required'),
-  nomenclature: yup.string().required('Nomenclature is required'),
-  productionSeries: yup.string().required('Production Series is required'),
-  quantity: yup.number().min(1, 'Quantity must be at least 1').required('Quantity is required'),
-  startRange: yup.number().min(1, 'Start range is required').required('Start range is required'),
-  endRange: yup.number().min(1, 'End range is required').required('End range is required'),
-  barcodeType: yup.string().required('Barcode type is required'),
-  printFormat: yup.string().required('Print format is required'),
-  unit: yup.string().required('Unit is required'),
-  lnItemCode: yup.string(),
-  componentType: yup.string(),
-});
-
-interface BarcodeItem {
-  id: number;
-  serialNumber: string;
-  qrCodeData: string;
-  qrCodeImage: string;
-  drawingNumber: string;
-  nomenclature: string;
-  productionSeries: string;
-  createdDate: string;
-  isSelected: boolean;
-  status: 'pending' | 'printed' | 'used';
-}
-
-interface BarcodeFormData {
-  drawingNumber: string;
-  nomenclature: string;
-  productionSeries: string;
-  quantity: number;
-  startRange: number;
-  endRange: number;
-  barcodeType: 'QR' | 'CODE128' | 'CODE39';
-  printFormat: 'A4' | 'A5' | 'LABEL' | 'STICKER';
-  includeText: boolean;
-  includeDate: boolean;
-  customText?: string;
-  lnItemCode: string;
-  componentType: string;
-  unit: string;
-}
+  GetApp as GetAppIcon,
+  Info as InfoIcon,
+  Settings as SettingsIcon,
+  Assignment as AssignmentIcon,
+  DateRange as DateRangeIcon,
+} from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import type { RootState, AppDispatch } from "../../store/store";
+import type {
+  DrawingNumber,
+  QRCodeFormData,
+  IRNumber,
+  MSNNumber,
+  QRCodeItem,
+  QRCodePayload,
+} from "../../types";
+import {
+  generateQRCode,
+  generateBatchQRCode,
+  exportQRCode,
+  exportBulkQRCodes,
+  fetchIRNumbers,
+  fetchMSNNumbers,
+  clearError,
+  clearGeneratedNumber,
+  clearQRCodeList,
+} from "../../store/slices/qrcodeSlice";
+import {
+  getDrawingNumbers,
+  getAllProductionSeries,
+  getAllUnits,
+} from "../../store/slices/commonSlice";
+import debounce from "lodash/debounce";
 
 // Create typed versions of the hooks
 const useAppDispatch: () => AppDispatch = useDispatch;
 
 export default function BarcodeGeneration() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isTablet = useMediaQuery(theme.breakpoints.down("lg"));
   const dispatch = useAppDispatch();
-  const printRef = useRef<HTMLDivElement>(null);
-  const { qrcodeList, loading, error } = useSelector((state: RootState) => state.qrcode);
-  
-  // State
-  const [barcodes, setBarcodes] = useState<BarcodeItem[]>([]);
+
+  // Redux state
+  const {
+    qrcodeList,
+    irNumbers,
+    msnNumbers,
+    batchItems,
+    loading,
+    error,
+    generatedNumber,
+    isDownloading,
+  } = useSelector((state: RootState) => state.qrcode);
+
+  const { drawingNumbers, productionSeries, units } = useSelector(
+    (state: RootState) => state.common
+  );
+
+  // Local state
+  const [selectedDrawing, setSelectedDrawing] = useState<DrawingNumber | null>(
+    null
+  );
+  const [selectedIRNumber, setSelectedIRNumber] = useState<IRNumber | null>(
+    null
+  );
+  const [selectedMSNNumber, setSelectedMSNNumber] = useState<MSNNumber | null>(
+    null
+  );
+  const [componentType, setComponentType] = useState<
+    "ID" | "BATCH" | "FIM" | "SI"
+  >("ID");
+  const [idType, setIdType] = useState<"series" | "random">("series");
+  const [randomIds, setRandomIds] = useState<string[]>(Array(12).fill(""));
   const [selectedBarcodes, setSelectedBarcodes] = useState<number[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string>('');
-  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
-  const [selectedBarcode, setSelectedBarcode] = useState<BarcodeItem | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [componentType, setComponentType] = useState<'ID' | 'BATCH' | 'FIM' | 'SI'>('ID');
-  const [isSeriesMode, setIsSeriesMode] = useState(true);
-  const [drawingNumbers, setDrawingNumbers] = useState([]);
-  const [productionSeries, setProductionSeries] = useState([]);
-  const [units, setUnits] = useState([]);
-  const [batchItems, setBatchItems] = useState([]);
-  const [localLoading, setLocalLoading] = useState(false);
-  const [selectedDrawing, setSelectedDrawing] = useState<DrawingNumber | null>(null);
-  const [searchResults, setSearchResults] = useState<DrawingNumber[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
 
   // Form
-  const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm<BarcodeFormData>({
-    resolver: yupResolver(schema),
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<QRCodeFormData>({
     defaultValues: {
+      componentType: "ID",
+      idType: "series",
       quantity: 1,
       startRange: 1,
       endRange: 1,
-      barcodeType: 'QR',
-      printFormat: 'A4',
-      includeText: true,
-      includeDate: true,
-    }
+      disposition: "Accepted",
+      manufacturingDate: new Date(),
+      randomIds: Array(12).fill(""),
+    },
   });
 
-  const watchQuantity = watch('quantity');
-  const watchStartRange = watch('startRange');
-  const watchBarcodeType = watch('barcodeType');
-
-  // Auto-update end range when quantity or start range changes
-  useEffect(() => {
-    if (watchQuantity && watchStartRange) {
-      const endRange = watchStartRange + watchQuantity - 1;
-      setValue('endRange', endRange);
-    }
-  }, [watchQuantity, watchStartRange, setValue]);
+  const watchComponentType = watch("componentType");
+  const watchIdType = watch("idType");
+  const watchQuantity = watch("quantity");
+  const watchStartRange = watch("startRange");
 
   // Load initial data
   useEffect(() => {
     dispatch(getAllProductionSeries());
     dispatch(getAllUnits());
+    dispatch(fetchIRNumbers(undefined));
+    dispatch(fetchMSNNumbers(undefined));
   }, [dispatch]);
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    async (search: string) => {
-      if (search.length < 3) return;
-      dispatch(getDrawingNumbers({ search }));
-    },
+  // Auto-update end range when quantity or start range changes
+  useEffect(() => {
+    if (
+      watchQuantity &&
+      watchStartRange &&
+      watchComponentType === "ID" &&
+      watchIdType === "series"
+    ) {
+      const endRange = Number(watchStartRange) + Number(watchQuantity) - 1;
+      setValue("endRange", endRange);
+    }
+  }, [
+    watchQuantity,
+    watchStartRange,
+    watchComponentType,
+    watchIdType,
+    setValue,
+  ]);
+
+  // Update component type visibility
+  useEffect(() => {
+    setComponentType(watchComponentType);
+    if (watchComponentType !== "ID") {
+      setIdType("series");
+      setValue("idType", "series");
+    }
+  }, [watchComponentType, setValue]);
+
+  // Update ID type
+  useEffect(() => {
+    setIdType(watchIdType);
+  }, [watchIdType]);
+
+  // Debounced search functions
+  const debouncedDrawingSearch = useMemo(
+    () =>
+      debounce((search: string) => {
+        if (search.length >= 3) {
+          dispatch(getDrawingNumbers({ search }));
+        }
+      }, 300),
     [dispatch]
   );
 
-  // Handle component type change
-  const handleComponentTypeChange = (type: 'ID' | 'BATCH' | 'FIM' | 'SI') => {
-    setComponentType(type);
-    if (type === 'ID') {
-      setIsSeriesMode(true);
+  const debouncedIRSearch = useMemo(
+    () =>
+      debounce((search: string) => {
+        if (search.length >= 3) {
+          dispatch(fetchIRNumbers(search));
+        }
+      }, 300),
+    [dispatch]
+  );
+
+  const debouncedMSNSearch = useMemo(
+    () =>
+      debounce((search: string) => {
+        if (search.length >= 3) {
+          dispatch(fetchMSNNumbers(search));
+        }
+      }, 300),
+    [dispatch]
+  );
+
+  // Handle random ID changes
+  const handleRandomIdChange = (index: number, value: string) => {
+    const newRandomIds = [...randomIds];
+    newRandomIds[index] = value;
+    setRandomIds(newRandomIds);
+    setValue("randomIds", newRandomIds);
+
+    // Update quantity based on filled random IDs
+    const filledCount = newRandomIds.filter((id) => id.trim() !== "").length;
+    setValue("quantity", filledCount);
+  };
+
+  // Handle batch data generation
+  const handleGenerateBatchData = async () => {
+    if (selectedDrawing) {
+      await dispatch(
+        generateBatchQRCode({
+          drawingNumberId: selectedDrawing.id,
+          quantity: watchQuantity,
+        })
+      );
     }
   };
 
-  // Generate QR Code
-  const generateQRCode = async (data: string): Promise<string> => {
+  // Prepare payload for QR code generation
+  const preparePayload = (data: QRCodeFormData) => {
+    const basePayload: QRCodePayload = {
+      productionSeriesId:
+        productionSeries.find(
+          (ps) => ps.productionSeries === data.productionSeries
+        )?.id || 0,
+      componentTypeId: selectedDrawing?.componentTypeId || 0,
+      nomenclatureId: selectedDrawing?.nomenclatureId || 0,
+      lnItemCodeId: selectedDrawing?.lnItemCodeId || 0,
+      rackLocationId: selectedDrawing?.rackLocationId || 0,
+      irNumberId: selectedIRNumber?.id || 0,
+      msnNumberId: selectedMSNNumber?.id || 0,
+      disposition: data.disposition,
+      productionOrderNumber: data.poNumber,
+      projectNumber: data.projectNumber,
+      expiryDate:
+        data.expiryDate?.toISOString() ||
+        new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      manufacturingDate: data.manufacturingDate.toISOString(),
+      drawingNumberId: selectedDrawing?.id || 0,
+      unitId: units.find((u) => u.unitName === data.unit)?.id || 0,
+      mrirNumber: data.mrirNumber,
+      remark: data.remark,
+      quantity: data.quantity,
+      ids: [],
+      batchIds: [],
+    };
+
+    // Handle different component types
+    switch (data.componentType) {
+      case "ID":
+        if (data.idType === "series") {
+          basePayload.ids = Array.from(
+            { length: data.quantity },
+            (_, i) => data.startRange + i
+          );
+        } else {
+          basePayload.ids = data.randomIds
+            .filter((id) => id.trim() !== "")
+            .map((id) => parseInt(id, 10))
+            .filter((id) => !isNaN(id));
+        }
+        break;
+      case "BATCH":
+        basePayload.idNumber = data.batchId;
+        basePayload.ids = [parseInt(data.batchId, 10) || 0];
+        basePayload.quantity = data.quantity;
+        basePayload.batchIds = batchItems.map((item) => ({
+          quantity: item.quantity,
+          batchQuantity: item.batchQuantity,
+          assemblyDrawingId: item.assemblyDrawingId,
+        }));
+        break;
+      case "FIM":
+      case "SI":
+        basePayload.ids = [1];
+        basePayload.quantity = data.quantity;
+        basePayload.batchIds = [
+          { quantity: 0, batchQuantity: 0, assemblyDrawingId: 0 },
+        ];
+        break;
+    }
+
+    return basePayload;
+  };
+
+  // Form submission
+  const onSubmit = async (data: QRCodeFormData) => {
     try {
-      const qrCodeDataURL = await QRCode.toDataURL(data, {
-        width: 200,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF',
-        },
-      });
-      return qrCodeDataURL;
+      const payload = preparePayload(data);
+      await dispatch(generateQRCode(payload)).unwrap();
+      setSuccessMessage(`Successfully generated ${data.quantity} QR code(s)!`);
     } catch (error) {
-      console.error('Error generating QR code:', error);
-      return '';
+      console.error("Error generating QR codes:", error);
     }
   };
 
-  const onSubmit = async (data: BarcodeFormData) => {
-    setIsGenerating(true);
-    try {
-      const newBarcodes: BarcodeItem[] = [];
-      
-      for (let i = 0; i < data.quantity; i++) {
-        const serialNumber = `${data.drawingNumber}-${String(data.startRange + i).padStart(4, '0')}`;
-        
-        // Create QR code data
-        const qrData = JSON.stringify({
-          serialNumber,
-          drawingNumber: data.drawingNumber,
-          nomenclature: data.nomenclature,
-          productionSeries: data.productionSeries,
-          createdDate: new Date().toISOString().split('T')[0],
-          customText: data.customText || '',
-        });
-        
-        const qrCodeImage = await generateQRCode(qrData);
-        
-        newBarcodes.push({
-          id: Date.now() + i,
-          serialNumber,
-          qrCodeData: qrData,
-          qrCodeImage,
-          drawingNumber: data.drawingNumber,
-          nomenclature: data.nomenclature,
-          productionSeries: data.productionSeries,
-          createdDate: new Date().toISOString().split('T')[0],
-          isSelected: false,
-          status: 'pending',
-        });
-      }
-      
-      setBarcodes(prev => [...prev, ...newBarcodes]);
-      setSuccessMessage(`Successfully generated ${data.quantity} barcodes!`);
-    } catch (error) {
-      console.error('Error generating barcodes:', error);
-    } finally {
-      setIsGenerating(false);
-    }
+  // Handle actions
+  const handleReset = () => {
+    reset();
+    setSelectedDrawing(null);
+    setSelectedIRNumber(null);
+    setSelectedMSNNumber(null);
+    setComponentType("ID");
+    setIdType("series");
+    setRandomIds(Array(12).fill(""));
+    setSelectedBarcodes([]);
+    dispatch(clearGeneratedNumber());
+    dispatch(clearQRCodeList());
+    setSuccessMessage("");
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedBarcodes(barcodes.map(b => b.id));
+      setSelectedBarcodes(qrcodeList.map((item) => item.id));
     } else {
       setSelectedBarcodes([]);
     }
@@ -262,251 +351,662 @@ export default function BarcodeGeneration() {
 
   const handleSelectBarcode = (id: number, checked: boolean) => {
     if (checked) {
-      setSelectedBarcodes(prev => [...prev, id]);
+      setSelectedBarcodes((prev) => [...prev, id]);
     } else {
-      setSelectedBarcodes(prev => prev.filter(bId => bId !== id));
-    }
-  };
-
-  const handlePreview = (barcode: BarcodeItem) => {
-    setSelectedBarcode(barcode);
-    setPreviewDialogOpen(true);
-  };
-
-  const handlePrint = async () => {
-    if (selectedBarcodes.length === 0) return;
-    
-    setIsPrinting(true);
-    try {
-      // Simulate printing process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mark selected barcodes as printed
-      setBarcodes(prev => prev.map(barcode => 
-        selectedBarcodes.includes(barcode.id)
-          ? { ...barcode, status: 'printed' as const }
-          : barcode
-      ));
-      
-      setSuccessMessage(`Successfully printed ${selectedBarcodes.length} barcodes!`);
-      setSelectedBarcodes([]);
-    } catch (error) {
-      console.error('Error printing barcodes:', error);
-    } finally {
-      setIsPrinting(false);
+      setSelectedBarcodes((prev) => prev.filter((bId) => bId !== id));
     }
   };
 
   const handleDownload = async () => {
     if (selectedBarcodes.length === 0) return;
-    
+
     try {
       const selectedQRCodes = qrcodeList
-        .filter(qr => selectedBarcodes.includes(qr.id))
-        .map(qr => qr.qrCodeNumber);
-      
-      await dispatch(exportBulkQRCodes(selectedQRCodes)).unwrap();
-      setSuccessMessage('QR codes downloaded successfully!');
-    } catch (error) {
-      console.error('Error downloading:', error);
-    }
-  };
+        .filter((qr) => selectedBarcodes.includes(qr.id))
+        .map((qr) => qr.qrCodeNumber || qr.serialNumber);
 
-  const handleDelete = () => {
-    if (selectedBarcodes.length === 0) return;
-    
-    setBarcodes(prev => prev.filter(b => !selectedBarcodes.includes(b.id)));
-    setSelectedBarcodes([]);
-    setSuccessMessage(`Successfully deleted ${selectedBarcodes.length} barcodes!`);
+      await dispatch(exportBulkQRCodes(selectedQRCodes)).unwrap();
+      setSuccessMessage("QR codes downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading:", error);
+    }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    setSuccessMessage('Copied to clipboard!');
+    setSuccessMessage("Copied to clipboard!");
   };
 
-  const getStatusColor = (status: BarcodeItem['status']) => {
-    switch (status) {
-      case 'printed': return 'success';
-      case 'used': return 'info';
-      default: return 'default';
-    }
-  };
-
-  const BarcodeCard = ({ barcode }: { barcode: BarcodeItem }) => (
-    <Card 
-      elevation={1} 
-      sx={{ 
-        position: 'relative',
-        '&:hover': { 
-          elevation: 3,
-          transform: 'translateY(-2px)',
-          transition: 'all 0.2s ease-in-out'
-        }
-      }}
-    >
-      <CardContent>
-        <Stack spacing={2} alignItems="center">
-          {/* QR Code */}
-          <Box sx={{ textAlign: 'center' }}>
-            <img
-              src={barcode.qrCodeImage}
-              alt={`QR Code for ${barcode.serialNumber}`}
-              style={{ width: 120, height: 120 }}
-            />
-          </Box>
-          
-          {/* Details */}
-          <Stack spacing={1} sx={{ width: '100%', textAlign: 'center' }}>
-            <Typography variant="h6" fontWeight="bold" color="primary">
-              {barcode.serialNumber}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              {barcode.nomenclature}
-            </Typography>
-            <Chip 
-              label={barcode.status.toUpperCase()}
-              color={getStatusColor(barcode.status)}
-              size="small"
-            />
-          </Stack>
-          
-          {/* Actions */}
-          <Stack direction="row" spacing={1}>
-            <Tooltip title="Preview">
-              <IconButton 
-                size="small" 
-                onClick={() => handlePreview(barcode)}
-                color="primary"
-              >
-                <ViewIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Copy Data">
-              <IconButton 
-                size="small"
-                onClick={() => copyToClipboard(barcode.qrCodeData)}
-                color="secondary"
-              >
-                <CopyIcon />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-        </Stack>
-      </CardContent>
-      
-      {/* Selection Checkbox */}
-      <Checkbox
-        checked={selectedBarcodes.includes(barcode.id)}
-        onChange={(e) => handleSelectBarcode(barcode.id, e.target.checked)}
-        sx={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          bgcolor: 'background.paper',
-          borderRadius: '50%',
-        }}
-      />
-    </Card>
+  // Section Header Component
+  const SectionHeader = ({
+    icon,
+    title,
+    subtitle,
+  }: {
+    icon: React.ReactNode;
+    title: string;
+    subtitle?: string;
+  }) => (
+    <Box sx={{ mb: 2 }}>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+        {icon}
+        <Typography
+          variant="h6"
+          sx={{ color: "primary.main", fontWeight: 600 }}
+        >
+          {title}
+        </Typography>
+      </Stack>
+      {subtitle && (
+        <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+          {subtitle}
+        </Typography>
+      )}
+      <Divider sx={{ mt: 1 }} />
+    </Box>
   );
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
-      {/* Header */}
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: { xs: 2, md: 3 }, 
-          mb: 3, 
-          background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
-          color: 'white',
-          borderRadius: 2
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Box
+        sx={{
+          p: { xs: 1, sm: 2, md: 3 },
+          maxWidth: "100%",
+          mx: "auto",
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={2}>
-          <QrCodeIcon sx={{ fontSize: { xs: 32, md: 40 } }} />
-          <Box>
-            <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold" gutterBottom>
-              Barcode Generation
-            </Typography>
-            <Typography variant="body1" sx={{ opacity: 0.9 }}>
-              Generate QR codes and barcodes for production items
+        {/* Loading Backdrop */}
+        <Backdrop
+          open={isDownloading}
+          sx={{ zIndex: theme.zIndex.drawer + 1, color: "#fff" }}
+        >
+          <Box sx={{ textAlign: "center" }}>
+            <CircularProgress color="inherit" size={60} />
+            <Typography variant="h6" sx={{ mt: 2 }}>
+              Downloading QR Code, please wait...
             </Typography>
           </Box>
-        </Stack>
-      </Paper>
+        </Backdrop>
 
-      {/* Success Message */}
-      {successMessage && (
-        <Alert 
-          severity="success" 
-          sx={{ mb: 3 }}
-          onClose={() => setSuccessMessage('')}
-        >
-          {successMessage}
-        </Alert>
-      )}
+        {/* Header */}
 
-      {/* Generation Form */}
-      <Card elevation={1} sx={{ mb: 3 }}>
-        <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-          <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 600 }}>
-            Generate New Barcodes
-          </Typography>
-          
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Grid container spacing={3}>
-              {/* Drawing Number */}
-              <Grid item xs={12} md={4}>
-                <Controller
-                  name="drawingNumber"
-                  control={control}
-                  render={({ field: { onChange, ...field } }) => (
-                    <Autocomplete
-                      {...field}
-                      options={searchResults}
-                      getOptionLabel={(option) => {
-                        if (typeof option === "string") return option;
-                        return option.drawingNumber;
-                      }}
-                      value={selectedDrawing}
-                      loading={localLoading}
-                      size="small"
-                      onInputChange={(_, value) => {
-                        setSearchTerm(value);
-                        if (value.length >= 3) {
-                          debouncedSearch(value);
-                        }
-                      }}
-                      onChange={(_, value) => {
-                        setSelectedDrawing(value);
-                        onChange(value ? value.drawingNumber : "");
-                        if (value) {
-                          setValue('lnItemCode', value.lnItemCode || '');
-                          setValue('componentType', value.componentType || '');
-                        }
-                      }}
-                      renderOption={(props, option) => (
-                        <li {...props}>
-                          <Box sx={{ display: "flex", flexDirection: "column", py: 1 }}>
-                            <Typography variant="body1">{option.drawingNumber}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {option.nomenclature} | {option.componentType}
-                            </Typography>
-                          </Box>
-                        </li>
+        {/* Success/Error Messages */}
+        {successMessage && (
+          <Alert
+            severity="success"
+            sx={{ mb: 3 }}
+            onClose={() => setSuccessMessage("")}
+          >
+            {successMessage}
+          </Alert>
+        )}
+
+        {error && (
+          <Alert
+            severity="error"
+            sx={{ mb: 3 }}
+            onClose={() => dispatch(clearError())}
+          >
+            {error}
+          </Alert>
+        )}
+
+        {/* Main Form */}
+        <Card elevation={2} sx={{ mb: 3 }}>
+          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ color: "primary.main", fontWeight: 600, mb: 3 }}
+            >
+              Add Manufacturing Item
+            </Typography>
+
+            <form onSubmit={handleSubmit(onSubmit)}>
+              {/* Row 1: Drawing Number, LN Item Code, Nomenclature */}
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} md={4}>
+                  <Controller
+                    name="drawingNumber"
+                    control={control}
+                    rules={{ required: "Drawing Number is required" }}
+                    render={({ field: { onChange, ...field } }) => (
+                      <Autocomplete
+                        {...field}
+                        options={drawingNumbers}
+                        getOptionLabel={(option) => {
+                          if (typeof option === "string") return option;
+                          return option.drawingNumber;
+                        }}
+                        value={selectedDrawing}
+                        loading={loading}
+                        size="small"
+                        onInputChange={(_, value) => {
+                          setSearchTerm(value);
+                          if (value.length >= 3) {
+                            debouncedDrawingSearch(value);
+                          }
+                        }}
+                        onChange={(_, value) => {
+                          setSelectedDrawing(value);
+                          onChange(value ? value.drawingNumber : "");
+                          if (value) {
+                            setValue("nomenclature", value.nomenclature);
+                            setValue("location", value.location || "");
+                            setComponentType(
+                              value.componentType as
+                                | "ID"
+                                | "BATCH"
+                                | "FIM"
+                                | "SI"
+                            );
+                            setValue(
+                              "componentType",
+                              value.componentType as
+                                | "ID"
+                                | "BATCH"
+                                | "FIM"
+                                | "SI"
+                            );
+                          }
+                        }}
+                        renderOption={(props, option) => (
+                          <li {...props}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                py: 1,
+                              }}
+                            >
+                              <Typography variant="body1">
+                                {option.drawingNumber}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {option.nomenclature} | {option.componentType}
+                              </Typography>
+                            </Box>
+                          </li>
+                        )}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Drawing Number *"
+                            error={!!errors.drawingNumber}
+                            helperText={errors.drawingNumber?.message}
+                            InputProps={{
+                              ...params.InputProps,
+                              endAdornment: (
+                                <>
+                                  {loading ? (
+                                    <CircularProgress
+                                      color="inherit"
+                                      size={16}
+                                    />
+                                  ) : null}
+                                  {params.InputProps.endAdornment}
+                                </>
+                              ),
+                            }}
+                          />
+                        )}
+                      />
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="LN Item Code"
+                    value={selectedDrawing?.lnItemCode || ""}
+                    fullWidth
+                    size="small"
+                    InputProps={{ readOnly: true }}
+                    sx={{ bgcolor: "grey.50" }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Controller
+                    name="nomenclature"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="Nomenclature"
+                        fullWidth
+                        size="small"
+                        InputProps={{ readOnly: true }}
+                        sx={{ bgcolor: "grey.50" }}
+                      />
+                    )}
+                  />
+                </Grid>
+              </Grid>
+
+              {/* Row 2: Production Series, Available For, Component Type */}
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} md={4}>
+                  <Controller
+                    name="productionSeries"
+                    control={control}
+                    rules={{ required: "Production Series is required" }}
+                    render={({ field }) => (
+                      <FormControl
+                        fullWidth
+                        error={!!errors.productionSeries}
+                        size="small"
+                      >
+                        <InputLabel>Prod Series *</InputLabel>
+                        <Select {...field} label="Prod Series *">
+                          {productionSeries.map((series) => (
+                            <MenuItem
+                              key={series.id}
+                              value={series.productionSeries}
+                            >
+                              {series.productionSeries}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {errors.productionSeries && (
+                          <FormHelperText>
+                            {errors.productionSeries.message}
+                          </FormHelperText>
+                        )}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Available For"
+                    value={selectedDrawing?.availableFor || ""}
+                    fullWidth
+                    size="small"
+                    InputProps={{ readOnly: true }}
+                    sx={{ bgcolor: "grey.50" }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Component Type"
+                    value={selectedDrawing?.componentType || ""}
+                    fullWidth
+                    size="small"
+                    InputProps={{ readOnly: true }}
+                    sx={{ bgcolor: "grey.50" }}
+                  />
+                </Grid>
+              </Grid>
+
+              {/* Component Type Specific Fields */}
+              {componentType === "ID" && (
+                <>
+                  {/* ID Type Selection */}
+                  <Box sx={{ mb: 2, display: "flex", alignItems: "center" }}>
+                    <FormLabel
+                      component="legend"
+                      sx={{ mr: 2, fontSize: "0.875rem" }}
+                    >
+                      ID Type
+                    </FormLabel>
+                    <Controller
+                      name="idType"
+                      control={control}
+                      render={({ field }) => (
+                        <RadioGroup {...field} row>
+                          <FormControlLabel
+                            value="series"
+                            control={<Radio size="small" />}
+                            label="Series"
+                          />
+                          <FormControlLabel
+                            value="random"
+                            control={<Radio size="small" />}
+                            label="Random"
+                          />
+                        </RadioGroup>
                       )}
-                      renderInput={(params) => (
+                    />
+                  </Box>
+                  {idType === "series" ? (
+                    /* Row 3: Start ID, End ID, Quantity */
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid item xs={12} md={4}>
+                        <Controller
+                          name="startRange"
+                          control={control}
+                          rules={{ required: "Start ID is required" }}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              label="Start ID *"
+                              type="number"
+                              fullWidth
+                              size="small"
+                              error={!!errors.startRange}
+                              helperText={errors.startRange?.message}
+                            />
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Controller
+                          name="endRange"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              label="End ID *"
+                              type="number"
+                              fullWidth
+                              size="small"
+                              InputProps={{ readOnly: true }}
+                              sx={{ bgcolor: "grey.50" }}
+                            />
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Controller
+                          name="quantity"
+                          control={control}
+                          rules={{ required: "Quantity is required", min: 1 }}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              label="Quantity *"
+                              type="number"
+                              fullWidth
+                              size="small"
+                              error={!!errors.quantity}
+                              helperText={errors.quantity?.message}
+                            />
+                          )}
+                        />
+                      </Grid>
+                    </Grid>
+                  ) : (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant="subtitle2"
+                        gutterBottom
+                        sx={{ fontSize: "0.875rem", mb: 1 }}
+                      >
+                        Random IDs (Enter up to 12 IDs)
+                      </Typography>
+                      <Grid container spacing={1} sx={{ mb: 2 }}>
+                        {Array.from({ length: 12 }, (_, index) => (
+                          <Grid item xs={6} sm={4} md={2} key={index}>
+                            <TextField
+                              size="small"
+                              placeholder={`ID ${index + 1}`}
+                              value={randomIds[index]}
+                              onChange={(e) =>
+                                handleRandomIdChange(index, e.target.value)
+                              }
+                              inputProps={{ maxLength: 10 }}
+                              fullWidth
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={4}>
+                          <Controller
+                            name="quantity"
+                            control={control}
+                            render={({ field }) => (
+                              <TextField
+                                {...field}
+                                label="Quantity"
+                                type="number"
+                                fullWidth
+                                size="small"
+                                InputProps={{ readOnly: true }}
+                                sx={{ bgcolor: "grey.50" }}
+                              />
+                            )}
+                          />
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  )}
+                </>
+              )}
+
+              {componentType === "BATCH" && (
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="batchId"
+                      control={control}
+                      rules={{ required: "Batch ID is required" }}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Batch ID *"
+                          fullWidth
+                          size="small"
+                          error={!!errors.batchId}
+                          helperText={errors.batchId?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="quantity"
+                      control={control}
+                      rules={{ required: "Quantity is required", min: 1 }}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Quantity *"
+                          type="number"
+                          fullWidth
+                          size="small"
+                          error={!!errors.quantity}
+                          helperText={errors.quantity?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Button
+                      variant="outlined"
+                      onClick={handleGenerateBatchData}
+                      disabled={!selectedDrawing}
+                      size="small"
+                      fullWidth
+                    >
+                      Get Batch Data
+                    </Button>
+                  </Grid>
+
+                  {batchItems.length > 0 && (
+                    <Grid item xs={12}>
+                      <Typography
+                        variant="subtitle2"
+                        gutterBottom
+                        sx={{ fontSize: "0.875rem", mt: 2, mb: 1 }}
+                      >
+                        Batch Details
+                      </Typography>
+                      <TableContainer
+                        component={Paper}
+                        variant="outlined"
+                        sx={{ maxHeight: 200 }}
+                      >
+                        <Table size="small" stickyHeader>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Assembly Number</TableCell>
+                              <TableCell align="right">Quantity</TableCell>
+                              <TableCell align="right">
+                                Batch Quantity
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {batchItems.map((item, index) => (
+                              <TableRow key={index}>
+                                <TableCell>{item.assemblyNumber}</TableCell>
+                                <TableCell align="right">
+                                  {item.quantity}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {item.batchQuantity}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Grid>
+                  )}
+                </Grid>
+              )}
+
+              {(componentType === "FIM" || componentType === "SI") && (
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="quantity"
+                      control={control}
+                      rules={{ required: "Quantity is required", min: 1 }}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Quantity *"
+                          type="number"
+                          fullWidth
+                          size="small"
+                          error={!!errors.quantity}
+                          helperText={errors.quantity?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                </Grid>
+              )}
+
+              {/* Row 4: Unit, Manufacturing Date, Project Number */}
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} md={4}>
+                  <Controller
+                    name="unit"
+                    control={control}
+                    rules={{ required: "Unit is required" }}
+                    render={({ field }) => (
+                      <FormControl fullWidth error={!!errors.unit} size="small">
+                        <InputLabel>Unit *</InputLabel>
+                        <Select {...field} label="Unit *">
+                          {units.map((unit) => (
+                            <MenuItem key={unit.id} value={unit.unitName}>
+                              {unit.unitName}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {errors.unit && (
+                          <FormHelperText>{errors.unit.message}</FormHelperText>
+                        )}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Controller
+                    name="manufacturingDate"
+                    control={control}
+                    rules={{ required: "Manufacturing Date is required" }}
+                    render={({ field }) => (
+                      <DatePicker
+                        {...field}
+                        label="Manufacturing Date *"
+                        maxDate={new Date()}
+                        slotProps={{
+                          textField: {
+                            size: "small",
+                            fullWidth: true,
+                            error: !!errors.manufacturingDate,
+                            helperText: errors.manufacturingDate?.message,
+                          },
+                        }}
+                      />
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Controller
+                    name="projectNumber"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="Project Number"
+                        fullWidth
+                        size="small"
+                      />
+                    )}
+                  />
+                </Grid>
+              </Grid>
+
+              {/* Row 5: IR Number, MSN Number */}
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} md={6}>
+                  <Autocomplete
+                    options={irNumbers}
+                    getOptionLabel={(option) => option.irNumber}
+                    value={selectedIRNumber}
+                    loading={loading}
+                    size="small"
+                    onInputChange={(_, value) => {
+                      if (value.length >= 3) {
+                        debouncedIRSearch(value);
+                      }
+                    }}
+                    onChange={(_, value) => {
+                      setSelectedIRNumber(value);
+                      setValue("irNumber", value?.irNumber || "");
+                    }}
+                    renderOption={(props, option) => (
+                      <li {...props}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            py: 1,
+                          }}
+                        >
+                          <Typography variant="body1">
+                            {option.irNumber}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            IDs: {option.idNumberRange} | Series:{" "}
+                            {option.productionSeriesName}
+                          </Typography>
+                        </Box>
+                      </li>
+                    )}
+                    renderInput={(params) => (
+                      <Box>
                         <TextField
                           {...params}
-                          label="Drawing Number *"
-                          error={!!errors.drawingNumber}
-                          helperText={errors.drawingNumber?.message}
+                          label="IR Number"
                           InputProps={{
                             ...params.InputProps,
                             endAdornment: (
                               <>
-                                {localLoading ? (
+                                {loading ? (
                                   <CircularProgress color="inherit" size={16} />
                                 ) : null}
                                 {params.InputProps.endAdornment}
@@ -514,428 +1014,435 @@ export default function BarcodeGeneration() {
                             ),
                           }}
                         />
-                      )}
-                    />
-                  )}
-                />
+                        {selectedIRNumber?.idNumberRange && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              display: "block",
+                              mt: 0.5,
+                              px: 1,
+                            }}
+                          >
+                            IDs: {selectedIRNumber.idNumberRange}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Autocomplete
+                    options={msnNumbers}
+                    getOptionLabel={(option) => option.msnNumber}
+                    value={selectedMSNNumber}
+                    loading={loading}
+                    size="small"
+                    onInputChange={(_, value) => {
+                      if (value.length >= 3) {
+                        debouncedMSNSearch(value);
+                      }
+                    }}
+                    onChange={(_, value) => {
+                      setSelectedMSNNumber(value);
+                      setValue("msnNumber", value?.msnNumber || "");
+                    }}
+                    renderOption={(props, option) => (
+                      <li {...props}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            py: 1,
+                          }}
+                        >
+                          <Typography variant="body1">
+                            {option.msnNumber}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            IDs: {option.idNumberRange} | Series:{" "}
+                            {option.productionSeriesName}
+                          </Typography>
+                        </Box>
+                      </li>
+                    )}
+                    renderInput={(params) => (
+                      <Box>
+                        <TextField
+                          {...params}
+                          label="MSN Number"
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {loading ? (
+                                  <CircularProgress color="inherit" size={16} />
+                                ) : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                        {selectedMSNNumber?.idNumberRange && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              display: "block",
+                              mt: 0.5,
+                              px: 1,
+                            }}
+                          >
+                            IDs: {selectedMSNNumber.idNumberRange}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                  />
+                </Grid>
               </Grid>
 
-              {/* LN Itemcode */}
-              <Grid item xs={12} md={4}>
-                <Controller
-                  name="lnItemCode"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="LN Itemcode"
-                      fullWidth
-                      size="small"
-                      InputProps={{
-                        readOnly: true,
-                      }}
-                    />
-                  )}
-                />
-              </Grid>
-
-              {/* Component Type */}
-              <Grid item xs={12} md={4}>
-                <Controller
-                  name="componentType"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Component Type"
-                      fullWidth
-                      size="small"
-                      InputProps={{
-                        readOnly: true,
-                      }}
-                    />
-                  )}
-                />
-              </Grid>
-
-              {/* Nomenclature */}
-              <Grid item xs={12} md={6}>
-                <Controller
-                  name="nomenclature"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Nomenclature *"
-                      fullWidth
-                      error={!!errors.nomenclature}
-                      helperText={errors.nomenclature?.message}
-                      size={isMobile ? "small" : "medium"}
-                    />
-                  )}
-                />
-              </Grid>
-
-              {/* Production Series */}
-              <Grid item xs={12} md={6}>
-                <Controller
-                  name="productionSeries"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControl fullWidth error={!!errors.productionSeries}>
-                      <InputLabel>Production Series *</InputLabel>
-                      <Select {...field} label="Production Series *">
-                        {productionSeries.map((ps: any) => (
-                          <MenuItem key={ps.id} value={ps.id}>
-                            {ps.productionSeries}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </Grid>
-
-              {/* Barcode Type */}
-              <Grid item xs={12} md={6}>
-                <Controller
-                  name="barcodeType"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-                      <InputLabel>Barcode Type *</InputLabel>
-                      <Select {...field} label="Barcode Type *">
-                        <MenuItem value="QR">QR Code</MenuItem>
-                        <MenuItem value="CODE128">Code 128</MenuItem>
-                        <MenuItem value="CODE39">Code 39</MenuItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </Grid>
-
-              {/* Print Format */}
-              <Grid item xs={12} md={6}>
-                <Controller
-                  name="printFormat"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-                      <InputLabel>Print Format *</InputLabel>
-                      <Select {...field} label="Print Format *">
-                        <MenuItem value="A4">A4 Paper</MenuItem>
-                        <MenuItem value="A5">A5 Paper</MenuItem>
-                        <MenuItem value="LABEL">Label Sheet</MenuItem>
-                        <MenuItem value="STICKER">Sticker Roll</MenuItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </Grid>
-
-              {/* Quantity */}
-              <Grid item xs={12} md={4}>
-                <Controller
-                  name="quantity"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Quantity *"
-                      type="number"
-                      fullWidth
-                      error={!!errors.quantity}
-                      helperText={errors.quantity?.message}
-                      inputProps={{ min: 1 }}
-                      size={isMobile ? "small" : "medium"}
-                    />
-                  )}
-                />
-              </Grid>
-
-              {/* Start Range */}
-              <Grid item xs={12} md={4}>
-                <Controller
-                  name="startRange"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Start Range *"
-                      type="number"
-                      fullWidth
-                      error={!!errors.startRange}
-                      helperText={errors.startRange?.message}
-                      inputProps={{ min: 1 }}
-                      size={isMobile ? "small" : "medium"}
-                    />
-                  )}
-                />
-              </Grid>
-
-              {/* End Range */}
-              <Grid item xs={12} md={4}>
-                <Controller
-                  name="endRange"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="End Range *"
-                      type="number"
-                      fullWidth
-                      error={!!errors.endRange}
-                      helperText={errors.endRange?.message}
-                      inputProps={{ min: 1 }}
-                      size={isMobile ? "small" : "medium"}
-                      InputProps={{ readOnly: true }}
-                    />
-                  )}
-                />
-              </Grid>
-
-              {/* Options */}
-              <Grid item xs={12}>
-                <Stack direction={isMobile ? "column" : "row"} spacing={2}>
+              {/* Row 6: PO Number, MRIR Number */}
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} md={6}>
                   <Controller
-                    name="includeText"
+                    name="poNumber"
                     control={control}
                     render={({ field }) => (
-                      <FormControlLabel
-                        control={<Checkbox {...field} checked={field.value} />}
-                        label="Include Text Below Barcode"
+                      <TextField
+                        {...field}
+                        label="PO Number"
+                        fullWidth
+                        size="small"
                       />
                     )}
                   />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
                   <Controller
-                    name="includeDate"
+                    name="mrirNumber"
                     control={control}
+                    rules={{
+                      required: selectedDrawing?.drawingNumber?.includes("CB")
+                        ? false
+                        : "MRIR Number is required",
+                    }}
                     render={({ field }) => (
-                      <FormControlLabel
-                        control={<Checkbox {...field} checked={field.value} />}
-                        label="Include Creation Date"
+                      <TextField
+                        {...field}
+                        label={`MRIR Number ${
+                          selectedDrawing?.drawingNumber?.includes("CB")
+                            ? ""
+                            : "*"
+                        }`}
+                        fullWidth
+                        size="small"
+                        disabled={selectedDrawing?.drawingNumber?.includes(
+                          "CB"
+                        )}
+                        error={!!errors.mrirNumber}
+                        helperText={errors.mrirNumber?.message}
+                        sx={
+                          selectedDrawing?.drawingNumber?.includes("CB")
+                            ? { bgcolor: "grey.50" }
+                            : {}
+                        }
                       />
                     )}
                   />
-                </Stack>
+                </Grid>
               </Grid>
 
-              {/* Custom Text */}
-              <Grid item xs={12}>
+              {/* Disposition */}
+              <Box sx={{ mb: 2 }}>
+                <FormLabel
+                  component="legend"
+                  sx={{ mb: 1, fontSize: "0.875rem" }}
+                >
+                  Disposition *
+                </FormLabel>
                 <Controller
-                  name="customText"
+                  name="disposition"
                   control={control}
+                  rules={{ required: "Disposition is required" }}
                   render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Custom Text (Optional)"
-                      fullWidth
-                      multiline
-                      rows={2}
-                      size={isMobile ? "small" : "medium"}
-                      helperText="This text will be included in the QR code data"
-                    />
+                    <RadioGroup {...field} row>
+                      <FormControlLabel
+                        value="Accepted"
+                        control={<Radio size="small" />}
+                        label="Accepted"
+                      />
+                      <FormControlLabel
+                        value="Rejected"
+                        control={<Radio size="small" />}
+                        label="Rejected"
+                      />
+                      <FormControlLabel
+                        value="Used for QT"
+                        control={<Radio size="small" />}
+                        label="Used for QT"
+                      />
+                    </RadioGroup>
                   )}
                 />
+                {errors.disposition && (
+                  <FormHelperText error>
+                    {errors.disposition.message}
+                  </FormHelperText>
+                )}
+              </Box>
+
+              {/* Row 7: Location, Remark */}
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="location"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="Location"
+                        fullWidth
+                        size="small"
+                        InputProps={{ readOnly: true }}
+                        sx={{ bgcolor: "grey.50" }}
+                      />
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="remark"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="Remark"
+                        fullWidth
+                        size="small"
+                        multiline
+                        rows={2}
+                      />
+                    )}
+                  />
+                </Grid>
               </Grid>
 
-              {/* Submit Button */}
-              <Grid item xs={12}>
+              {/* Action Buttons */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: 2,
+                  pt: 2,
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="large"
+                  onClick={handleReset}
+                  startIcon={<RefreshIcon />}
+                  sx={{ minWidth: 120, py: 1.5 }}
+                >
+                  Reset
+                </Button>
+
                 <Button
                   type="submit"
                   variant="contained"
-                  size={isMobile ? "medium" : "large"}
-                  disabled={isGenerating}
-                  startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <QrCodeIcon />}
-                  fullWidth
+                  size="large"
+                  disabled={loading}
+                  startIcon={
+                    loading ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      <QrCodeIcon />
+                    )
+                  }
+                  sx={{ minWidth: 200, py: 1.5 }}
                 >
-                  {isGenerating ? 'Generating...' : 'Generate Barcodes'}
+                  {loading ? "Generating..." : "Generate QR Code"}
                 </Button>
-              </Grid>
-            </Grid>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Barcode List */}
-      {barcodes.length > 0 && (
-        <Card elevation={1}>
-          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-            {/* Header with actions */}
-            <Stack 
-              direction={isMobile ? "column" : "row"} 
-              justifyContent="space-between" 
-              alignItems={isMobile ? "stretch" : "center"}
-              spacing={2}
-              sx={{ mb: 3 }}
-            >
-              <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 600 }}>
-                Generated Barcodes ({barcodes.length})
-              </Typography>
-              
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Checkbox
-                  checked={selectedBarcodes.length === barcodes.length && barcodes.length > 0}
-                  indeterminate={selectedBarcodes.length > 0 && selectedBarcodes.length < barcodes.length}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                />
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={isPrinting ? <CircularProgress size={16} color="inherit" /> : <PrintIcon />}
-                  onClick={handlePrint}
-                  disabled={selectedBarcodes.length === 0 || isPrinting}
-                >
-                  Print ({selectedBarcodes.length})
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<DownloadIcon />}
-                  onClick={handleDownload}
-                  disabled={selectedBarcodes.length === 0}
-                >
-                  Download
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  size="small"
-                  startIcon={<DeleteIcon />}
-                  onClick={handleDelete}
-                  disabled={selectedBarcodes.length === 0}
-                >
-                  Delete
-                </Button>
-              </Stack>
-            </Stack>
-
-            {/* Barcode Grid */}
-            <Grid container spacing={2}>
-              {barcodes
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((barcode) => (
-                  <Grid item xs={12} sm={6} md={4} lg={3} key={barcode.id}>
-                    <BarcodeCard barcode={barcode} />
-                  </Grid>
-                ))}
-            </Grid>
-
-            {/* Pagination */}
-            <TablePagination
-              component="div"
-              count={barcodes.length}
-              page={page}
-              onPageChange={(_, newPage) => setPage(newPage)}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0);
-              }}
-              rowsPerPageOptions={[10, 20, 50]}
-            />
+              </Box>
+            </form>
           </CardContent>
         </Card>
-      )}
 
-      {/* Preview Dialog */}
-      <Dialog 
-        open={previewDialogOpen} 
-        onClose={() => setPreviewDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <QrCodeIcon color="primary" />
-            <Typography variant="h6">
-              Barcode Preview: {selectedBarcode?.serialNumber}
-            </Typography>
-          </Stack>
-        </DialogTitle>
-        
-        <DialogContent>
-          {selectedBarcode && (
-            <Stack spacing={3} alignItems="center" sx={{ p: 2 }}>
-              {/* QR Code */}
-              <Box sx={{ textAlign: 'center' }}>
-                <img
-                  src={selectedBarcode.qrCodeImage}
-                  alt={`QR Code for ${selectedBarcode.serialNumber}`}
-                  style={{ width: 200, height: 200, border: '1px solid #ddd' }}
-                />
-              </Box>
-              
-              {/* Details */}
-              <Stack spacing={2} sx={{ width: '100%' }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="textSecondary">Serial Number</Typography>
-                    <Typography variant="body1" fontWeight="medium">{selectedBarcode.serialNumber}</Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="textSecondary">Drawing Number</Typography>
-                    <Typography variant="body1" fontWeight="medium">{selectedBarcode.drawingNumber}</Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="textSecondary">Nomenclature</Typography>
-                    <Typography variant="body1" fontWeight="medium">{selectedBarcode.nomenclature}</Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="textSecondary">Production Series</Typography>
-                    <Typography variant="body1" fontWeight="medium">{selectedBarcode.productionSeries}</Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography variant="caption" color="textSecondary">QR Code Data</Typography>
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        p: 2, 
-                        bgcolor: 'grey.50', 
-                        border: '1px solid',
-                        borderColor: 'grey.200',
-                        borderRadius: 1 
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                        {selectedBarcode.qrCodeData}
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                </Grid>
+        {/* Generated QR Codes */}
+        {qrcodeList.length > 0 && (
+          <Card elevation={2}>
+            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+              <Stack
+                direction={isMobile ? "column" : "row"}
+                justifyContent="space-between"
+                alignItems={isMobile ? "stretch" : "center"}
+                spacing={2}
+                sx={{ mb: 3 }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{ color: "primary.main", fontWeight: 600 }}
+                >
+                  Generated QR Codes ({qrcodeList.length})
+                </Typography>
+
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  flexWrap="wrap"
+                >
+                  <Checkbox
+                    checked={
+                      selectedBarcodes.length === qrcodeList.length &&
+                      qrcodeList.length > 0
+                    }
+                    indeterminate={
+                      selectedBarcodes.length > 0 &&
+                      selectedBarcodes.length < qrcodeList.length
+                    }
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                  <Typography variant="body2" sx={{ mr: 1 }}>
+                    Select All
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<DownloadIcon />}
+                    onClick={handleDownload}
+                    disabled={selectedBarcodes.length === 0}
+                  >
+                    Download ({selectedBarcodes.length})
+                  </Button>
+                </Stack>
               </Stack>
-            </Stack>
-          )}
-        </DialogContent>
-        
-        <DialogActions sx={{ p: 3 }}>
-          <Button 
-            onClick={() => selectedBarcode && copyToClipboard(selectedBarcode.qrCodeData)}
-            startIcon={<CopyIcon />}
-          >
-            Copy Data
-          </Button>
-          <Button 
-            onClick={() => setPreviewDialogOpen(false)}
-            variant="contained"
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
 
-      {/* Floating Action Button for Quick Generate */}
-      <Fab
-        color="primary"
-        sx={{
-          position: 'fixed',
-          bottom: { xs: 16, md: 24 },
-          right: { xs: 16, md: 24 },
-        }}
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      >
-        <AddIcon />
-      </Fab>
-    </Box>
+              <TableContainer
+                component={Paper}
+                variant="outlined"
+                sx={{ maxHeight: 500 }}
+              >
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={
+                            selectedBarcodes.length === qrcodeList.length &&
+                            qrcodeList.length > 0
+                          }
+                          indeterminate={
+                            selectedBarcodes.length > 0 &&
+                            selectedBarcodes.length < qrcodeList.length
+                          }
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                        />
+                      </TableCell>
+                      <TableCell>Sr. No</TableCell>
+                      <TableCell>QR Code</TableCell>
+                      <TableCell>ID Number</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell align="center">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {qrcodeList
+                      .slice(
+                        page * rowsPerPage,
+                        page * rowsPerPage + rowsPerPage
+                      )
+                      .map((item, index) => (
+                        <TableRow key={item.id} hover>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={selectedBarcodes.includes(item.id)}
+                              onChange={(e) =>
+                                handleSelectBarcode(item.id, e.target.checked)
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {page * rowsPerPage + index + 1}
+                          </TableCell>
+                          <TableCell>
+                            <Typography
+                              variant="body2"
+                              sx={{ fontFamily: "monospace" }}
+                            >
+                              {item.qrCodeNumber || item.serialNumber}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{item.idNumber || "-"}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={item.isNewQrCode ? "New" : "Existing"}
+                              color={item.isNewQrCode ? "success" : "default"}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Stack
+                              direction="row"
+                              spacing={0.5}
+                              justifyContent="center"
+                            >
+                              <Tooltip title="Copy QR Code">
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    copyToClipboard(
+                                      item.qrCodeNumber || item.serialNumber
+                                    )
+                                  }
+                                >
+                                  <CopyIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Download">
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    dispatch(
+                                      exportQRCode(
+                                        item.qrCodeNumber || item.serialNumber
+                                      )
+                                    )
+                                  }
+                                >
+                                  <GetAppIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <TablePagination
+                component="div"
+                count={qrcodeList.length}
+                page={page}
+                onPageChange={(_, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[10, 25, 50]}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </Box>
+    </LocalizationProvider>
   );
-} 
+}
