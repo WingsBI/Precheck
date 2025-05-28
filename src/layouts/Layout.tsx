@@ -174,7 +174,7 @@ export default function Layout() {
           path: "/qrcode/view",
         },
         {
-          text: "Generate QR Code",
+          text: "Add MFG Item",
           icon: <AddIcon />,
           path: "/qrcode/generate",
         },
