@@ -17,6 +17,7 @@ import {
   CircularProgress,
   Autocomplete,
   FormControl,
+  TablePagination
 } from '@mui/material';
 import {
   ShoppingCart as ShoppingCartIcon,
@@ -80,6 +81,11 @@ const MakeOrder: React.FC = () => {
   const [qrCodeLoading, setQrCodeLoading] = useState(false);
   const [bomData, setBomData] = useState<BOMItem[]>([]);
   const [qrCodeData, setQrCodeData] = useState<QRCodeItem[]>([]);
+  const [selectedBomRow, setSelectedBomRow] = useState<number | null>(null);
+
+  // Pagination state for QR codes table
+  const [qrPage, setQrPage] = useState(0);
+  const [qrRowsPerPage, setQrRowsPerPage] = useState(10);
 
   // Form setup
   const { control, handleSubmit, watch, reset, formState: { errors } } = useForm<FormData>({
@@ -193,9 +199,11 @@ const MakeOrder: React.FC = () => {
     setSuccessMessage('');
     setBomData([]);
     setQrCodeData([]);
+    setSelectedBomRow(null);
+    setQrPage(0);
   };
 
-  const handleBomRowDoubleClick = async (bomItem: BOMItem) => {
+  const handleBomRowDoubleClick = async (bomItem: BOMItem, index: number) => {
     const formData = watch();
     
     if (!formData.productionSeries?.id || !formData.drawingNumber?.id) {
@@ -203,6 +211,8 @@ const MakeOrder: React.FC = () => {
       return;
     }
 
+    // Set selected row for visual feedback
+    setSelectedBomRow(index);
     setQrCodeLoading(true);
     setError('');
 
@@ -213,13 +223,42 @@ const MakeOrder: React.FC = () => {
         quantity: bomItem.qty || 1,
       };
 
-      await dispatch(getAvailableComponentsForBOM(requestData)).unwrap();
+      console.log('Making API call with:', requestData);
+      console.log('Selected BOM item:', bomItem);
+
+      const result = await dispatch(getAvailableComponentsForBOM(requestData)).unwrap();
+      
+      console.log('API Response:', result);
+      
+      // The result will be automatically handled by the useEffect when availableComponents changes
+      if (!result || (Array.isArray(result) && result.length === 0)) {
+        setError('No available components found for this BOM item');
+      }
     } catch (err: any) {
+      console.error('API Error:', err);
       setError(err || 'Failed to fetch available components');
+      setQrCodeData([]);
     } finally {
       setQrCodeLoading(false);
     }
   };
+
+  // Pagination handlers for QR codes table
+  const handleQrChangePage = (event: unknown, newPage: number) => {
+    setQrPage(newPage);
+  };
+
+  const handleQrChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setQrRowsPerPage(parseInt(event.target.value, 10));
+    setQrPage(0);
+  };
+
+  // Paginated QR code results
+  const paginatedQrResults = useMemo(() => {
+    const startIndex = qrPage * qrRowsPerPage;
+    const endIndex = startIndex + qrRowsPerPage;
+    return qrCodeData.slice(startIndex, endIndex);
+  }, [qrCodeData, qrPage, qrRowsPerPage]);
 
   return (
     <Box sx={{ p: 1 }}>
@@ -397,6 +436,7 @@ const MakeOrder: React.FC = () => {
                 type="number"
                 error={!!errors.startIdNumber}
                 helperText={errors.startIdNumber?.message}
+                sx={{ width: 100 }}
               />
             )}
           />
@@ -415,6 +455,7 @@ const MakeOrder: React.FC = () => {
                 type="number"
                 error={!!errors.quantity}
                 helperText={errors.quantity?.message}
+                sx={{ width: 100 }}
               />
             )}
           />
@@ -423,21 +464,23 @@ const MakeOrder: React.FC = () => {
         <Button
           variant="contained"
           color="primary"
-          sx={{ minWidth: 130, height: 32 }}
+          sx={{ minWidth: 150, height: 32 }}
           size="small"
           onClick={handleSubmit(onSubmit)}
           disabled={isLoading}
         >
+          <ShoppingCartIcon sx={{ mr: 1 }} />
           Make Order
         </Button>
         
         <Button
           variant="contained"
           color="error"
-          sx={{ minWidth: 130, height: 32 }}
+          sx={{ minWidth: 150, height: 32 }}
           size="small"
           onClick={handleReset}
         >
+          <RefreshIcon sx={{ mr: 1 }} />
           Reset
         </Button>
       </Box>
@@ -464,15 +507,16 @@ const MakeOrder: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {bomData.map((item) => (
+                  {bomData.map((item, index) => (
                     <TableRow 
                       key={item.sr} 
                       hover
-                      onDoubleClick={() => handleBomRowDoubleClick(item)}
+                      onDoubleClick={() => handleBomRowDoubleClick(item, index)}
                       sx={{ 
                         cursor: 'pointer',
+                        backgroundColor: selectedBomRow === index ? '#e3f2fd' : 'inherit',
                         '&:hover': {
-                          backgroundColor: 'action.hover',
+                          backgroundColor: selectedBomRow === index ? '#bbdefb' : '#f5f5f5',
                         }
                       }}
                     >
@@ -506,7 +550,7 @@ const MakeOrder: React.FC = () => {
                 <CircularProgress size={16} sx={{ ml: 1 }} />
               )}
             </Box>
-            <TableContainer sx={{ maxHeight: 300, overflow: 'auto' }}>
+            <TableContainer sx={{ maxHeight: 500, overflow: 'auto' }}>
               <Table stickyHeader sx={{ minWidth: 400 }} size="small">
                 <TableHead>
                   <TableRow>
@@ -531,7 +575,7 @@ const MakeOrder: React.FC = () => {
                     </TableRow>
                   ) : (
                     <>
-                      {qrCodeData.map((item, index) => (
+                      {paginatedQrResults.map((item, index) => (
                         <TableRow key={index} hover>
                           <TableCell>{item.qrCodeNumber}</TableCell>
                           <TableCell>{item.id}</TableCell>
@@ -554,6 +598,28 @@ const MakeOrder: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+            
+            {/* Pagination for QR Codes */}
+            {qrCodeData.length > 0 && (
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                component="div"
+                count={qrCodeData.length}
+                rowsPerPage={qrRowsPerPage}
+                page={qrPage}
+                onPageChange={handleQrChangePage}
+                onRowsPerPageChange={handleQrChangeRowsPerPage}
+                sx={{ 
+                  borderTop: '1px solid #e0e0e0',
+                  '& .MuiTablePagination-toolbar': {
+                    minHeight: 48
+                  },
+                  '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                    fontSize: '0.8rem'
+                  }
+                }}
+              />
+            )}
           </Paper>
         </Grid>
       </Grid>
