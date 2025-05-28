@@ -13,12 +13,16 @@ import {
   TableRow,
   InputAdornment,
   CircularProgress,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import { getBarcodeDetails } from '../../store/slices/qrcodeSlice';
 import { type RootState } from '../../store/store';
 import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch } from '../../store/store';
+import * as XLSX from 'xlsx';
 
 interface QRCodeData {
   qrcodeId: string;
@@ -35,12 +39,15 @@ interface QRCodeData {
   username: string;
 }
 
-
-
 const ViewBarcode: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [searchQuery, setSearchQuery] = useState('');
   const { barcodeDetails, loading, error } = useSelector((state: RootState) => state.qrcode);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -49,19 +56,118 @@ const ViewBarcode: React.FC = () => {
     dispatch(getBarcodeDetails(searchQuery));
   };
 
-  const handleDownload = () => {
-    // Implement download functionality
-    console.log('Download clicked');
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
-  const handleKeyPress = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter') {
-      handleSearch();
+  const handleDownload = () => {
+    try {
+      if (!barcodeDetails) {
+        setSnackbar({
+          open: true,
+          message: 'No data available to download',
+          severity: 'error'
+        });
+        return;
+      }
+
+      // Prepare data for Excel
+      const data = [{
+        'QRCode ID': barcodeDetails.qrCodeNumber,
+        'Prod Series': barcodeDetails.productionSeriesId,
+        'Drawing Number': barcodeDetails.drawingNumber,
+        'Nomenclature': barcodeDetails.nomenclature,
+        'Consumed In Drawing': barcodeDetails.consumedInDrawing,
+        'Status': barcodeDetails.qrCodeStatus,
+        'IR Number': barcodeDetails.irNumber,
+        'MSN Number': barcodeDetails.msnNumber,
+        'MRIR Number': barcodeDetails.mrirNumber,
+        'Quantity': barcodeDetails.quantity,
+        'Disposition': barcodeDetails.disposition,
+        'Username': barcodeDetails.users
+      }];
+
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(data);
+
+      // Set column widths (approximately 200px)
+      const columnWidths = [ 
+        { wch: 18 }, // QRCode ID
+        { wch: 18 }, // Prod Series
+        { wch: 18 }, // Drawing Number
+        { wch: 18 }, // Nomenclature
+        { wch: 18 }, // Consumed In Drawing
+        { wch: 18 }, // Status
+        { wch: 18 }, // IR Number
+        { wch: 18 }, // MSN Number
+        { wch: 18 }, // MRIR Number
+        { wch: 18 }, // Quantity
+        { wch: 18 }, // Disposition
+        { wch: 18 }  // Username
+      ];
+
+      ws['!cols'] = columnWidths;
+
+      // Define the style for all cells
+      const cellStyle = {
+        alignment: {
+          horizontal: 'center',
+          vertical: 'center',
+          wrapText: true
+        },
+        font: {
+          bold: false,
+          sz: 11
+        }
+      };
+
+      // Define header style
+      const headerStyle = {
+        ...cellStyle,
+        font: {
+          bold: true,
+          sz: 12
+        },
+        fill: {
+          bgColor: { rgb: "C0C0C0" }
+        }
+      };
+
+      // Add styling to make text wrap and center-aligned
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:L2');
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!ws[cell_address]) continue;
+          
+          // Apply header style to first row, regular style to data rows
+          ws[cell_address].s = R === 0 ? headerStyle : cellStyle;
+        }
+      }
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'QRCode Details');
+
+      // Generate Excel file
+      XLSX.writeFile(wb, `QRCode_${barcodeDetails.qrCodeNumber}.xlsx`);
+
+      setSnackbar({
+        open: true,
+        message: 'File downloaded successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to download file',
+        severity: 'error'
+      });
+      console.error('Download error:', error);
     }
   };
 
   return (
-    <Box sx={{ p: 3.5 ,}}>
+    <Box sx={{ p: 3.5 }}>
       <Typography variant="h4" gutterBottom color="primary.main" fontWeight={600}>
         View QR Code
       </Typography>
@@ -72,12 +178,16 @@ const ViewBarcode: React.FC = () => {
       <Paper sx={{ p: 0.5, mt: 3 ,pl: 2 ,pr: 2, width: '75vw'}}>
         <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1 , alignItems: 'center' }}>
           <TextField
-            sx={{width: '500px'}}
+            sx={{width: '40vw'}}
             variant="outlined"
             placeholder="Search QR Code ID"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (e.target.value.trim()) {
+                dispatch(getBarcodeDetails(e.target.value));
+              }
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -110,41 +220,52 @@ const ViewBarcode: React.FC = () => {
           <Table sx={{ minWidth: 650 }} aria-label="QR codes table">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 'bold' }}>QRCode ID</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Prod Series</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Drawing Number</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Nomenclature</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>ConsumedInDrawing</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>IR Number</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>MSN Number</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>MRIR Number</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Quantity</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Disposition</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Username</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>QRCode ID</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '120px', textAlign: 'center' }}>Prod Series</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '180px', textAlign: 'center' }}>Drawing Number</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Nomenclature</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>ConsumedInDrawing</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>IR Number</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>MSN Number</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>MRIR Number</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Quantity</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Disposition</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Username</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {barcodeDetails && (
                 <TableRow>
-                  <TableCell>{barcodeDetails.qrCodeNumber}</TableCell>
-                  <TableCell>{barcodeDetails.productionSeriesId}</TableCell>
-                  <TableCell>{barcodeDetails.drawingNumber}</TableCell>
-                  <TableCell>{barcodeDetails.nomenclature}</TableCell>
-                  <TableCell>{barcodeDetails.consumedInDrawing}</TableCell>
-                  <TableCell>{barcodeDetails.qrCodeStatus}</TableCell>
-                  <TableCell>{barcodeDetails.irNumber}</TableCell>
-                  <TableCell>{barcodeDetails.msnNumber}</TableCell>
-                  <TableCell>{barcodeDetails.mrirNumber}</TableCell>
-                  <TableCell>{barcodeDetails.quantity}</TableCell>
-                  <TableCell>{barcodeDetails.disposition}</TableCell>
-                  <TableCell>{barcodeDetails.users}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.qrCodeNumber}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>{barcodeDetails.productionSeriesId}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails.drawingNumber}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.nomenclature}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '250px' }}>{barcodeDetails.consumedInDrawing}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.qrCodeStatus}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails.irNumber}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails.msnNumber}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.mrirNumber}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.quantity}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.disposition}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.users}</TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </TableContainer>
       </Paper>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
