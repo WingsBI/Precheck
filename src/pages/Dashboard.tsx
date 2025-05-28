@@ -62,7 +62,7 @@ const Dashboard: React.FC = () => {
       description: 'Access and manage SOP Generation related tasks',
       icon: <DescriptionIcon sx={{ fontSize: 40 }} />,
       color: '#F44336', // Red
-      route: '/sop/generate',
+      route: '/sop/view',
     },
     {
       title: 'View Precheck',
