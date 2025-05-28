@@ -79,6 +79,22 @@ export const getAvailableComponents = createAsyncThunk(
   }
 );
 
+export const getAvailableComponentsForBOM = createAsyncThunk(
+  'precheck/getAvailableComponentsForBOM',
+  async (requestData: {
+    prodSeriesId: number;
+    drawingNumberId: number;
+    quantity: number;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/Precheck/GetAvailablComponents', requestData);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get available components for BOM');
+    }
+  }
+);
+
 export const fetchConsumptionList = createAsyncThunk(
   'precheck/fetchConsumptionList',
   async (params: any, { rejectWithValue }) => {
@@ -93,9 +109,15 @@ export const fetchConsumptionList = createAsyncThunk(
 
 export const makePrecheckOrder = createAsyncThunk(
   'precheck/makePrecheckOrder',
-  async (orderData: any, { rejectWithValue }) => {
+  async (orderData: {
+    productionOrderNumber: string;
+    productionSeriesId: number;
+    drawingNumberId: number;
+    createdBy: number;
+    ids: number[];
+  }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/api/precheck/make-order', orderData);
+      const response = await api.post('/api/Precheck/MakePrecheckOrder', orderData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to make precheck order');
@@ -111,6 +133,20 @@ export const storeInPrecheck = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to store in precheck');
+    }
+  }
+);
+
+export const exportPrecheckDetails = createAsyncThunk(
+  'precheck/exportPrecheckDetails',
+  async (exportData: any, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/Precheck/ExportPrecheckdetails', exportData, {
+        responseType: 'blob', // For file download
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to export precheck details');
     }
   }
 );
@@ -201,6 +237,20 @@ const precheckSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload as string;
       })
+      // Get Available Components for BOM
+      .addCase(getAvailableComponentsForBOM.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getAvailableComponentsForBOM.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.availableComponents = action.payload;
+        state.error = null;
+      })
+      .addCase(getAvailableComponentsForBOM.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
       // Fetch Consumption List
       .addCase(fetchConsumptionList.pending, (state) => {
         state.isLoading = true;
@@ -238,6 +288,19 @@ const precheckSlice = createSlice({
         state.error = null;
       })
       .addCase(storeInPrecheck.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Export Precheck Details
+      .addCase(exportPrecheckDetails.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(exportPrecheckDetails.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(exportPrecheckDetails.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

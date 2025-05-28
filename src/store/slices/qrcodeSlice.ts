@@ -3,14 +3,22 @@ import api from '../../services/api';
 
 interface QRCodeState {
   qrcodeList: any[];
+
   barcodeDetails: any | null;
+
+  consumedInList: any[];
+
   loading: boolean;
   error: string | null;
 }
 
 const initialState: QRCodeState = {
   qrcodeList: [],
+
   barcodeDetails: null,
+
+  consumedInList: [],
+
   loading: false,
   error: null,
 };
@@ -31,11 +39,28 @@ export const createQRCode = createAsyncThunk(
   }
 );
 
+
 export const getBarcodeDetails = createAsyncThunk(
   'qrcode/getBarcodeDetails',
   async (qrCodeNumber: string) => {
     const response = await api.get(`/api/QRCode/GetBarcodeDetails?QRCodeNumber=${qrCodeNumber}`);
     return response.data;
+
+export const getConsumedIn = createAsyncThunk(
+  'qrcode/getConsumedIn',
+  async (params: {
+    ProdSeriesId?: number;
+    IdNumber?: number;
+    DrawingNumberId?: number;
+    AssemblyNumber?: string;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/QRCode/GetConsumedIn', { params });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get consumed in data');
+    }
+
   }
 );
 
@@ -67,6 +92,7 @@ const qrcodeSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to create QR code';
       })
+
       .addCase(getBarcodeDetails.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -78,6 +104,20 @@ const qrcodeSlice = createSlice({
       .addCase(getBarcodeDetails.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch barcode details';
+
+      .addCase(getConsumedIn.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getConsumedIn.fulfilled, (state, action) => {
+        state.loading = false;
+        state.consumedInList = action.payload;
+        state.error = null;
+      })
+      .addCase(getConsumedIn.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+
       });
   },
 });

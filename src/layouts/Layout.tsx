@@ -49,8 +49,8 @@ import {
 import { styled } from "@mui/material/styles";
 import type { RootState } from "../store/store";
 import { logout } from "../store/slices/authSlice";
-const drawerWidth = 250;
-const drawerCollapsedWidth = 70;
+const drawerWidth = 240;
+const drawerCollapsedWidth = 65;
 
 interface MenuItem {
   text: string;
@@ -62,11 +62,11 @@ interface MenuItem {
 
 const Main = styled("main")(({ theme }) => ({
   flexGrow: 1,
-  padding: theme.spacing(1),
+  padding: 0, // Removed all padding
   marginLeft: 0,
   width: "100%",
   [theme.breakpoints.up("lg")]: {
-    paddingLeft: drawerCollapsedWidth,
+    paddingLeft: drawerCollapsedWidth - 20, // Reduced by additional 10px
   },
 }));
 
@@ -75,7 +75,7 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
   background: "linear-gradient(135deg, #A8005A 0%, #d63384 100%)",
   boxShadow: "0 2px 8px rgba(168, 0, 90, 0.2)",
   [theme.breakpoints.up("lg")]: {
-    paddingLeft: drawerCollapsedWidth,
+    paddingLeft: drawerCollapsedWidth - 20, // Reduced to match Main component
   },
 }));
 
@@ -184,7 +184,7 @@ export default function Layout() {
       icon: <AssignmentIcon />,
       path: "/precheck",
       subItems: [
-        { text: "View Precheck", icon: <VisibilityIcon />, path: "/precheck" },
+        { text: "View Precheck", icon: <VisibilityIcon />, path: "/precheck/view" },
         {
           text: "View Consumed In",
           icon: <VisibilityIcon />,
@@ -643,7 +643,7 @@ export default function Layout() {
         <Toolbar />
         <Box
           sx={{
-            p: { xs: 2, sm: 3, md: 3 },
+            p: 0, // Completely removed padding
             // ml: { xs: 0, lg: desktopOpen ? `${drawerWidth - drawerCollapsedWidth}px` : 0 },
             transition: theme.transitions.create("margin-left", {
               easing: theme.transitions.easing.sharp,
