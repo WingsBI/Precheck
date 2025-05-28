@@ -185,13 +185,34 @@ const sopSlice = createSlice({
       })
       .addCase(getSopAssemblyData.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.assemblyData = action.payload.map((item: any, index: number) => ({
-          ...item,
-          serialNumber: index + 1,
-          isExpanded: false,
-          hasChildren: false, // This should be determined by your API
-          level: 0, // This should be determined by your API
-        }));
+        
+        // Enhanced data processing for tree structure
+        const processedData = action.payload.map((item: any, index: number) => {
+          // Determine hierarchy based on drawing number patterns or assembly relationships
+          // This is a basic implementation - adjust based on your actual data structure
+          const level = item.drawingNumber?.includes('-') ? 
+            (item.drawingNumber.split('-').length - 1) : 0;
+          
+          const hasChildren = action.payload.some((otherItem: any) => 
+            otherItem.parentDrawingNumber === item.drawingNumber ||
+            otherItem.assemblyNumber === item.drawingNumber
+          );
+
+          return {
+            ...item,
+            serialNumber: index + 1,
+            id: item.id || index + 1,
+            parentId: item.parentDrawingNumber || item.parentAssemblyId || null,
+            level: level,
+            hasChildren: hasChildren,
+            isExpanded: false,
+            // Add additional tree-specific properties
+            hasSubAssemblies: hasChildren,
+            parentAssemblyId: item.parentAssemblyId || null,
+          };
+        });
+
+        state.assemblyData = processedData;
         state.error = null;
       })
       .addCase(getSopAssemblyData.rejected, (state, action) => {
