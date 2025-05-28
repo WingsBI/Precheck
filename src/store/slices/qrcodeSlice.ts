@@ -112,18 +112,6 @@ export const createQRCode = createAsyncThunk(
             state.loading = false;
             state.error = action.payload as string;
           })
-          .addCase(getBarcodeDetails.pending, (state) => {
-            state.loading = true;
-            state.error = null;
-          })
-          .addCase(getBarcodeDetails.fulfilled, (state, action) => {
-            state.loading = false;
-            state.barcodeDetails = action.payload;
-          })
-          .addCase(getBarcodeDetails.rejected, (state, action) => {
-            state.loading = false;
-            state.error = action.error.message || 'Failed to fetch barcode details';
-          });
       },
     });
 

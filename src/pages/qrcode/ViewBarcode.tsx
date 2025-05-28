@@ -18,7 +18,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import { getBarcodeDetails } from '../../store/slices/qrcodeSlice';
 import { type RootState } from '../../store/store';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { useDispatch, useSelector } from "react-redux";
 
 interface QRCodeData {
   qrcodeId: string;
@@ -38,9 +38,9 @@ interface QRCodeData {
 
 
 const ViewBarcode: React.FC = () => {
-  const dispatch = useAppDispatch();
+  const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
-  const { barcodeDetails, loading, error } = useAppSelector((state: RootState) => state.qrcode);
+  const { barcodeDetails, loading, error } = useSelector((state: RootState) => state.qrcode);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -69,7 +69,7 @@ const ViewBarcode: React.FC = () => {
         View and download existing QR codes
       </Typography>
       
-      <Paper sx={{ p: 0.5, mt: 3 ,pl: 2 ,pr: 2, width: '910px'}}>
+      <Paper sx={{ p: 0.5, mt: 3 ,pl: 2 ,pr: 2, width: '75vw'}}>
         <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1 , alignItems: 'center' }}>
           <TextField
             sx={{width: '500px'}}
