@@ -177,7 +177,7 @@ export default function SearchUpdateIRMSN() {
     }
   };
 
-  // Update function
+  // Update function with immediate UI refresh
   const onUpdate = async () => {
     if (!selectedItem) return;
     
@@ -202,7 +202,7 @@ export default function SearchUpdateIRMSN() {
 
       await api.post(endpoint, payload);
 
-      // Update the selected item with new values
+      // Create updated item with new values
       const updatedItem: IRMSNItem = {
         ...selectedItem,
         stage: updateForm.stage,
@@ -210,9 +210,10 @@ export default function SearchUpdateIRMSN() {
         idNumberRange: updateForm.idNumberRange,
         supplier: updateForm.supplier || null,
         remark: updateForm.remark || null,
+        modifiedDate: new Date().toISOString(), // Add current timestamp
       };
 
-      // Update both the numbers array and selected item
+      // Update the numbers array immediately
       setNumbers(prevNumbers => 
         prevNumbers.map(item => 
           item.id === selectedItem.id 
@@ -220,6 +221,8 @@ export default function SearchUpdateIRMSN() {
             : item
         )
       );
+
+      // Update the selected item immediately to reflect changes in the UI
       setSelectedItem(updatedItem);
 
       setSuccessMessage(
@@ -227,13 +230,13 @@ export default function SearchUpdateIRMSN() {
       );
       setEditDialogOpen(false);
 
-      // Refresh the search results to show updated data
-      if (selectedNumber) {
-        handleNumberSelect(selectedNumber);
-      }
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(""), 3000);
+
     } catch (error) {
       console.error("Error updating:", error);
       setSuccessMessage("Failed to update. Please try again.");
+      setTimeout(() => setSuccessMessage(""), 3000);
     } finally {
       setIsLoading(false);
     }
@@ -260,149 +263,24 @@ export default function SearchUpdateIRMSN() {
     return total;
   };
 
-  const ResultCard = ({ item }: { item: IRMSNItem }) => (
-    <Card
-      elevation={1}
-      sx={{
-        mb: 2,
-        "&:hover": {
-          elevation: 3,
-          transform: "translateY(-2px)",
-          transition: "all 0.2s ease-in-out",
-        },
-      }}
-    >
-      <CardContent>
-        <Stack spacing={2}>
-          {/* Header with number and edit button */}
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Typography variant="h6" color="primary" fontWeight="bold">
-              {item.irNumber || item.msnNumber}
-            </Typography>
-            <Button
-              startIcon={<EditIcon />}
-              onClick={() => setEditDialogOpen(true)}
-              variant="outlined"
-              size="small"
-            >
-              Edit
-            </Button>
-          </Stack>
-
-          {/* Details Grid */}
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">
-                Drawing Number
-              </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {item.drawingNumberIdName}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">
-                Production Series
-              </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {item.productionSeriesName}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">
-                Nomenclature
-              </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {item.nomenclature || ""}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">
-                ID Range
-              </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {item.idNumberRange}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">
-                Quantity
-              </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {item.quantity}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">
-                Stage
-              </Typography>
-              <Chip
-                label={item.stage}
-                size="small"
-                color="primary"
-                variant="outlined"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">
-                PO Number
-              </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {item.productionOrderNumber}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">
-                Project Number
-              </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {item.projectNumber}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="caption" color="textSecondary">
-                Created Date
-              </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {item.createdDate}
-              </Typography>
-            </Grid>
-          </Grid>
-
-          {(item.supplier || item.remark) && (
-            <Stack spacing={1}>
-              {item.supplier && (
-                <Box>
-                  <Typography variant="caption" color="textSecondary">
-                    Supplier
-                  </Typography>
-                  <Typography variant="body2">{item.supplier}</Typography>
-                </Box>
-              )}
-              {item.remark && (
-                <Box>
-                  <Typography variant="caption" color="textSecondary">
-                    Remark
-                  </Typography>
-                  <Typography variant="body2">{item.remark}</Typography>
-                </Box>
-              )}
-            </Stack>
-          )}
-        </Stack>
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
+    <Box sx={{ p: { xs: 1, md: 1.5 }, height: "100vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <Typography
+        variant="h5"
+        sx={{
+          color: "primary.main",
+          fontWeight: 600,
+          mb: 1.5,
+          textAlign: "left",
+        }}
+      >
+        Search/Update
+      </Typography>
+
       {successMessage && (
         <Alert
-          severity="success"
-          sx={{ mb: 3 }}
+          severity={successMessage.includes("Failed") ? "error" : "success"}
+          sx={{ mb: 1.5 }}
           onClose={() => setSuccessMessage("")}
         >
           {successMessage}
@@ -410,23 +288,15 @@ export default function SearchUpdateIRMSN() {
       )}
 
       {/* Search Form */}
-      <Card elevation={1} sx={{ mb: 3 }}>
-        <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-          <Typography
-            variant="h6"
-            gutterBottom
-            sx={{ color: "primary.main", fontWeight: 600 }}
-          >
-            Search {searchForm.documentType} Number
-          </Typography>
-
-          <Grid container spacing={3} alignItems="center">
+      <Card elevation={2} sx={{ mb: 1.5 }}>
+        <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+          <Grid container spacing={2} alignItems="center">
             {/* Document Type */}
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
                 <FormLabel
                   component="legend"
-                  sx={{ mb: 1, color: "text.primary" }}
+                  sx={{ mb: 0.5, color: "text.primary", fontWeight: 600, fontSize: "0.875rem" }}
                 >
                   Document Type *
                 </FormLabel>
@@ -445,23 +315,26 @@ export default function SearchUpdateIRMSN() {
                 >
                   <FormControlLabel
                     value="IR"
-                    control={<Radio size={isMobile ? "small" : "medium"} />}
+                    control={<Radio size="small" />}
                     label="IR Number"
+                    sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.875rem" } }}
                   />
                   <FormControlLabel
                     value="MSN"
-                    control={<Radio size={isMobile ? "small" : "medium"} />}
+                    control={<Radio size="small" />}
                     label="MSN Number"
+                    sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.875rem" } }}
                   />
                 </RadioGroup>
               </FormControl>
             </Grid>
 
             {/* Number Selection */}
-            <Grid item xs={12} md={5}>
+            <Grid item xs={12} md={8}>
               <Autocomplete
                 options={numbers}
                 loading={isLoading}
+                size="small"
                 value={
                   numbers.find(
                     (n) => (n.irNumber || n.msnNumber) === selectedNumber
@@ -476,17 +349,21 @@ export default function SearchUpdateIRMSN() {
                 onChange={(_, value) => {
                   const number = value?.irNumber || value?.msnNumber || "";
                   setSelectedNumber(number);
+                  if (value) {
+                    handleNumberSelect(number);
+                  }
                 }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label={`Select ${searchForm.documentType} Number`}
+                    label={`IR/MSN *`}
+                    placeholder={`Select ${searchForm.documentType} Number`}
                     InputProps={{
                       ...params.InputProps,
                       endAdornment: (
                         <>
                           {isLoading ? (
-                            <CircularProgress color="inherit" size={20} />
+                            <CircularProgress color="inherit" size={16} />
                           ) : null}
                           {params.InputProps.endAdornment}
                         </>
@@ -496,108 +373,113 @@ export default function SearchUpdateIRMSN() {
                 )}
               />
             </Grid>
-
-            <Grid item xs={12} md={3}>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={() => handleNumberSelect(selectedNumber)}
-                disabled={!selectedNumber || isLoading}
-              >
-                View Details
-              </Button>
-            </Grid>
           </Grid>
         </CardContent>
       </Card>
 
       {/* Search Results */}
       {selectedItem && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
+        <Card elevation={2} sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <CardContent sx={{ p: { xs: 1.5, md: 2 }, flex: 1, overflow: "auto" }}>
             <Stack
               direction="row"
               justifyContent="space-between"
               alignItems="center"
-              mb={2}
+              mb={1.5}
             >
-              <Typography variant="h6" color="primary">
+              <Typography variant="h6" color="primary" fontWeight="bold">
                 {selectedItem.irNumber || selectedItem.msnNumber}
               </Typography>
               <Button
                 startIcon={<EditIcon />}
                 onClick={() => setEditDialogOpen(true)}
-                variant="outlined"
+                variant="contained"
                 size="small"
+                sx={{ 
+                  backgroundColor: "primary.main",
+                  color: "white"
+                }}
               >
                 Edit
               </Button>
             </Stack>
 
-            <Grid container spacing={2}>
-              {/* Read-only fields */}
+            <Grid container spacing={1.5}>
+              {/* First Row */}
               <Grid item xs={12} md={4}>
                 <TextField
                   label="Drawing Number"
                   value={selectedItem.drawingNumberIdName}
                   fullWidth
+                  size="small"
                   InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
-                  label="Production Series"
-                  value={selectedItem.productionSeriesName}
+                  label="Document Type"
+                  value={searchForm.documentType}
                   fullWidth
+                  size="small"
                   InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
                 />
               </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Prod Series"
+                  value={selectedItem.productionSeriesName}
+                  fullWidth
+                  size="small"
+                  InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
+                />
+              </Grid>
+              
+              {/* Second Row */}
               <Grid item xs={12} md={4}>
                 <TextField
                   label="Nomenclature"
                   value={selectedItem.nomenclature || ""}
                   fullWidth
-                  InputProps={{ readOnly: true }}
+                  size="small"
+                  InputProps={{ 
+                    readOnly: true,
+                    sx: { fontSize: "0.875rem" }
+                  }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50",
+                      fontSize: "0.875rem"
+                    } 
+                  }}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
-                  label="Project Number"
-                  value={selectedItem.projectNumber}
-                  fullWidth
-                  InputProps={{ readOnly: true }}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="PO Number"
-                  value={selectedItem.productionOrderNumber}
-                  fullWidth
-                  InputProps={{ readOnly: true }}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="Created Date"
-                  value={selectedItem.createdDate}
-                  fullWidth
-                  InputProps={{ readOnly: true }}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="Component Type"
-                  value={selectedItem.componentType}
-                  fullWidth
-                  InputProps={{ readOnly: true }}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="ID Range"
+                  label="ID Nos"
                   value={selectedItem.idNumberRange}
                   fullWidth
+                  size="small"
                   InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
@@ -605,8 +487,140 @@ export default function SearchUpdateIRMSN() {
                   label="Quantity"
                   value={selectedItem.quantity}
                   fullWidth
+                  size="small"
                   InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
                 />
+              </Grid>
+              
+              {/* Third Row */}
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Project Number"
+                  value={selectedItem.projectNumber}
+                  fullWidth
+                  size="small"
+                  InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="PO Number"
+                  value={selectedItem.productionOrderNumber}
+                  fullWidth
+                  size="small"
+                  InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Stage"
+                  value={selectedItem.stage || ""}
+                  fullWidth
+                  size="small"
+                  InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
+                />
+              </Grid>
+              
+              {/* Fourth Row */}
+              <Grid item xs={12} md={4}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "text.secondary", display: "block", mb: 0.5 }}
+                >
+                  Generated by
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ fontWeight: 500, color: "text.primary" }}
+                >
+                  {selectedItem.userName || "N/A"}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Supplier"
+                  value={selectedItem.supplier || ""}
+                  fullWidth
+                  size="small"
+                  InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Remark"
+                  value={selectedItem.remark || ""}
+                  fullWidth
+                  size="small"
+                  InputProps={{ readOnly: true }}
+                  sx={{ 
+                    "& .MuiInputBase-input": { 
+                      backgroundColor: "grey.50" 
+                    } 
+                  }}
+                />
+              </Grid>
+
+              {/* Generated IR/MSN Number Display */}
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    mt: 1,
+                    p: 1.5,
+                    backgroundColor: "primary.50",
+                    border: "1px solid",
+                    borderColor: "primary.200",
+                    borderRadius: 1,
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" spacing={2}>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 600, color: "primary.main" }}
+                    >
+                      IR/MSN Number
+                    </Typography>
+                    <Box
+                      sx={{
+                        flex: 1,
+                        p: 1,
+                        backgroundColor: "white",
+                        border: "1px solid",
+                        borderColor: "grey.300",
+                        borderRadius: 1,
+                        fontFamily: "monospace",
+                        fontSize: "0.95rem",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {selectedItem.irNumber || selectedItem.msnNumber}
+                    </Box>
+                  </Stack>
+                </Box>
               </Grid>
             </Grid>
           </CardContent>
@@ -618,7 +632,7 @@ export default function SearchUpdateIRMSN() {
         <Card
           elevation={0}
           sx={{
-            p: 4,
+            p: 2,
             textAlign: "center",
             bgcolor: "grey.50",
             border: "2px dashed",
@@ -626,7 +640,7 @@ export default function SearchUpdateIRMSN() {
           }}
         >
           <CardContent>
-            <Typography variant="h6" color="textSecondary" gutterBottom>
+            <Typography variant="body1" color="textSecondary" gutterBottom>
               No results found
             </Typography>
             <Typography variant="body2" color="textSecondary">
@@ -641,7 +655,7 @@ export default function SearchUpdateIRMSN() {
         <Card
           elevation={0}
           sx={{
-            p: 4,
+            p: 2,
             textAlign: "center",
             bgcolor: "grey.50",
             border: "2px dashed",
@@ -649,7 +663,7 @@ export default function SearchUpdateIRMSN() {
           }}
         >
           <CardContent>
-            <Typography variant="h6" color="textSecondary" gutterBottom>
+            <Typography variant="body1" color="textSecondary" gutterBottom>
               Search IR/MSN Numbers
             </Typography>
             <Typography variant="body2" color="textSecondary">
@@ -663,7 +677,7 @@ export default function SearchUpdateIRMSN() {
       <Dialog
         open={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
-        maxWidth="md"
+        maxWidth="sm"
         fullWidth
         fullScreen={isMobile}
       >
@@ -677,10 +691,10 @@ export default function SearchUpdateIRMSN() {
         </DialogTitle>
 
         <DialogContent>
-          <Grid container spacing={3} sx={{ mt: 1 }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
             {/* Stage */}
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small">
                 <InputLabel>Stage *</InputLabel>
                 <Select
                   value={updateForm.stage}
@@ -701,11 +715,28 @@ export default function SearchUpdateIRMSN() {
               </FormControl>
             </Grid>
 
+            {/* Supplier */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Supplier"
+                fullWidth
+                size="small"
+                value={updateForm.supplier}
+                onChange={(e) =>
+                  setUpdateForm((prev) => ({
+                    ...prev,
+                    supplier: e.target.value,
+                  }))
+                }
+              />
+            </Grid>
+
             {/* ID Number Range */}
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={8}>
               <TextField
                 label="ID Number Range"
                 fullWidth
+                size="small"
                 value={updateForm.idNumberRange}
                 onChange={(e) => {
                   const range = e.target.value;
@@ -721,27 +752,18 @@ export default function SearchUpdateIRMSN() {
             </Grid>
 
             {/* Quantity (Read-only) */}
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <TextField
                 label="Quantity"
                 fullWidth
+                size="small"
                 value={updateForm.quantity}
                 InputProps={{ readOnly: true }}
-              />
-            </Grid>
-
-            {/* Supplier */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Supplier"
-                fullWidth
-                value={updateForm.supplier}
-                onChange={(e) =>
-                  setUpdateForm((prev) => ({
-                    ...prev,
-                    supplier: e.target.value,
-                  }))
-                }
+                sx={{ 
+                  "& .MuiInputBase-input": { 
+                    backgroundColor: "grey.50" 
+                  } 
+                }}
               />
             </Grid>
 
@@ -750,6 +772,7 @@ export default function SearchUpdateIRMSN() {
               <TextField
                 label="Remark"
                 fullWidth
+                size="small"
                 multiline
                 rows={2}
                 value={updateForm.remark}
@@ -761,21 +784,30 @@ export default function SearchUpdateIRMSN() {
           </Grid>
         </DialogContent>
 
-        <DialogActions sx={{ p: 3 }}>
+        <DialogActions sx={{ p: 2 }}>
           <Button
             onClick={() => setEditDialogOpen(false)}
             startIcon={<CancelIcon />}
             disabled={isLoading}
+            variant="outlined"
+            size="medium"
           >
-            Cancel
+            Reset
           </Button>
           <Button
             onClick={onUpdate}
             variant="contained"
             startIcon={
-              isLoading ? <CircularProgress size={20} /> : <SaveIcon />
+              isLoading ? <CircularProgress size={16} /> : <SaveIcon />
             }
             disabled={isLoading || !updateForm.stage}
+            size="medium"
+            sx={{
+              backgroundColor: "purple",
+              "&:hover": {
+                backgroundColor: "darkpurple",
+              },
+            }}
           >
             {isLoading ? "Updating..." : "Update"}
           </Button>

@@ -11,9 +11,10 @@ import {
   CardContent,
   InputAdornment,
   IconButton,
+  Alert,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { login } from "../../store/slices/authSlice";
+import { login, clearError } from "../../store/slices/authSlice";
 import type { RootState } from "../../store/store";
 
 interface LoginForm {
@@ -36,10 +37,10 @@ const Login: React.FC = () => {
 
   const validateForm = () => {
     const errors: Partial<LoginForm> = {};
-    if (!formData.userId) {
-      errors.userId = "UserId is required";
+    if (!formData.userId.trim()) {
+      errors.userId = "User ID is required";
     }
-    if (!formData.password) {
+    if (!formData.password.trim()) {
       errors.password = "Password is required";
     }
     setFormErrors(errors);
@@ -50,6 +51,9 @@ const Login: React.FC = () => {
     e.preventDefault();
     if (validateForm()) {
       try {
+        // Clear any previous errors
+        dispatch(clearError());
+
         const resultAction = await dispatch(login(formData) as any);
         console.log("Login result:", resultAction);
 
@@ -79,6 +83,10 @@ const Login: React.FC = () => {
         [name]: "",
       }));
     }
+    // Clear Redux error when user starts typing
+    if (error) {
+      dispatch(clearError());
+    }
   };
 
   const handleTogglePassword = () => {
@@ -98,7 +106,7 @@ const Login: React.FC = () => {
     >
       <Card
         sx={{
-          maxWidth: 420,
+          maxWidth: 420,  
           width: "100%",
           mx: 2,
           boxShadow: "0px 10px 30px rgba(0, 0, 0, 0.1)",
@@ -122,7 +130,6 @@ const Login: React.FC = () => {
               justifyContent: "space-between",
             }}
           >
-
             <Box
               component="img"
               src="/assets/logo.jpg"
@@ -146,13 +153,13 @@ const Login: React.FC = () => {
                 color="secondary.main"
                 mb={1}
               >
-                UserId
+                User ID
               </Typography>
               <TextField
                 fullWidth
                 id="userId"
                 name="userId"
-                placeholder="Enter your userId"
+                placeholder="Enter your user ID"
                 value={formData.userId}
                 onChange={handleChange}
                 error={!!formErrors.userId}
@@ -220,7 +227,7 @@ const Login: React.FC = () => {
               <Box display="flex" justifyContent="flex-end" mt={1}>
                 <Link
                   component={RouterLink}
-                  to="/forget-password"
+                  to="/forgot-password"
                   color="primary"
                   underline="hover"
                   sx={{ fontWeight: 500 }}
@@ -231,14 +238,9 @@ const Login: React.FC = () => {
             </Box>
 
             {error && (
-              <Typography
-                color="error"
-                variant="body2"
-                align="center"
-                sx={{ mb: 2 }}
-              >
+              <Alert severity="error" sx={{ mb: 2 }}>
                 {error}
-              </Typography>
+              </Alert>
             )}
 
             <Button
