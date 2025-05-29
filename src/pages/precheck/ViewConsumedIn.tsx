@@ -186,7 +186,7 @@ const ViewConsumedIn: React.FC = () => {
   return (
     <Box sx={{ p: 1 }}>
       <Typography
-        variant="h6"
+        variant="h4"
         gutterBottom
         sx={{
           color: "primary.main",
@@ -234,7 +234,7 @@ const ViewConsumedIn: React.FC = () => {
             renderInput={(params: any) => (
               <TextField
                 {...params}
-                label="Drawing Number *"
+                label="Drawing No *"
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
@@ -282,7 +282,7 @@ const ViewConsumedIn: React.FC = () => {
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Production Series *"
+                label="Prod Series *"
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
@@ -302,7 +302,7 @@ const ViewConsumedIn: React.FC = () => {
           <TextField
             size="small"
             sx={{ width: 150 }}
-            label="Assembly Number"
+            label="Assembly No"
             value={assemblyNumber}
             onChange={(e) => setAssemblyNumber(e.target.value)}
             variant="outlined"

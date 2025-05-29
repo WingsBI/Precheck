@@ -229,19 +229,19 @@ export default function GenerateIRMSN() {
   return (
     <Box
       sx={{
-        p: { xs: 1, sm: 2, md: 3 },
+        p: { xs: 1, sm: 2, md: 1 },
         maxWidth: "100%",
         mx: "auto",
       }}
     >
       <Typography
-        variant="h5"
+        variant="h4"
         gutterBottom
         sx={{
           color: "primary.main",
           fontWeight: 600,
           mb: 2,
-          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.25rem' }
         }}
       >
         Generate IR/MSN Number
@@ -629,10 +629,10 @@ export default function GenerateIRMSN() {
               <Button
                 type="button"
                 variant="outlined"
-                size="large"
+                size="medium"
                 onClick={handleReset}
                 startIcon={<RefreshIcon />}
-                sx={{ minWidth: 120, py: 1.5 }}
+                sx={{ minWidth: 120, py: 1.5 ,height: 40}}
               >
                 Reset
               </Button>
@@ -640,7 +640,7 @@ export default function GenerateIRMSN() {
               <Button
                 type="submit"
                 variant="contained"
-                size="large"
+                size="medium"
                 disabled={isLoading}
                 startIcon={
                   isLoading ? (
@@ -649,7 +649,7 @@ export default function GenerateIRMSN() {
                     <AddIcon />
                   )
                 }
-                sx={{ minWidth: 200, py: 1.5 }}
+                sx={{ minWidth: 200, py: 1.5,height: 40 }}
               >
                 {isLoading ? "Generating..." : "Generate IR/MSN"}
               </Button>

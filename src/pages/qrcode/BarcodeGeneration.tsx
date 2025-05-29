@@ -822,7 +822,7 @@ export default function BarcodeGeneration() {
                       variant="outlined"
                       onClick={handleGenerateBatchData}
                       disabled={!selectedDrawing}
-                      size="small"
+                      size="extrasmall"
                       fullWidth
                     >
                       Get Batch Data
@@ -1245,10 +1245,10 @@ export default function BarcodeGeneration() {
                 <Button
                   type="button"
                   variant="outlined"
-                  size="large"
+                  size="medium"
                   onClick={handleReset}
                   startIcon={<RefreshIcon />}
-                  sx={{ minWidth: 120, py: 1.5 }}
+                  sx={{ minWidth: 120, py: 1.5 ,height: 40}}
                 >
                   Reset
                 </Button>
@@ -1256,7 +1256,7 @@ export default function BarcodeGeneration() {
                 <Button
                   type="submit"
                   variant="contained"
-                  size="large"
+                  size="medium"
                   disabled={loading}
                   startIcon={
                     loading ? (
@@ -1265,7 +1265,7 @@ export default function BarcodeGeneration() {
                       <QrCodeIcon />
                     )
                   }
-                  sx={{ minWidth: 200, py: 1.5 }}
+                  sx={{ minWidth: 200, py: 1.5, height: 40 }}
                 >
                   {loading ? "Generating..." : "Generate QR Code"}
                 </Button>
