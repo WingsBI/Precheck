@@ -542,8 +542,18 @@ const MakePrecheck: React.FC = () => {
       )}
       
       {/* Form Controls */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1.5 }}>
-        <FormControl sx={{ minWidth: 175 }} size="small">
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        mb: 1, 
+        gap: 1.5,
+        flexWrap: 'wrap',
+        width: '100%'
+      }}>
+        <FormControl sx={{ 
+          minWidth: { xs: '100%', sm: 250 },
+          flex: { xs: '1 1 100%', sm: '0 1 auto' }
+        }} size="small">
           <Autocomplete
             size="small"
             options={drawingNumbers}
@@ -596,7 +606,10 @@ const MakePrecheck: React.FC = () => {
                   />
         </FormControl>
         
-        <FormControl sx={{ minWidth: 175 }} size="small">
+        <FormControl sx={{ 
+          minWidth: { xs: '100%', sm: 145 },
+          flex: { xs: '1 1 100%', sm: '0 1 auto' }
+        }} size="small">
           <Autocomplete
             size="small"
             options={productionSeries}
@@ -627,7 +640,7 @@ const MakePrecheck: React.FC = () => {
             renderInput={(params) => (
                       <TextField
                 {...params}
-                        label="Production Series *"
+                        label="Prod Series *"
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
@@ -644,79 +657,114 @@ const MakePrecheck: React.FC = () => {
                   />
                       </FormControl>
         
-        <FormControl sx={{ minWidth: 120 }} size="small">
+        <FormControl sx={{ 
+          minWidth: { xs: '50%', sm: 100 },
+          flex: { xs: '1 1 50%', sm: '0 1' }
+        }} size="small">
                       <TextField
             size="small"
-            label="ID Number *"
+            label="ID Num *"
             value={idNumber}
             onChange={(e) => setIdNumber(e.target.value)}
             variant="outlined"
           />
         </FormControl>
         
-        <Button
-          variant="contained"
-          color="primary"
-          sx={{ minWidth: 130, height: 32 }}
-          size="small"
-          onClick={handleMakePrecheck}
-          disabled={isLoading}
-        >
-          <QrCodeScannerIcon sx={{ mr: 1 }} />
-          Make Precheck
-        </Button>
-        
-        <Button
-          variant="contained"
-          color="error"
-          sx={{ minWidth: 130, height: 32 }}
-          size="small"
-          onClick={handleReset}
-        >
-          <RefreshIcon sx={{ mr: 1 }} />
-          Reset
-        </Button>
-        
-        <Button
-          variant="contained"
-          color="success"
-          sx={{ minWidth: 130, height: 32 }}
-          size="small"
-          onClick={handleSubmitPrecheck}
-          disabled={!isSubmitEnabled}
-        >
-          <SendIcon sx={{ mr: 1 }} />
-          Submit
-        </Button>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 1.5,
+          flexWrap: 'wrap',
+          width: { xs: '100%', sm: 'auto' },
+          mt: { xs: 1, sm: 0 }
+        }}>
+          <Button
+            variant="contained"
+            color="primary"
+            sx={{ 
+              minWidth: { xs: '100%', sm: 160 }, 
+              height: 32,
+              flex: { xs: '1 1 100%', sm: '0 1 auto' }
+            }}
+            size="small"
+            onClick={handleMakePrecheck}
+            disabled={isLoading}
+          >
+            <QrCodeScannerIcon sx={{ mr: 1 }} />
+            Make Precheck
+          </Button>
+          
+          <Button
+            variant="contained"
+            color="error"
+            sx={{ 
+              minWidth: { xs: '100%', sm: 160 }, 
+              height: 32,
+              flex: { xs: '1 1 100%', sm: '0 1 auto' }
+            }}
+            size="small"
+            onClick={handleReset}
+          >
+            <RefreshIcon sx={{ mr: 1 }} />
+            Reset
+          </Button>
+          
+          <Button
+            variant="contained"
+            color="success"
+            sx={{ 
+              minWidth: { xs: '100%', sm: 160 }, 
+              height: 32,
+              flex: { xs: '1 1 100%', sm: '0 1 auto' }
+            }}
+            size="small"
+            onClick={handleSubmitPrecheck}
+            disabled={!isSubmitEnabled}
+          >
+            <SendIcon sx={{ mr: 1 }} />
+            Submit
+          </Button>
+        </Box>
       </Box>
 
       {/* QR Code Scanner Section */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1.5 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        mb: 1, 
+        gap: 1.5,
+        flexWrap: 'wrap',
+        width: '100%'
+      }}>
         <Typography 
           variant="body2" 
-              sx={{ 
+          sx={{ 
             fontWeight: 'bold',
             fontSize: '0.875rem',
-            minWidth: 'auto'
+            minWidth: 'auto',
+            width: { xs: '100%', sm: 'auto' }
           }}
         >
           Scan Qr Code:
-              </Typography>
+        </Typography>
         <TextField
           size="small"
           value={barcodeText}
           onChange={(e) => handleBarcodeChange(e.target.value)}
           placeholder="Scan or enter QR code (12 or 15 digits)"
-          sx={{ width: 300 }}
+          sx={{ 
+            width: { xs: '100%', sm: 300 },
+            flex: { xs: '1 1 100%', sm: '0 1 auto' }
+          }}
           disabled={!showResults || searchResults.length === 0}
           autoFocus={showResults && searchResults.length > 0}
         />
         <Typography 
           variant="body2" 
-        sx={{ 
+          sx={{ 
             fontWeight: 'bold',
             fontSize: '0.875rem',
-            ml: 2
+            ml: { xs: 0, sm: 2 },
+            width: { xs: '100%', sm: 'auto' }
           }}
         >
           <span>BOM Details of </span>
@@ -730,15 +778,24 @@ const MakePrecheck: React.FC = () => {
       {showResults && (
         <Typography
           variant="body2"
-          sx={{ mb: 1, fontWeight: 'medium' }}
+          sx={{ 
+            mb: 1, 
+            fontWeight: 'medium',
+            width: '100%',
+            overflowWrap: 'break-word'
+          }}
         >
           Showing results for {selectedProductionSeries?.productionSeries || 'A'} / {selectedDrawing?.drawingNumber || ''} / {idNumber || ''}
         </Typography>
       )}
 
       {/* BOM Details Table */}
-      <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2 }}>
-        <TableContainer sx={{ maxHeight: 500, overflow: 'auto' }}>
+      <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2, width: '100%', overflow: 'hidden' }}>
+        <TableContainer sx={{ 
+          maxHeight: { xs: 400, sm: 500 }, 
+          overflow: 'auto',
+          width: '100%'
+        }}>
           <Table stickyHeader sx={{ minWidth: 1000 }} size="small">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#f5f5f5', height: 24 }}>
