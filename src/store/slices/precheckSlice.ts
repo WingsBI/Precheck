@@ -35,7 +35,7 @@ export const makePrecheck = createAsyncThunk(
   'precheck/makePrecheck',
   async (request: any[], { rejectWithValue }) => {
     try {
-      const response = await api.post('/api/precheck/MakePrecheck', request);
+      const response = await api.post('/api/Precheck/MakePrecheck', request);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to make precheck');

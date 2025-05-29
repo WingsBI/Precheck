@@ -82,6 +82,9 @@ interface GridItem {
   modifiedDate?: string;
   remarks?: string;
   expanded?: boolean;
+  productionOrderNumber?: string;
+  projectNumber?: string;
+  disposition?: string;
 }
 
 interface QuantityDialogProps {
@@ -219,7 +222,7 @@ const QuantityDialog: React.FC<QuantityDialogProps> = ({
         >
           Cancel
         </Button>
-        <Button
+        <Button 
           onClick={handleConfirm}
           disabled={!!error || quantity < 0 || quantity > maxQuantity}
           variant="contained"
@@ -250,7 +253,7 @@ const MakePrecheck: React.FC = () => {
   const [originalProdSeries, setOriginalProdSeries] = useState<number | null>(null);
   const [originalAssemblyNumber, setOriginalAssemblyNumber] = useState<string | null>(null);
   const [hasLoadedData, setHasLoadedData] = useState(false);
-
+  
   // Loading states
   const [drawingLoading, setDrawingLoading] = useState(false);
   const [prodSeriesLoading, setProdSeriesLoading] = useState(false);
@@ -449,25 +452,31 @@ const MakePrecheck: React.FC = () => {
         .filter(item => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete)
         .map(item => ({
           consumedDrawingNo: `${selectedProductionSeries?.productionSeries}/${selectedDrawing?.drawingNumber}/${idNumber}`,
-          consumedInDrawingNumberID: selectedDrawing?.id,
-          consumedInProdSeriesID: selectedProductionSeries?.id,
+          consumedInDrawingNumberID: selectedDrawing?.id || 0,
+          consumedInProdSeriesID: selectedProductionSeries?.id || 0,
           consumedInId: parseInt(idNumber) || 0,
-          qrCodeNumber: item.qrCode,
+          qrCodeNumber: item.qrCode || "",
           quantity: item.quantity || 0,
-          irNumber: item.ir,
-          msnNumber: item.msn,
-          drawingNumberId: item.drawingNumberId,
-          productionSeriesId: item.prodSeriesId,
-          remarks: item.remarks,
-          componentType: item.componentType,
-          idNumbers: item.idNumber,
-          mrirNumber: item.mrirNumber
+          drawingNumberId: item.drawingNumberId || 0,
+          id: 0, // This will be assigned by the server
+          productionSeriesId: item.prodSeriesId || 0,
+          remarks: item.remarks || "",
+          unit: "NA", // Add default unit if not available
+          irNumber: item.ir || "",
+          msnNumber: item.msn || "",
+          mrirNumber: item.mrirNumber || "",
+          idNumbers: item.idNumber || "",
+          componentType: item.componentType || "",
+          productionOrderNumber: item.productionOrderNumber || "NA",
+          createdBy: 0 // This should be replaced with actual user ID if available
         }));
 
       if (!componentsToSubmit.length) {
         showAlertMessage('No new components to submit', 'info');
         return;
       }
+
+      console.log('Submitting components:', componentsToSubmit);
 
       const response = await dispatch(makePrecheck(componentsToSubmit)).unwrap();
       
@@ -502,7 +511,7 @@ const MakePrecheck: React.FC = () => {
       }
     } catch (error) {
       console.error('Error submitting precheck:', error);
-      showAlertMessage('Error submitting precheck: ' + (error as Error).message, 'error');
+      showAlertMessage(`Error submitting precheck: ${(error as Error).message}`, 'error');
       setIsSubmitEnabled(true);
     } finally {
       setIsLoadingLocal(false);
@@ -542,7 +551,7 @@ const MakePrecheck: React.FC = () => {
     // Reset pagination
     setPage(0);
     setSelectedRow(null);
-
+    
     // Reset expanded rows
     setExpandedRows(new Set());
 
@@ -578,50 +587,49 @@ const MakePrecheck: React.FC = () => {
         return;
       }
 
-      // Map the response to match the expected format
-      const mappedQrCodeDetails = {
-        qrCodeStatusId: qrCodeDetails.qrCodeStatus === 'Not Stored' ? 3 
-                      : qrCodeDetails.qrCodeStatus === 'Consumed' ? 2 
-                      : 1, // Default to Available (1)
-        drawingNumberId: qrCodeDetails.drawingNumberId,
-        drawingNumber: qrCodeDetails.drawingNumber,
-        idNumber: qrCodeDetails.idNumber,
-        quantity: qrCodeDetails.quantity,
-        irNumber: qrCodeDetails.irNumber,
-        msnNumber: qrCodeDetails.msnNumber,
-        mrirNumber: qrCodeDetails.mrirNumber,
-        componentType: qrCodeDetails.componentType,
-        remark: qrCodeDetails.remark,
-        productionSeriesId: qrCodeDetails.productionSeriesId
-      };
+      console.log('QR Code Details:', qrCodeDetails);
 
-      console.log('QR Code Details:', mappedQrCodeDetails);
-      console.log('Current Table Items:', searchResults);
+      // Check QR code status first - using the statusId from API
+      if (qrCodeDetails.qrCodeStatusId === 3 || qrCodeDetails.qrCodeStatus?.toLowerCase() === 'qrcodegenerated') {
+        showAlertMessage('Component not stored in. QR code is generated but not ready for consumption.', 'warning');
+        return;
+      }
+
+      if (qrCodeDetails.qrCodeStatusId === 2 || qrCodeDetails.qrCodeStatus?.toLowerCase() === 'consumed') {
+        showAlertMessage('This QR code has already been consumed and cannot be used again.', 'error');
+        return;
+      }
+
+      // Only proceed if status is 1 (Available)
+      if (qrCodeDetails.qrCodeStatusId !== 1 && qrCodeDetails.qrCodeStatus?.toLowerCase() !== 'available') {
+        showAlertMessage('Invalid QR code status.', 'error');
+        return;
+      }
 
       // Find potential matches with the same DrawingNumberId
       const potentialMatches = searchResults
         .map((item, index) => ({ item, index }))
-        .filter(x => x.item.drawingNumberId === mappedQrCodeDetails.drawingNumberId);
+        .filter(x => x.item.drawingNumberId === qrCodeDetails.drawingNumberId);
 
       console.log('Potential Matches:', potentialMatches);
 
       // If no matching DrawingNumberId found, show message and return
       if (!potentialMatches.length) {
-        showAlertMessage(`No components found with drawing number ${mappedQrCodeDetails.drawingNumber}.`, 'info');
+        showAlertMessage(`No components found with drawing number ${qrCodeDetails.drawingNumber}.`, 'info');
         return;
       }
 
       // Check for ID component type
       if (potentialMatches.some(x => x.item.componentType?.toUpperCase() === 'ID')) {
         const idAlreadyAssigned = searchResults.some(item =>
-          item.idNumber === mappedQrCodeDetails.idNumber &&
-          item.drawingNumberId === mappedQrCodeDetails.drawingNumberId
+          item.idNumber === qrCodeDetails.idNumber &&
+          item.drawingNumberId === qrCodeDetails.drawingNumberId
         );
 
         if (idAlreadyAssigned) {
           showAlertMessage(
-            `ID ${mappedQrCodeDetails.idNumber} has already been assigned to a component with drawing number ${mappedQrCodeDetails.drawingNumber}.`,
-            'success'
+            `ID ${qrCodeDetails.idNumber} has already been assigned to a component with drawing number ${qrCodeDetails.drawingNumber}.`,
+            'warning'
           );
           return;
         }
@@ -636,19 +644,20 @@ const MakePrecheck: React.FC = () => {
 
       if (matchingItem) {
         // Determine quantity based on component type
-        if (mappedQrCodeDetails.componentType?.toUpperCase() !== 'ID') {
+        if (qrCodeDetails.componentType?.toUpperCase() !== 'ID') {
           const maxQty = matchingItem.item.quantity || 0;
           setMaxQuantity(maxQty);
           setSelectedQuantity(maxQty);
-          setPendingBarcodeData({ qrCodeDetails: mappedQrCodeDetails, matchingItem });
+          setPendingBarcodeData({ qrCodeDetails, matchingItem });
           setQuantityDialogOpen(true);
         } else {
           // For ID type, use the quantity from qrCodeDetails
           updateGridItem(
-            mappedQrCodeDetails,
+            qrCodeDetails,
             matchingItem,
-            mappedQrCodeDetails.quantity || 0
+            qrCodeDetails.quantity || 0
           );
+          showAlertMessage('Component details updated successfully.', 'success');
         }
       } else {
         // No unprocessed row found
@@ -661,7 +670,7 @@ const MakePrecheck: React.FC = () => {
 
         if (totalMatchingItems > 0 && processedMatchingItems === totalMatchingItems) {
           showAlertMessage(
-            `All components with drawing number ${mappedQrCodeDetails.drawingNumber} have already been processed.`,
+            `All components with drawing number ${qrCodeDetails.drawingNumber} have already been processed.`,
             'info'
           );
         } else {
@@ -679,7 +688,7 @@ const MakePrecheck: React.FC = () => {
     const item = updatedResults[matchingItem.index];
     
     // Update the item with all fields from QR code details
-    item.qrCode = qrCodeDetails.idNumber;
+    item.qrCode = qrCodeDetails.qrCodeNumber;
     item.isPrecheckComplete = false;
     item.isUpdated = true;
     item.ir = qrCodeDetails.irNumber;
@@ -689,8 +698,11 @@ const MakePrecheck: React.FC = () => {
     item.componentType = qrCodeDetails.componentType;
     item.mrirNumber = qrCodeDetails.mrirNumber;
     item.remarks = qrCodeDetails.remark;
-    item.username = 'Current User'; // Replace with actual user session info
+    item.username = qrCodeDetails.users || 'Current User';
     item.modifiedDate = new Date().toISOString().split('T')[0];
+    item.productionOrderNumber = qrCodeDetails.productionOrderNumber || "NA";
+    item.projectNumber = qrCodeDetails.projectNumber || "NA";
+    item.disposition = qrCodeDetails.desposition || "NA";
 
     console.log('Updated Grid Item:', item);
     setSearchResults(updatedResults);
@@ -791,7 +803,10 @@ const MakePrecheck: React.FC = () => {
       componentType: item.componentType,
       username: item.username,
       modifiedDate: item.modifiedDate,
-      remarks: item.remarks
+      remarks: item.remarks,
+      productionOrderNumber: item.productionOrderNumber,
+      projectNumber: item.projectNumber,
+      disposition: item.disposition
     }));
 
     setSearchResults(newItems);
