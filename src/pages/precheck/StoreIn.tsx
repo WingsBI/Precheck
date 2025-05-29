@@ -59,7 +59,7 @@ const StoreIn: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3.5 }}>
+    <Box sx={{ p: 1 }}>
       <Typography variant="h4" gutterBottom color="primary.main" fontWeight={600}>
         Store In
       </Typography>

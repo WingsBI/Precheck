@@ -282,7 +282,7 @@ const ViewBarcode: React.FC = () => {
         </Box>
 
         <TableContainer>
-          <Table sx={{ maxWidth: 850 }} aria-label="QR codes table">
+          <Table sx={{ maxWidth: 'auto' }} aria-label="QR codes table">
             <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>QRCode ID</TableCell>
