@@ -16,7 +16,9 @@ import {
   Autocomplete, 
   CircularProgress,
   TableSortLabel,
-  TablePagination
+  TablePagination,
+  Card,
+  CardContent
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -202,175 +204,194 @@ const ViewPrecheck: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 1 }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, maxWidth: "100%", mx: "auto" }}>
       <Typography
-        variant="h6"
+        variant="h5"
         gutterBottom
         sx={{
           color: "primary.main",
           fontWeight: 600,
           mb: 2,
+          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
         }}
       >
         View Precheck
       </Typography>
       
       {/* Form Controls */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1.5 }}>
-        <FormControl sx={{ minWidth: 175 }} size="small">
-          <TextField
-            size="small"
-            label="Production Order Number"
-            value={productionOrder}
-            onChange={(e) => setProductionOrder(e.target.value)}
-            variant="outlined"
-          />
-        </FormControl>
-        
-        <FormControl sx={{ minWidth: 175 }} size="small">
-          <Autocomplete
-            size="small"
-            options={drawingNumbers}
-            getOptionLabel={(option) => {
-              if (typeof option === "string") return option;
-              return option.drawingNumber || '';
-            }}
-            value={selectedDrawing}
-            loading={drawingLoading}
-            onInputChange={(_: any, value: string) => {
-              if (value.length >= 3) {
-                debouncedDrawingSearch(value);
-              }
-            }}
-            onChange={(_: any, value: any) => {
-              setSelectedDrawing(value);
-            }}
-            isOptionEqualToValue={(option, value) =>
-              option.id === (value?.id || '')
-            }
-            renderOption={(props: any, option: any) => (
-              <li {...props}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
-                  <Typography variant="body2">
-                    {option.drawingNumber}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {option.nomenclature || ''} | {option.componentType || ''}
-                  </Typography>
-                </Box>
-              </li>
-            )}
-            renderInput={(params: any) => (
+      <Card elevation={2} sx={{ mb: 3 }}>
+        <CardContent sx={{ p: { xs: 1, md: 2 } }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            flexWrap: 'wrap',
+            gap: 1.5,
+            alignItems: { xs: 'stretch', sm: 'center' }
+          }}>
+            <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size="small">
               <TextField
-                {...params}
-                label="Drawing Number"
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {drawingLoading ? (
-                        <CircularProgress color="inherit" size={16} />
-                      ) : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
+                size="small"
+                label="PO Number"
+                value={productionOrder}
+                onChange={(e) => setProductionOrder(e.target.value)}
+                variant="outlined"
+                fullWidth
               />
-            )}
-          />
-        </FormControl>
-        
-        <FormControl sx={{ minWidth: 175 }} size="small">
-          <Autocomplete
-            size="small"
-            options={productionSeries}
-            getOptionLabel={(option) => {
-              if (typeof option === "string") return option;
-              return option.productionSeries || '';
-            }}
-            value={selectedProductionSeries}
-            loading={prodSeriesLoading}
-            onInputChange={(_, value) => {
-              if (value.length >= 1) {
-                debouncedProdSeriesSearch(value);
-              }
-            }}
-            onChange={(_, value) => {
-              setSelectedProductionSeries(value);
-            }}
-            isOptionEqualToValue={(option, value) =>
-              option.id === (value?.id || '')
-            }
-            renderOption={(props, option) => (
-              <li {...props}>
-                <Typography variant="body2">
-                  {option.productionSeries}
-                </Typography>
-              </li>
-            )}
-            renderInput={(params) => (
+            </FormControl>
+            
+            <FormControl sx={{ minWidth: { xs: '100%', sm: 300 } }} size="small">
+              <Autocomplete
+                size="small"
+                options={drawingNumbers}
+                getOptionLabel={(option) => {
+                  if (typeof option === "string") return option;
+                  return option.drawingNumber || '';
+                }}
+                value={selectedDrawing}
+                loading={drawingLoading}
+                onInputChange={(_: any, value: string) => {
+                  if (value.length >= 3) {
+                    debouncedDrawingSearch(value);
+                  }
+                }}
+                onChange={(_: any, value: any) => {
+                  setSelectedDrawing(value);
+                }}
+                isOptionEqualToValue={(option, value) =>
+                  option.id === (value?.id || '')
+                }
+                renderOption={(props: any, option: any) => (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
+                      <Typography variant="body2">
+                        {option.drawingNumber}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.nomenclature || ''} | {option.componentType || ''}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
+                renderInput={(params: any) => (
+                  <TextField
+                    {...params}
+                    label="Drawing Number"
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {drawingLoading ? (
+                            <CircularProgress color="inherit" size={16} />
+                          ) : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
+            </FormControl>
+            
+            <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size="small">
+              <Autocomplete
+                size="small"
+                options={productionSeries}
+                getOptionLabel={(option) => {
+                  if (typeof option === "string") return option;
+                  return option.productionSeries || '';
+                }}
+                value={selectedProductionSeries}
+                loading={prodSeriesLoading}
+                onInputChange={(_, value) => {
+                  if (value.length >= 1) {
+                    debouncedProdSeriesSearch(value);
+                  }
+                }}
+                onChange={(_, value) => {
+                  setSelectedProductionSeries(value);
+                }}
+                isOptionEqualToValue={(option, value) =>
+                  option.id === (value?.id || '')
+                }
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Typography variant="body2">
+                      {option.productionSeries}
+                    </Typography>
+                  </li>
+                )}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Prod Series"
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {prodSeriesLoading ? (
+                            <CircularProgress color="inherit" size={16} />
+                          ) : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
+            </FormControl>
+            
+            <FormControl sx={{ minWidth: { xs: '100%', sm: 100 } }} size="small">
               <TextField
-                {...params}
-                label="Production Series"
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {prodSeriesLoading ? (
-                        <CircularProgress color="inherit" size={16} />
-                      ) : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
+                size="small"
+                label="ID Number"
+                value={idNumber}
+                onChange={(e) => setIdNumber(e.target.value)}
+                variant="outlined"
+                fullWidth
               />
-            )}
-          />
-        </FormControl>
-        
-        <FormControl sx={{ minWidth: 100 }} size="small">
-          <TextField
-            size="small"
-            label="ID Number"
-            value={idNumber}
-            onChange={(e) => setIdNumber(e.target.value)}
-            variant="outlined"
-            sx={{ width: 100 }}
-          />
-        </FormControl>
-        
-        <Button
-          variant="contained"
-          color="primary"
-          sx={{ minWidth: 170, height: 32 }}
-          size="small"
-          onClick={handleViewPrecheck}
-          disabled={isLoading}
-        >
-          <VisibilityIcon sx={{ mr: 1 }} />
-          View Precheck
-        </Button>
-        <Button
-          variant="contained"
-          color="info"
-          sx={{ minWidth: 130, height: 32 }}
-          size="small"
-          onClick={handleExport}
-        >
-          <FileDownloadIcon sx={{ mr: 1 }} />
-          Export
-        </Button>
-        <Button
-          variant="contained"
-          color="error"
-          sx={{ minWidth: 130, height: 32 }}
-          size="small"
-          onClick={handleReset}
-        >
-          <RefreshIcon sx={{ mr: 1 }} />
-          Reset
-        </Button>
-      </Box>
+            </FormControl>
+            
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 1,
+              width: { xs: '100%', sm: 'auto' },
+              justifyContent: { xs: 'space-between', sm: 'flex-start' }
+            }}>
+              <Button
+                variant="contained"
+                color="primary"
+                sx={{ minWidth: { xs: '30%', sm: 170 }, height: 32 }}
+                size="small"
+                onClick={handleViewPrecheck}
+                disabled={isLoading}
+              >
+                <VisibilityIcon sx={{ mr: 1 }} />
+                View
+              </Button>
+              <Button
+                variant="contained"
+                color="info"
+                sx={{ minWidth: { xs: '30%', sm: 130 }, height: 32 }}
+                size="small"
+                onClick={handleExport}
+              >
+                <FileDownloadIcon sx={{ mr: 1 }} />
+                Export
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                sx={{ minWidth: { xs: '30%', sm: 130 }, height: 32 }}
+                size="small"
+                onClick={handleReset}
+              >
+                <RefreshIcon sx={{ mr: 1 }} />
+                Reset
+              </Button>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
 
       {/* Results Display */}
       {showResults && (
@@ -384,86 +405,78 @@ const ViewPrecheck: React.FC = () => {
 
       {/* Results Table */}
       <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2 }}>
-        <TableContainer sx={{ maxHeight: 500, overflow: 'auto' }}>
-          <Table stickyHeader sx={{ minWidth: 800 }} size="small">
+        <TableContainer sx={{ maxHeight: { xs: 'calc(100vh - 400px)', sm: 'calc(100vh - 350px)' }, overflow: 'auto' }}>
+          <Table stickyHeader size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5', height: 24 }}>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
+              <TableRow>
+                <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: 'grey.50', py: 1, px: 1, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <TableSortLabel
                     active={orderBy === 'sr'}
                     direction={orderBy === 'sr' ? order : 'asc'}
                     onClick={() => handleRequestSort('sr')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Sr No
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: 'grey.50', py: 1, px: 1, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <TableSortLabel
                     active={orderBy === 'drawingNumber'}
                     direction={orderBy === 'drawingNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('drawingNumber')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Drawing Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: 'grey.50', py: 1, px: 1, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <TableSortLabel
                     active={orderBy === 'nomenclature'}
                     direction={orderBy === 'nomenclature' ? order : 'asc'}
                     onClick={() => handleRequestSort('nomenclature')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Nomenclature
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: 'grey.50', py: 1, px: 1, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <TableSortLabel
                     active={orderBy === 'quantity'}
                     direction={orderBy === 'quantity' ? order : 'asc'}
                     onClick={() => handleRequestSort('quantity')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     Quantity
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: 'grey.50', py: 1, px: 1, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <TableSortLabel
                     active={orderBy === 'idNumber'}
                     direction={orderBy === 'idNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('idNumber')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     ID Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: 'grey.50', py: 1, px: 1, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <TableSortLabel
                     active={orderBy === 'ir'}
                     direction={orderBy === 'ir' ? order : 'asc'}
                     onClick={() => handleRequestSort('ir')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     IR
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: 'grey.50', py: 1, px: 1, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <TableSortLabel
                     active={orderBy === 'msn'}
                     direction={orderBy === 'msn' ? order : 'asc'}
                     onClick={() => handleRequestSort('msn')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     MSN
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>
+                <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: 'grey.50', py: 1, px: 1, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <TableSortLabel
                     active={orderBy === 'mrirNumber'}
                     direction={orderBy === 'mrirNumber' ? order : 'asc'}
                     onClick={() => handleRequestSort('mrirNumber')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
                   >
                     MRIR Number
                   </TableSortLabel>
@@ -473,30 +486,30 @@ const ViewPrecheck: React.FC = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ height: 150 }}>
+                  <TableCell colSpan={8} align="center" sx={{ height: 100 }}>
                     <CircularProgress size={30} />
                   </TableCell>
                 </TableRow>
               ) : paginatedResults.length > 0 ? (
                 paginatedResults.map((item, index) => (
-                  <TableRow key={index} hover sx={{ height: 36 }}>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.sr}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.nomenclature}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.quantity}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.ir || '-'}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.msn || '-'}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.mrirNumber || '-'}</TableCell>
+                  <TableRow key={index} hover>
+                    <TableCell align="center" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>{item.sr}</TableCell>
+                    <TableCell align="center" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>{item.drawingNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>{item.nomenclature}</TableCell>
+                    <TableCell align="center" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>{item.quantity}</TableCell>
+                    <TableCell align="center" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>{item.idNumber}</TableCell>
+                    <TableCell align="center" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>{item.ir || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>{item.msn || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>{item.mrirNumber || '-'}</TableCell>
                   </TableRow>
                 ))
               ) : showResults ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ height: 150 }}>No records found</TableCell>
+                  <TableCell colSpan={8} align="center" sx={{ height: 100 }}>No records found</TableCell>
                 </TableRow>
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ height: 150, color: 'text.secondary' }}>
+                  <TableCell colSpan={8} align="center" sx={{ height: 100, color: 'text.secondary' }}>
                     Enter search criteria and click "View Precheck" to see results
                   </TableCell>
                 </TableRow>
@@ -518,7 +531,7 @@ const ViewPrecheck: React.FC = () => {
             sx={{ 
               borderTop: '1px solid #e0e0e0',
               '& .MuiTablePagination-toolbar': {
-                minHeight: 48
+                minHeight: 40
               },
               '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
                 fontSize: '0.8rem'
