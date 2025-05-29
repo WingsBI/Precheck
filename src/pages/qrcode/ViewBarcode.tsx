@@ -39,7 +39,7 @@ interface QRCodeData {
   msnNumber: string;
   mrirNumber: string;
   quantity: string;
-  disposition: string;
+  desposition: string;
   username: string;
 }
 
@@ -91,7 +91,7 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.msnNumber}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.mrirNumber}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.quantity}</TableCell>
-                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.disposition}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.desposition}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.users}</TableCell>
                   </TableRow>
                 </TableBody>
@@ -148,7 +148,7 @@ const ViewBarcode: React.FC = () => {
         'MSN Number': barcodeDetails.msnNumber,
         'MRIR Number': barcodeDetails.mrirNumber,
         'Quantity': barcodeDetails.quantity,
-        'Disposition': barcodeDetails.disposition,
+        'Disposition': barcodeDetails.desposition,
         'Username': barcodeDetails.users
       }];
 
@@ -232,7 +232,7 @@ const ViewBarcode: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3.5 }}>
+    <Box sx={{ p: 1}}>
       <Typography variant="h4" gutterBottom color="primary.main" fontWeight={600}>
         View QR Code
       </Typography>

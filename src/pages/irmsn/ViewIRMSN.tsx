@@ -6,6 +6,11 @@ import { fetchIRMSNList, fetchMSNList, clearTables } from '../../store/slices/ir
 import { getAllDepartments, getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
 import type { RootState, AppDispatch } from '../../store/store';
 import debounce from 'lodash.debounce'; 
+import {
+  Visibility as VisibilityIcon,
+  FileDownload as FileDownloadIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 
 const ViewIRMSN: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -94,15 +99,15 @@ const ViewIRMSN: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, maxWidth: "100%", mx: "auto" }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 1 }, maxWidth: "100%", mx: "auto" }}>
       <Typography
-        variant="h5"
+        variant="h4"
         gutterBottom
         sx={{
           color: "primary.main",
           fontWeight: 600,
           mb: 2,
-          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+          fontSize: { xs: '1rem', sm: '1rem', md: '1.25rem' }
         }}
       >
         View IR/MSN
@@ -191,7 +196,7 @@ const ViewIRMSN: React.FC = () => {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Production Series *"
+                    label="Prod Series *"
                     InputProps={{
                       ...params.InputProps,
                       endAdornment: (
@@ -245,7 +250,7 @@ const ViewIRMSN: React.FC = () => {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Drawing Number"
+                    label="Drawing No"
                     InputProps={{
                       ...params.InputProps,
                       endAdornment: (
@@ -264,7 +269,7 @@ const ViewIRMSN: React.FC = () => {
             <Button
               variant="contained"
               color="primary"
-              sx={{ minWidth: 80, height: 32 }}
+              sx={{ minWidth: 100, height: 32 }}
               size="small"
               onClick={handleSearch}
               disabled={!productionSeriesValue || loading}
@@ -278,6 +283,7 @@ const ViewIRMSN: React.FC = () => {
               size="small"
               onClick={handleReset}
             >
+              <RefreshIcon sx={{ mr: 1 }} />
               Reset
             </Button>
           </Box>

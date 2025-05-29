@@ -46,7 +46,7 @@ interface BarcodeDetails {
   msnNumber: string;
   mrirNumber: string;
   quantity: number;
-  disposition: string;
+  desposition: string;
   users: string;
   productionOrderNumber: string;
   projectNumber: string;
