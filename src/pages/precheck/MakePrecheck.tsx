@@ -438,7 +438,7 @@ const MakePrecheck: React.FC = () => {
         'error'
       );
       return false;
-    }
+      }
 
     return true;
   };
@@ -451,24 +451,24 @@ const MakePrecheck: React.FC = () => {
       const componentsToSubmit = searchResults
         .filter(item => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete)
         .map(item => ({
-          consumedDrawingNo: `${selectedProductionSeries?.productionSeries}/${selectedDrawing?.drawingNumber}/${idNumber}`,
-          consumedInDrawingNumberID: selectedDrawing?.id || 0,
-          consumedInProdSeriesID: selectedProductionSeries?.id || 0,
-          consumedInId: parseInt(idNumber) || 0,
-          qrCodeNumber: item.qrCode || "",
-          quantity: item.quantity || 0,
-          drawingNumberId: item.drawingNumberId || 0,
-          id: 0, // This will be assigned by the server
-          productionSeriesId: item.prodSeriesId || 0,
-          remarks: item.remarks || "",
-          unit: "NA", // Add default unit if not available
-          irNumber: item.ir || "",
-          msnNumber: item.msn || "",
-          mrirNumber: item.mrirNumber || "",
-          idNumbers: item.idNumber || "",
-          componentType: item.componentType || "",
-          productionOrderNumber: item.productionOrderNumber || "NA",
-          createdBy: 0 // This should be replaced with actual user ID if available
+          ConsumedDrawingNo: `${selectedProductionSeries?.productionSeries}/${selectedDrawing?.drawingNumber}/${idNumber}`,
+          ConsumedInDrawingNumberID: selectedDrawing?.id || 0,
+          ConsumedInProdSeriesID: selectedProductionSeries?.id || 0,
+          ConsumedInId: parseInt(idNumber) || 0,
+          QrCodeNumber: item.qrCode || "",
+          Quantity: item.quantity || 0,
+          DrawingNumberId: item.drawingNumberId || 0,
+          Id: 0,
+          ProductionSeriesId: item.prodSeriesId || 0,
+          Remarks: item.remarks || "",
+          Unit: "1",
+          IrNumber: item.ir || "",
+          MsnNumber: item.msn || "",
+          MrirNumber: item.mrirNumber || "",
+          IdNumbers: item.idNumber || "",
+          ComponentType: item.componentType || "",
+          ProductionOrderNumber: item.productionOrderNumber || "NA",
+          CreatedBy: 89 // Using the fixed CreatedBy value as per the expected payload
         }));
 
       if (!componentsToSubmit.length) {
@@ -477,26 +477,26 @@ const MakePrecheck: React.FC = () => {
       }
 
       console.log('Submitting components:', componentsToSubmit);
-
+      
       const response = await dispatch(makePrecheck(componentsToSubmit)).unwrap();
       
       if (response?.length) {
         // Update grid items as submitted
         const updatedResults = searchResults.map(item => {
           if (item.isUpdated && !item.isSubmitted) {
-            const responseItem = response.find((x: any) => x.drawingNumberId === item.drawingNumberId);
+            const responseItem = response.find((x: any) => x.DrawingNumberId === item.drawingNumberId);
             if (responseItem) {
               return {
                 ...item,
                 isSubmitted: true,
                 isUpdated: false,
                 isPrecheckComplete: true,
-                mrirNumber: responseItem.mrirNumber,
-                quantity: responseItem.quantity,
-                remarks: responseItem.remarks,
-                ir: responseItem.irNumber,
-                msn: responseItem.msnNumber,
-                modifiedDate: responseItem.modifiedDate
+                mrirNumber: responseItem.MrirNumber,
+                quantity: responseItem.Quantity,
+                remarks: responseItem.Remarks,
+                ir: responseItem.IrNumber,
+                msn: responseItem.MsnNumber,
+                modifiedDate: responseItem.ModifiedDate
               };
             }
           }
@@ -625,7 +625,7 @@ const MakePrecheck: React.FC = () => {
           item.idNumber === qrCodeDetails.idNumber &&
           item.drawingNumberId === qrCodeDetails.drawingNumberId
         );
-
+        
         if (idAlreadyAssigned) {
           showAlertMessage(
             `ID ${qrCodeDetails.idNumber} has already been assigned to a component with drawing number ${qrCodeDetails.drawingNumber}.`,
@@ -644,13 +644,13 @@ const MakePrecheck: React.FC = () => {
 
       if (matchingItem) {
         // Determine quantity based on component type
-        if (qrCodeDetails.componentType?.toUpperCase() !== 'ID') {
-          const maxQty = matchingItem.item.quantity || 0;
-          setMaxQuantity(maxQty);
-          setSelectedQuantity(maxQty);
-          setPendingBarcodeData({ qrCodeDetails, matchingItem });
-          setQuantityDialogOpen(true);
-        } else {
+      if (qrCodeDetails.componentType?.toUpperCase() !== 'ID') {
+        const maxQty = matchingItem.item.quantity || 0;
+        setMaxQuantity(maxQty);
+        setSelectedQuantity(maxQty);
+        setPendingBarcodeData({ qrCodeDetails, matchingItem });
+        setQuantityDialogOpen(true);
+      } else {
           // For ID type, use the quantity from qrCodeDetails
           updateGridItem(
             qrCodeDetails,
@@ -658,7 +658,7 @@ const MakePrecheck: React.FC = () => {
             qrCodeDetails.quantity || 0
           );
           showAlertMessage('Component details updated successfully.', 'success');
-        }
+      }
       } else {
         // No unprocessed row found
         const totalMatchingItems = potentialMatches.length;
