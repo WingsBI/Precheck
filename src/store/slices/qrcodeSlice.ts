@@ -1,12 +1,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
-import type { 
+import type {
   QRCodeItem as ImportedQRCodeItem,
   BarcodeDetails as ImportedBarcodeDetails,
   QRCodePayload as ImportedQRCodePayload,
   BatchInfo as ImportedBatchInfo,
   IRNumber,
-  MSNNumber 
+  MSNNumber
 } from '../../types';
 
 interface QRCodeState {
@@ -20,6 +20,7 @@ interface QRCodeState {
   error: string | null;
   generatedNumber: string | null;
   isDownloading: boolean;
+  storeInQRCodeDetails: ImportedBarcodeDetails | null;
 }
 
 interface QRCodeItem {
@@ -94,7 +95,8 @@ const initialState: QRCodeState = {
   loading: false,
   error: null,
   generatedNumber: null,
-  isDownloading: false
+  isDownloading: false,
+  storeInQRCodeDetails: null,
 };
 
 // Generate QR Code
@@ -113,9 +115,9 @@ export const generateQRCode = createAsyncThunk(
 // Get Barcode Details
 export const getBarcodeDetails = createAsyncThunk(
   'qrcode/getBarcodeDetails',
-  async (qrCodeNumber: string, { rejectWithValue }) => {
+  async (searchQuery: string, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/api/QRCode/GetBarcodeDetails?QRCodeNumber=${qrCodeNumber}`);
+      const response = await api.get(`api/QRCode/GetBarcodeDetails?QRCodeNumber=${searchQuery}`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch barcode details');
@@ -262,6 +264,27 @@ export const fetchMSNNumbers = createAsyncThunk(
   }
 );
 
+// Action to update QR code details for store-in
+export const updateQrCodeDetails = createAsyncThunk(
+  'qrcode/updateQrCodeDetails',
+  async (searchQuery: string) => {
+    try {
+      const response = await api.post('/api/QRCode/ComponentStoreIn', JSON.stringify(searchQuery), {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.data) {
+        throw new Error("No response received from barcode details endpoint");
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      throw new Error("Error fetching QR code details: " + (error.message || error));
+    }
+  }
+);
 const qrcodeSlice = createSlice({
   name: 'qrcode',
   initialState,
@@ -390,6 +413,20 @@ const qrcodeSlice = createSlice({
       .addCase(fetchMSNNumbers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+
+      // Handle updateQrCodeDetails
+      .addCase(updateQrCodeDetails.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateQrCodeDetails.fulfilled, (state, action) => {
+        state.loading = false;
+        state.storeInQRCodeDetails = action.payload;
+      })
+      .addCase(updateQrCodeDetails.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Error updating QR code details';
       });
   },
 });

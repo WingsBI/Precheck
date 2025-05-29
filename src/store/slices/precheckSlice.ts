@@ -6,6 +6,7 @@ interface PrecheckState {
   precheckDetails: any[];
   precheckStatus: any[];
   availableComponents: any[];
+  storeInData: any[];
   isLoading: boolean;
   error: string | null;
 }
@@ -15,6 +16,7 @@ const initialState: PrecheckState = {
   precheckDetails: [],
   precheckStatus: [],
   availableComponents: [],
+  storeInData: [],
   isLoading: false,
   error: null,
 };
@@ -139,12 +141,12 @@ export const makePrecheckOrder = createAsyncThunk(
 
 export const storeInPrecheck = createAsyncThunk(
   'precheck/storeInPrecheck',
-  async (storeData: any, { rejectWithValue }) => {
+  async (payload: any) => {
     try {
-      const response = await api.post('/api/precheck/store-in', storeData);
+      const response = await api.post('api/Precheck/StoreInPrecheck', payload);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to store in precheck');
+    } catch (error) {
+      throw new Error('Error storing precheck');
     }
   }
 );
@@ -159,6 +161,21 @@ export const exportPrecheckDetails = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to export precheck details');
+    }
+  }
+);
+
+export const getStoreInData = createAsyncThunk(
+  'precheck/getStoreInData',
+  async (qrCode: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/Precheck/GetStoreAvailablComponents/${qrCode}`);
+      if (!response.data) {
+        throw new Error("No store-in data found");
+      }
+      return response.data;
+    } catch (error: any) {
+      throw new Error("Error fetching store-in data: " + (error.message || error));
     }
   }
 );
@@ -315,7 +332,7 @@ const precheckSlice = createSlice({
       })
       .addCase(storeInPrecheck.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message || 'Error storing precheck';
       })
       // Export Precheck Details
       .addCase(exportPrecheckDetails.pending, (state) => {
@@ -329,6 +346,19 @@ const precheckSlice = createSlice({
       .addCase(exportPrecheckDetails.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+      })
+      // Get Store In Data
+      .addCase(getStoreInData.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getStoreInData.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.storeInData = action.payload;
+      })
+      .addCase(getStoreInData.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || 'Error fetching store-in data';
       });
   },
 });

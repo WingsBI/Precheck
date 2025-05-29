@@ -438,7 +438,7 @@ const MakePrecheck: React.FC = () => {
         'error'
       );
       return false;
-    }
+      }
 
     return true;
   };
@@ -477,7 +477,7 @@ const MakePrecheck: React.FC = () => {
       }
 
       console.log('Submitting components:', componentsToSubmit);
-
+      
       const response = await dispatch(makePrecheck(componentsToSubmit)).unwrap();
       
       if (response?.length) {
@@ -486,18 +486,18 @@ const MakePrecheck: React.FC = () => {
           if (item.isUpdated && !item.isSubmitted) {
             const responseItem = response.find((x: any) => x.drawingNumberId === item.drawingNumberId);
             if (responseItem) {
-              return {
-                ...item,
+            return {
+              ...item,
                 isSubmitted: true,
                 isUpdated: false,
-                isPrecheckComplete: true,
+              isPrecheckComplete: true,
                 mrirNumber: responseItem.mrirNumber,
                 quantity: responseItem.quantity,
                 remarks: responseItem.remarks,
                 ir: responseItem.irNumber,
                 msn: responseItem.msnNumber,
                 modifiedDate: responseItem.modifiedDate
-              };
+            };
             }
           }
           return item;
@@ -625,7 +625,7 @@ const MakePrecheck: React.FC = () => {
           item.idNumber === qrCodeDetails.idNumber &&
           item.drawingNumberId === qrCodeDetails.drawingNumberId
         );
-
+        
         if (idAlreadyAssigned) {
           showAlertMessage(
             `ID ${qrCodeDetails.idNumber} has already been assigned to a component with drawing number ${qrCodeDetails.drawingNumber}.`,
@@ -644,13 +644,13 @@ const MakePrecheck: React.FC = () => {
 
       if (matchingItem) {
         // Determine quantity based on component type
-        if (qrCodeDetails.componentType?.toUpperCase() !== 'ID') {
-          const maxQty = matchingItem.item.quantity || 0;
-          setMaxQuantity(maxQty);
-          setSelectedQuantity(maxQty);
-          setPendingBarcodeData({ qrCodeDetails, matchingItem });
-          setQuantityDialogOpen(true);
-        } else {
+      if (qrCodeDetails.componentType?.toUpperCase() !== 'ID') {
+        const maxQty = matchingItem.item.quantity || 0;
+        setMaxQuantity(maxQty);
+        setSelectedQuantity(maxQty);
+        setPendingBarcodeData({ qrCodeDetails, matchingItem });
+        setQuantityDialogOpen(true);
+      } else {
           // For ID type, use the quantity from qrCodeDetails
           updateGridItem(
             qrCodeDetails,
@@ -658,7 +658,7 @@ const MakePrecheck: React.FC = () => {
             qrCodeDetails.quantity || 0
           );
           showAlertMessage('Component details updated successfully.', 'success');
-        }
+      }
       } else {
         // No unprocessed row found
         const totalMatchingItems = potentialMatches.length;
