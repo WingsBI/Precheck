@@ -204,15 +204,15 @@ const ViewPrecheck: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, maxWidth: "100%", mx: "auto" }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 1 }, maxWidth: "100%", mx: "auto" }}>
       <Typography
-        variant="h5"
+        variant="h4"
         gutterBottom
         sx={{
           color: "primary.main",
           fontWeight: 600,
           mb: 2,
-          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.25rem' }
         }}
       >
         View Precheck
@@ -360,7 +360,7 @@ const ViewPrecheck: React.FC = () => {
               <Button
                 variant="contained"
                 color="primary"
-                sx={{ minWidth: { xs: '30%', sm: 170 }, height: 32 }}
+                sx={{ minWidth: { xs: '30%', sm: 130 }, height: 32 }}
                 size="small"
                 onClick={handleViewPrecheck}
                 disabled={isLoading}

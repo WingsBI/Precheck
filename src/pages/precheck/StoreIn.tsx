@@ -12,8 +12,15 @@ import {
   TableHead,
   TableRow,
   InputAdornment,
+  IconButton,
+  Collapse,
+  Chip
 } from '@mui/material';
-import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import {
+  QrCodeScanner as QrCodeScannerIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
+} from '@mui/icons-material';
 import { storeInPrecheck, getStoreAvailableComponents } from '../../store/slices/precheckSlice';
 import { getBarcodeDetails } from '../../store/slices/qrcodeSlice';
 import type { RootState, AppDispatch } from '../../store/store';
@@ -43,6 +50,7 @@ interface DashboardData {
 const StoreIn: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [qrCodeInput, setQrCodeInput] = useState('');
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const availableComponents = useSelector((state: RootState) => state.precheck.availableComponents);
   const isLoading = useSelector((state: RootState) => state.precheck.isLoading);
   const barcodeDetails = useSelector((state: RootState) => state.qrcode.barcodeDetails);
@@ -56,6 +64,10 @@ const StoreIn: React.FC = () => {
       dispatch(getStoreAvailableComponents(value));
       dispatch(getBarcodeDetails(value));
     }
+  };
+
+  const handleExpandClick = (qrCodeId: string) => {
+    setExpandedRow(expandedRow === qrCodeId ? null : qrCodeId);
   };
 
   return (
@@ -100,31 +112,82 @@ const StoreIn: React.FC = () => {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>QRCode ID</TableCell>
-                <TableCell>PO Number</TableCell>
-                <TableCell>Project Number</TableCell>
-                <TableCell>Prod Series</TableCell>
-                <TableCell>Drawing Number</TableCell>
-                <TableCell>ID</TableCell>
-                <TableCell>Qty</TableCell>
-                <TableCell>Nomenclature</TableCell>
+                <TableCell sx={{ textAlign: 'center'}}>QRCode ID</TableCell>
+                <TableCell sx={{ textAlign: 'center'}}>PO Number</TableCell>
+                <TableCell sx={{ textAlign: 'center'}}>Project Number</TableCell>
+                <TableCell sx={{ textAlign: 'center'}}>Prod Series</TableCell>
+                <TableCell sx={{ textAlign: 'center'}}>Drawing Number</TableCell>
+                <TableCell sx={{ textAlign: 'center'}}>ID</TableCell>
+                <TableCell sx={{ textAlign: 'center'}}>Qty</TableCell>
+                <TableCell sx={{ textAlign: 'center'}}>Nomenclature</TableCell>
+                <TableCell sx={{ textAlign: 'center'}}>Details</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {barcodeDetails ? (
-                <TableRow>
-                  <TableCell sx={{ textAlign: 'left', minWidth: '150px' }}>{barcodeDetails.qrCodeNumber}</TableCell>
-                  <TableCell>{barcodeDetails.productionOrderNumber}</TableCell>
-                  <TableCell>{barcodeDetails.projectNumber}</TableCell>
-                  <TableCell>{barcodeDetails.productionSeries}</TableCell>
-                  <TableCell>{barcodeDetails.drawingNumber}</TableCell>
-                  <TableCell>{barcodeDetails.idNumber}</TableCell>
-                  <TableCell>{barcodeDetails.quantity}</TableCell>
-                  <TableCell>{barcodeDetails.nomenclature}</TableCell>
-                </TableRow>
+                <>
+                  <TableRow>
+                    <TableCell sx={{ textAlign: 'left', minWidth: '150px' }}>{barcodeDetails.qrCodeNumber}</TableCell>
+                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.productionOrderNumber}</TableCell>
+                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.projectNumber}</TableCell>
+                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.productionSeries}</TableCell>
+                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.drawingNumber}</TableCell>
+                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.idNumber}</TableCell>
+                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.quantity}</TableCell>
+                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.nomenclature}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleExpandClick(barcodeDetails.qrCodeNumber)}
+                      >
+                        {expandedRow === barcodeDetails.qrCodeNumber ? 
+                          <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
+                      <Collapse in={expandedRow === barcodeDetails.qrCodeNumber} timeout="auto" unmountOnExit>
+                        <Box sx={{ margin: 1 }}>
+                          <Table size="small" aria-label="details">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Consumed in Drawing</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>Status</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>IR Number</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>MSN Number</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>MRIR Number</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>Disposition</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>Username</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              <TableRow>
+                                <TableCell>{barcodeDetails.consumedInDrawing || '-'}</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>
+                                  <Chip 
+                                    label={barcodeDetails.qrCodeStatus || 'N/A'} 
+                                    size="small"
+                                    color={barcodeDetails.qrCodeStatus === 'readyforconsumption' ? 'success' : 'default'}
+                                    variant="outlined"
+                                  />
+                                </TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.irNumber || '-'}</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.msnNumber || '-'}</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.mrirNumber || '-'}</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.desposition || '-'}</TableCell>
+                                <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.users || '-'}</TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </Box>
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </>
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">No QR code scanned</TableCell>
+                  <TableCell colSpan={9} align="center">No QR code scanned</TableCell>
                 </TableRow>
               )}
             </TableBody>

@@ -264,15 +264,15 @@ export default function SearchUpdateIRMSN() {
   };
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, maxWidth: "100%", mx: "auto", height: "100vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 1}, maxWidth: "100%", mx: "auto", height: "100vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <Typography
-        variant="h5"
+        variant="h4"
         gutterBottom
         sx={{
           color: "primary.main",
           fontWeight: 600,
           mb: 2,
-          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.25rem' }
         }}
       >
         Search/Update IR/MSN

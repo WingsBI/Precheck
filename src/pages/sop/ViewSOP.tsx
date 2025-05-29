@@ -622,19 +622,19 @@ const ViewSOP: React.FC = () => {
       }}
     >
       <Typography
-        variant="h6"
+        variant="h4"
         gutterBottom
       sx={{ 
           color: "primary.main",
           fontWeight: 600,
-        mb: 2,
+        mb: 1,
         }}
       >
         View SOP
             </Typography>
 
 
-      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 } }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, md:1} }}>
         {/* Success/Error Messages */}
         <Fade in={!!(successMessage || error)}>
           <Box sx={{ mb: 2 }}>

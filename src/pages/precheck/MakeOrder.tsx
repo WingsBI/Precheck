@@ -302,7 +302,7 @@ const MakeOrder: React.FC = () => {
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, maxWidth: "100%", mx: "auto" }}>
       <Card elevation={2} sx={{ mb: 3 }}>
-        <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+        <CardContent sx={{ p: { xs: 2, md: 2 } }}>
           {/* Page Title */}
           <Typography
             variant="h6"
@@ -536,10 +536,10 @@ const MakeOrder: React.FC = () => {
             <Button
               variant="outlined"
               color="error"
-              size="large"
+              size="medium"
               onClick={handleReset}
               startIcon={<RefreshIcon />}
-              sx={{ minWidth: 120, py: 1.5 }}
+              sx={{ minWidth: 120, py: 1.5 ,height: 40}}
             >
               Reset
             </Button>
@@ -547,7 +547,7 @@ const MakeOrder: React.FC = () => {
             <Button
               variant="contained"
               color="primary"
-              size="large"
+              size="medium"
               onClick={handleSubmit(onSubmit)}
               disabled={isLoading}
               startIcon={
@@ -557,7 +557,7 @@ const MakeOrder: React.FC = () => {
                   <ShoppingCartIcon />
                 )
               }
-              sx={{ minWidth: 200, py: 1.5 }}
+              sx={{ minWidth: 150, py: 1.5 ,height: 30}}
             >
               {isLoading ? "Processing..." : "Make Order"}
             </Button>
@@ -568,7 +568,7 @@ const MakeOrder: React.FC = () => {
       {/* Tables Section */}
       <Grid container spacing={3}>
         {/* BOM Table */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={5.2}>
           <Card elevation={2}>
             <CardContent sx={{ p: { xs: 1, md: 2 } }}>
               <Typography
@@ -638,7 +638,7 @@ const MakeOrder: React.FC = () => {
         </Grid>
 
         {/* QR Codes Table */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={6.8}>
           <Card elevation={2}>
             <CardContent sx={{ p: { xs: 1, md: 2 } }}>
               <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
