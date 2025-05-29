@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Box,
@@ -24,7 +24,8 @@ import {
   IconButton,
   Chip,
   Collapse,
-  TablePagination
+  TablePagination,
+  DialogContentText
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon, 
@@ -37,10 +38,12 @@ import {
   Refresh as RefreshIcon,
   Send as SendIcon
 } from '@mui/icons-material';
-import { viewPrecheckDetails, getAvailableComponents, makePrecheck } from '../../store/slices/precheckSlice';
+import { viewPrecheckDetails, getAvailableComponents, makePrecheck, clearPrecheckData } from '../../store/slices/precheckSlice';
+import { getBarcodeDetails } from '../../store/slices/qrcodeSlice';
 import { getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
 import type { RootState, AppDispatch } from '../../store/store';
 import debounce from 'lodash.debounce';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface BarcodeDetails {
   qrCodeStatusId: number;
@@ -72,23 +75,184 @@ interface GridItem {
   prodSeriesId: number;
   isPrecheckComplete: boolean;
   isUpdated: boolean;
+  isSubmitted?: boolean;
   qrCode?: string;
   componentType?: string;
   username?: string;
   modifiedDate?: string;
   remarks?: string;
   expanded?: boolean;
+  productionOrderNumber?: string;
+  projectNumber?: string;
+  disposition?: string;
 }
+
+interface QuantityDialogProps {
+  open: boolean;
+  maxQuantity: number;
+  defaultQuantity: number;
+  onClose: () => void;
+  onConfirm: (quantity: number) => void;
+}
+
+const QuantityDialog: React.FC<QuantityDialogProps> = ({
+  open,
+  maxQuantity,
+  defaultQuantity,
+  onClose,
+  onConfirm
+}) => {
+  const [quantity, setQuantity] = useState(defaultQuantity);
+  const [error, setError] = useState<string>("");
+
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setQuantity(defaultQuantity);
+      setError("");
+    }
+  }, [open, defaultQuantity]);
+
+  const validateInput = (value: string) => {
+    const numValue = parseInt(value);
+    if (value === "") {
+      setError("");
+      return;
+    }
+    if (isNaN(numValue)) {
+      setError("Please enter a valid number");
+      return;
+    }
+    if (numValue < 0) {
+      setError("Quantity must be greater than 0");
+      return;
+    }
+    if (numValue > maxQuantity) {
+      setError(`Quantity cannot exceed ${maxQuantity}`);
+      return;
+    }
+    setError("");
+    setQuantity(numValue);
+  };
+
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    validateInput(value);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    validateInput(pastedText);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Allow only numbers, backspace, delete, and arrow keys
+    if (!/^\d$/.test(e.key) && 
+        !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key) &&
+        !(e.ctrlKey && e.key === 'a')) {
+      e.preventDefault();
+    }
+  };
+
+  const handleConfirm = () => {
+    if (!error && quantity >= 0 && quantity <= maxQuantity) {
+      onConfirm(quantity);
+    }
+  };
+
+  return (
+    <Dialog 
+      open={open} 
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          width: '100%',
+          maxWidth: 400,
+          p: 2
+        }
+      }}
+    >
+      <DialogTitle sx={{ pb: 1 }}>
+        <Typography variant="h6" component="div">
+          Enter Quantity
+        </Typography>
+      </DialogTitle>
+      <DialogContent>
+        <DialogContentText sx={{ mb: 2 }}>
+          Maximum allowed quantity: {maxQuantity}
+        </DialogContentText>
+        <TextField
+          autoFocus
+          margin="dense"
+          label="Quantity"
+          type="text"
+          fullWidth
+          value={quantity}
+          onChange={handleQuantityChange}
+          onPaste={handlePaste}
+          onKeyDown={handleKeyDown}
+          error={!!error}
+          helperText={error}
+          inputProps={{
+            inputMode: 'numeric',
+            pattern: '[0-9]*',
+            min: 0,
+            max: maxQuantity,
+            style: { fontSize: '1rem' }
+          }}
+          SelectProps={{
+            native: true
+          }}
+          variant="outlined"
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: error ? 'error.main' : 'grey.400'
+              }
+            }
+          }}
+        />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button 
+          onClick={onClose}
+          variant="outlined"
+          sx={{ minWidth: 100 }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleConfirm}
+          disabled={!!error || quantity < 0 || quantity > maxQuantity}
+          variant="contained"
+          sx={{ minWidth: 100 }}
+        >
+          Confirm
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
 
 const MakePrecheck: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { isLoading } = useSelector((state: RootState) => state.precheck);
   const { productionSeries, drawingNumbers } = useSelector((state: RootState) => state.common);
+  const location = useLocation();
+  const navigate = useNavigate();
   
   // Form state
   const [selectedDrawing, setSelectedDrawing] = useState<any>(null);
   const [selectedProductionSeries, setSelectedProductionSeries] = useState<any>(null);
   const [idNumber, setIdNumber] = useState('');
+  const [isLoadingLocal, setIsLoadingLocal] = useState(false);
+  
+  // Track original values for validation
+  const [originalDrawingNumber, setOriginalDrawingNumber] = useState<string | null>(null);
+  const [originalProdSeries, setOriginalProdSeries] = useState<number | null>(null);
+  const [originalAssemblyNumber, setOriginalAssemblyNumber] = useState<string | null>(null);
+  const [hasLoadedData, setHasLoadedData] = useState(false);
   
   // Loading states
   const [drawingLoading, setDrawingLoading] = useState(false);
@@ -126,6 +290,9 @@ const MakePrecheck: React.FC = () => {
 
   // Selected row state
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
+
+  // Button states
+  const [isMakePrecheckEnabled, setIsMakePrecheckEnabled] = useState(false);
 
   // Debounced search functions
   const debouncedDrawingSearch = useMemo(
@@ -202,206 +369,202 @@ const MakePrecheck: React.FC = () => {
     });
   }, [searchResults, orderBy, order]);
 
-  const handleMakePrecheck = () => {
-    // Validate required fields first
-    if (!selectedDrawing || !selectedProductionSeries || !idNumber) {
-      showAlertMessage('Please fill all required fields: Drawing Number, Production Series, and ID Number', 'error');
-      return;
-    }
+  // Validate fields whenever relevant properties change
+  useEffect(() => {
+    validateFields();
+  }, [selectedDrawing, selectedProductionSeries, idNumber]);
 
-    // Using the same API as ViewPrecheck with the same parameter structure
-    const params = {
-      ProductionOrderNumber: undefined, // Not used in MakePrecheck
-      ProductionSeriesId: selectedProductionSeries?.id || undefined,
-      Id: idNumber ? parseInt(idNumber) : undefined,
-      DrawingNumberId: selectedDrawing?.id || undefined
-    };
-    
-    console.log('Making precheck with params:', params); // Debug log
-    
-    // Only call API if we have at least one parameter
-    if (params.ProductionSeriesId || params.Id || params.DrawingNumberId) {
-      dispatch(viewPrecheckDetails(params)).then((result: any) => {
-        console.log('API Response:', result); // Debug log
-        
-        if (result.payload && Array.isArray(result.payload)) {
-          // Map the API response to our table format (same as ViewPrecheck)
-          const mappedResults = result.payload.map((item: any, index: number) => ({
-            sr: index + 1,
-            drawingNumber: item.drawingNumber || item.consumedDrawingNo || '',
-            nomenclature: item.nomenclature || '',
-            quantity: item.quantity || 0,
-            idNumber: item.idNumbers || item.idNumber || '',
-            ir: item.irNumber || '',
-            msn: item.msnNumber || '',
-            mrirNumber: item.mrirNumber || '',
-            drawingNumberId: item.drawingNumberId || 0,
-            prodSeriesId: item.prodSeriesId || 0,
-            isPrecheckComplete: item.isPrecheckComplete || false,
-            isUpdated: false,
-            componentType: item.componentType || '',
-            username: item.username || '',
-            modifiedDate: item.modifiedDate || '',
-            remarks: item.remarks || ''
-          }));
-          setSearchResults(mappedResults);
-          setIsSubmitEnabled(false);
-          showAlertMessage(`Loaded ${mappedResults.length} components successfully`, 'success');
-        } else {
-          setSearchResults([]);
-          showAlertMessage('No data found for the specified criteria', 'info');
-        }
-        setShowResults(true);
-      }).catch((error) => {
-        console.error('API Error:', error); // Debug log
-        setSearchResults([]);
-        setShowResults(true);
-        showAlertMessage('Error loading precheck data. Please try again.', 'error');
-      });
-    } else {
-      showAlertMessage('Please provide valid search criteria', 'error');
+  const validateFields = () => {
+    // Check if mandatory fields are filled
+    const mandatoryFieldsFilled = 
+      selectedDrawing?.drawingNumber && 
+      selectedProductionSeries?.id && 
+      idNumber;
+
+    // Check if the current combination is different from the previously loaded one
+    const hasDifferentCombination = !hasLoadedData ||
+      (selectedDrawing?.drawingNumber !== originalDrawingNumber ||
+       selectedProductionSeries?.id !== originalProdSeries ||
+       idNumber !== originalAssemblyNumber);
+
+    // Enable button only if mandatory fields are filled AND
+    // either we haven't loaded data yet OR the combination is different
+    setIsMakePrecheckEnabled(mandatoryFieldsFilled && hasDifferentCombination);
+  };
+
+  const handleMakePrecheck = async () => {
+    if (!validateInputs()) return;
+
+    try {
+      setIsLoadingLocal(true);
+      // Disable the button immediately
+      setHasLoadedData(true);
+      setOriginalDrawingNumber(selectedDrawing?.drawingNumber);
+      setOriginalProdSeries(selectedProductionSeries?.id);
+      setOriginalAssemblyNumber(idNumber);
+
+      setIsMakePrecheckEnabled(false);
+
+      const payload = {
+        DrawingNumberId: selectedDrawing?.id,
+        ProductionSeriesId: selectedProductionSeries?.id,
+        Id: idNumber ? parseInt(idNumber) : undefined
+      };
+
+      const response = await dispatch(viewPrecheckDetails(payload)).unwrap();
+      await updateGridItems(response);
+
+      setIsSubmitEnabled(true);
+      setShowResults(true);
+    } catch (error) {
+      console.error('Error in LoadGridData:', error);
+      showAlertMessage('Error loading data: ' + (error as Error).message, 'error');
+    } finally {
+      setIsLoadingLocal(false);
+      setIsMakePrecheckEnabled(false);
     }
   };
 
-  const handleReset = () => {
+  const validateInputs = () => {
+    const missingFields = [];
+
+    if (!selectedDrawing) missingFields.push('Drawing Number');
+    if (!selectedProductionSeries) missingFields.push('Production Series');
+    if (!idNumber) missingFields.push('Assembly Number');
+
+    if (missingFields.length > 0) {
+      showAlertMessage(
+        `Please fill the following required fields:\n${missingFields.join(', ')}`,
+        'error'
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmitPrecheck = async () => {
+    try {
+      setIsLoadingLocal(true);
+      setIsSubmitEnabled(false);
+
+      const componentsToSubmit = searchResults
+        .filter(item => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete)
+        .map(item => ({
+          consumedDrawingNo: `${selectedProductionSeries?.productionSeries}/${selectedDrawing?.drawingNumber}/${idNumber}`,
+          consumedInDrawingNumberID: selectedDrawing?.id || 0,
+          consumedInProdSeriesID: selectedProductionSeries?.id || 0,
+          consumedInId: parseInt(idNumber) || 0,
+          qrCodeNumber: item.qrCode || "",
+          quantity: item.quantity || 0,
+          drawingNumberId: item.drawingNumberId || 0,
+          id: 0, // This will be assigned by the server
+          productionSeriesId: item.prodSeriesId || 0,
+          remarks: item.remarks || "",
+          unit: "NA", // Add default unit if not available
+          irNumber: item.ir || "",
+          msnNumber: item.msn || "",
+          mrirNumber: item.mrirNumber || "",
+          idNumbers: item.idNumber || "",
+          componentType: item.componentType || "",
+          productionOrderNumber: item.productionOrderNumber || "NA",
+          createdBy: 0 // This should be replaced with actual user ID if available
+        }));
+
+      if (!componentsToSubmit.length) {
+        showAlertMessage('No new components to submit', 'info');
+        return;
+      }
+
+      console.log('Submitting components:', componentsToSubmit);
+
+      const response = await dispatch(makePrecheck(componentsToSubmit)).unwrap();
+      
+      if (response?.length) {
+        // Update grid items as submitted
+        const updatedResults = searchResults.map(item => {
+          if (item.isUpdated && !item.isSubmitted) {
+            const responseItem = response.find((x: any) => x.drawingNumberId === item.drawingNumberId);
+            if (responseItem) {
+              return {
+                ...item,
+                isSubmitted: true,
+                isUpdated: false,
+                isPrecheckComplete: true,
+                mrirNumber: responseItem.mrirNumber,
+                quantity: responseItem.quantity,
+                remarks: responseItem.remarks,
+                ir: responseItem.irNumber,
+                msn: responseItem.msnNumber,
+                modifiedDate: responseItem.modifiedDate
+              };
+            }
+          }
+          return item;
+        });
+        
+        setSearchResults(updatedResults);
+        showAlertMessage('Precheck submitted successfully!', 'success');
+      } else {
+        showAlertMessage('No data submitted.', 'info');
+        setIsSubmitEnabled(true);
+      }
+    } catch (error) {
+      console.error('Error submitting precheck:', error);
+      showAlertMessage(`Error submitting precheck: ${(error as Error).message}`, 'error');
+      setIsSubmitEnabled(true);
+    } finally {
+      setIsLoadingLocal(false);
+    }
+  };
+
+  // Cleanup function
+  const resetAllData = useCallback(() => {
+    // Clear form fields
+    setHasLoadedData(false);
     setSelectedDrawing(null);
     setSelectedProductionSeries(null);
     setIdNumber('');
+    setBarcodeText('');
+
+    // Clear original values
+    setOriginalDrawingNumber(null);
+    setOriginalProdSeries(null);
+    setOriginalAssemblyNumber(null);
+
+    // Clear grid data
     setSearchResults([]);
     setShowResults(false);
-    setOrderBy('');
-    setOrder('asc');
-    setBarcodeText('');
+
+    // Reset button states
+    setIsMakePrecheckEnabled(false);
     setIsSubmitEnabled(false);
+
+    // Clear alerts
+    setAlertMessage('');
     setShowAlert(false);
-    setExpandedRows(new Set());
+
+    // Reset dialog states
+    setQuantityDialogOpen(false);
+    setPendingBarcodeData(null);
+
+    // Reset pagination
     setPage(0);
     setSelectedRow(null);
-  };
-
-  const processBarcodeAsync = async (barcode: string) => {
-    try {
-      const result = await dispatch(getAvailableComponents(barcode));
-      const qrCodeDetails = result.payload as BarcodeDetails;
-
-      if (!qrCodeDetails) {
-        showAlertMessage('Invalid QR code or no data found', 'error');
-        return;
-      }
-
-      if (qrCodeDetails.qrCodeStatusId === 3) {
-        showAlertMessage('QR code not stored in.', 'info');
-        return;
-      } else if (qrCodeDetails.qrCodeStatusId !== 1) {
-        showAlertMessage('This barcode has already been consumed.', 'info');
-        return;
-      }
-
-      // Find potential matches
-      const potentialMatches = searchResults
-        .map((item, index) => ({ item, index }))
-        .filter(x => x.item.drawingNumberId === qrCodeDetails.drawingNumberId);
-
-      if (!potentialMatches.length) {
-        showAlertMessage(`No components found with drawing number ${qrCodeDetails.drawingNumber}.`, 'info');
-        return;
-      }
-
-      // Check for ID component type
-      if (potentialMatches.some(x => x.item.componentType?.toUpperCase() === 'ID')) {
-        const idAlreadyAssigned = searchResults.some(item =>
-          item.idNumber === qrCodeDetails.idNumber &&
-          item.drawingNumberId === qrCodeDetails.drawingNumberId
-        );
-        
-        if (idAlreadyAssigned) {
-          showAlertMessage(`ID ${qrCodeDetails.idNumber} has already been assigned to a component with drawing number ${qrCodeDetails.drawingNumber}.`, 'success');
-          return;
-        }
-      }
-
-      // Find unprocessed item
-      const matchingItem = potentialMatches.find(x => 
-        !x.item.isPrecheckComplete &&
-        !x.item.isUpdated &&
-        !x.item.idNumber
-      );
-
-      if (!matchingItem) {
-        const totalMatchingItems = potentialMatches.length;
-        const processedMatchingItems = potentialMatches.filter(x => 
-          x.item.isPrecheckComplete || x.item.isUpdated || x.item.idNumber
-        ).length;
-
-        if (totalMatchingItems > 0 && processedMatchingItems === totalMatchingItems) {
-          showAlertMessage(`All components with drawing number ${qrCodeDetails.drawingNumber} have already been processed.`, 'info');
-        } else {
-          showAlertMessage('No matching unprocessed component found for the scanned barcode.', 'info');
-        }
-        return;
-      }
-
-      // Handle quantity selection
-      if (qrCodeDetails.componentType?.toUpperCase() !== 'ID') {
-        const maxQty = matchingItem.item.quantity || 0;
-        setMaxQuantity(maxQty);
-        setSelectedQuantity(maxQty);
-        setPendingBarcodeData({ qrCodeDetails, matchingItem });
-        setQuantityDialogOpen(true);
-      } else {
-        updateGridItem(qrCodeDetails, matchingItem, qrCodeDetails.quantity);
-      }
-
-    } catch (error) {
-      console.error('Error processing barcode:', error);
-      showAlertMessage('Error processing barcode', 'error');
-    }
-  };
-
-  const updateGridItem = (qrCodeDetails: BarcodeDetails, matchingItem: any, quantity: number) => {
-    const updatedResults = [...searchResults];
-    const item = updatedResults[matchingItem.index];
     
-    // Update the item
-    item.qrCode = pendingBarcodeData?.qrCodeDetails?.idNumber || qrCodeDetails.idNumber;
-    item.isPrecheckComplete = false;
-    item.isUpdated = true;
-    item.ir = qrCodeDetails.irNumber;
-    item.msn = qrCodeDetails.msnNumber;
-    item.idNumber = qrCodeDetails.idNumber;
-    item.quantity = quantity;
-    item.componentType = qrCodeDetails.componentType;
-    item.mrirNumber = qrCodeDetails.mrirNumber;
-    item.remarks = qrCodeDetails.remark;
-    item.username = 'Current User'; // Replace with actual user
-    item.modifiedDate = new Date().toISOString().split('T')[0];
+    // Reset expanded rows
+    setExpandedRows(new Set());
 
-    setSearchResults(updatedResults);
-    
-    // Check if submit should be enabled
-    const hasUpdatedItems = updatedResults.some(item => item.isUpdated && !item.isPrecheckComplete);
-    setIsSubmitEnabled(hasUpdatedItems);
+    // Clear Redux state
+    dispatch(clearPrecheckData());
 
-    // Check if all items are processed
-    const unprocessedItems = updatedResults.filter(item => 
-      !item.isPrecheckComplete && !item.isUpdated
-    );
+    // Re-validate fields
+    validateFields();
+  }, [dispatch]);
 
-    if (unprocessedItems.length === 0) {
-      showAlertMessage('All components have been pre-checked!', 'success');
-    }
-  };
-
-  const handleQuantityConfirm = () => {
-    if (pendingBarcodeData) {
-      updateGridItem(
-        pendingBarcodeData.qrCodeDetails,
-        pendingBarcodeData.matchingItem,
-        selectedQuantity
-      );
-      setPendingBarcodeData(null);
-    }
-    setQuantityDialogOpen(false);
+  // Handle the reset button click
+  const handleReset = () => {
+    resetAllData();
   };
 
   const handleBarcodeChange = (value: string) => {
@@ -414,55 +577,159 @@ const MakePrecheck: React.FC = () => {
     }
   };
 
-  const handleSubmitPrecheck = async () => {
+  const processBarcodeAsync = async (barcode: string) => {
     try {
-      const componentsToSubmit = searchResults
-        .filter(item => item.isUpdated && !item.isPrecheckComplete)
-        .map(item => ({
-          consumedDrawingNo: `${selectedProductionSeries?.productionSeries}/${selectedDrawing?.drawingNumber}/${idNumber}`,
-          consumedInDrawingNumberID: selectedDrawing?.id,
-          consumedInProdSeriesID: selectedProductionSeries?.id,
-          consumedInId: parseInt(idNumber) || 0,
-          qrCodeNumber: item.qrCode,
-          quantity: item.quantity,
-          irNumber: item.ir,
-          msnNumber: item.msn,
-          drawingNumberId: item.drawingNumberId,
-          productionSeriesId: item.prodSeriesId,
-          remarks: item.remarks,
-          componentType: item.componentType,
-          idNumbers: item.idNumber,
-          mrirNumber: item.mrirNumber
-        }));
+      // Call the getBarcodeDetails API
+      const qrCodeDetails = await dispatch(getBarcodeDetails(barcode)).unwrap();
 
-      if (!componentsToSubmit.length) {
-        showAlertMessage('No new components to submit', 'info');
+      if (!qrCodeDetails) {
+        showAlertMessage('Invalid QR code or no data found', 'error');
         return;
       }
 
-      const result = await dispatch(makePrecheck(componentsToSubmit));
-      
-      if (result.payload) {
-        // Update grid items as submitted
-        const updatedResults = searchResults.map(item => {
-          if (item.isUpdated && !item.isPrecheckComplete) {
-            return {
-              ...item,
-              isPrecheckComplete: true,
-              isUpdated: false
-            };
-          }
-          return item;
-        });
-        
-        setSearchResults(updatedResults);
-        setIsSubmitEnabled(false);
-        showAlertMessage('Precheck submitted successfully!', 'success');
+      console.log('QR Code Details:', qrCodeDetails);
+
+      // Check QR code status first - using the statusId from API
+      if (qrCodeDetails.qrCodeStatusId === 3 || qrCodeDetails.qrCodeStatus?.toLowerCase() === 'qrcodegenerated') {
+        showAlertMessage('Component not stored in. QR code is generated but not ready for consumption.', 'warning');
+        return;
+      }
+
+      if (qrCodeDetails.qrCodeStatusId === 2 || qrCodeDetails.qrCodeStatus?.toLowerCase() === 'consumed') {
+        showAlertMessage('This QR code has already been consumed and cannot be used again.', 'error');
+        return;
+      }
+
+      // Only proceed if status is 1 (Available)
+      if (qrCodeDetails.qrCodeStatusId !== 1 && qrCodeDetails.qrCodeStatus?.toLowerCase() !== 'available') {
+        showAlertMessage('Invalid QR code status.', 'error');
+        return;
+      }
+
+      // Find potential matches with the same DrawingNumberId
+      const potentialMatches = searchResults
+        .map((item, index) => ({ item, index }))
+        .filter(x => x.item.drawingNumberId === qrCodeDetails.drawingNumberId);
+
+      console.log('Potential Matches:', potentialMatches);
+
+      // If no matching DrawingNumberId found, show message and return
+      if (!potentialMatches.length) {
+        showAlertMessage(`No components found with drawing number ${qrCodeDetails.drawingNumber}.`, 'info');
+        return;
+      }
+
+      // Check for ID component type
+      if (potentialMatches.some(x => x.item.componentType?.toUpperCase() === 'ID')) {
+        const idAlreadyAssigned = searchResults.some(item =>
+          item.idNumber === qrCodeDetails.idNumber &&
+          item.drawingNumberId === qrCodeDetails.drawingNumberId
+        );
+
+        if (idAlreadyAssigned) {
+          showAlertMessage(
+            `ID ${qrCodeDetails.idNumber} has already been assigned to a component with drawing number ${qrCodeDetails.drawingNumber}.`,
+            'warning'
+          );
+          return;
+        }
+      }
+
+      // Find the first unprocessed item from potential matches
+      const matchingItem = potentialMatches.find(x => 
+        !x.item.isPrecheckComplete &&
+        !x.item.isUpdated &&
+        !x.item.idNumber
+      );
+
+      if (matchingItem) {
+        // Determine quantity based on component type
+        if (qrCodeDetails.componentType?.toUpperCase() !== 'ID') {
+          const maxQty = matchingItem.item.quantity || 0;
+          setMaxQuantity(maxQty);
+          setSelectedQuantity(maxQty);
+          setPendingBarcodeData({ qrCodeDetails, matchingItem });
+          setQuantityDialogOpen(true);
+        } else {
+          // For ID type, use the quantity from qrCodeDetails
+          updateGridItem(
+            qrCodeDetails,
+            matchingItem,
+            qrCodeDetails.quantity || 0
+          );
+          showAlertMessage('Component details updated successfully.', 'success');
+        }
+      } else {
+        // No unprocessed row found
+        const totalMatchingItems = potentialMatches.length;
+        const processedMatchingItems = potentialMatches.filter(x => 
+          x.item.isPrecheckComplete || 
+          x.item.isUpdated || 
+          x.item.idNumber
+        ).length;
+
+        if (totalMatchingItems > 0 && processedMatchingItems === totalMatchingItems) {
+          showAlertMessage(
+            `All components with drawing number ${qrCodeDetails.drawingNumber} have already been processed.`,
+            'info'
+          );
+        } else {
+          showAlertMessage('No matching unprocessed component found for the scanned barcode.', 'info');
+        }
       }
     } catch (error) {
-      console.error('Error submitting precheck:', error);
-      showAlertMessage('Error submitting precheck', 'error');
+      console.error('Error processing barcode:', error);
+      showAlertMessage(`Error processing barcode: ${(error as Error).message}`, 'error');
     }
+  };
+
+  const updateGridItem = (qrCodeDetails: any, matchingItem: any, quantity: number) => {
+    const updatedResults = [...searchResults];
+    const item = updatedResults[matchingItem.index];
+    
+    // Update the item with all fields from QR code details
+    item.qrCode = qrCodeDetails.qrCodeNumber;
+    item.isPrecheckComplete = false;
+    item.isUpdated = true;
+    item.ir = qrCodeDetails.irNumber;
+    item.msn = qrCodeDetails.msnNumber;
+    item.idNumber = qrCodeDetails.idNumber;
+    item.quantity = quantity;
+    item.componentType = qrCodeDetails.componentType;
+    item.mrirNumber = qrCodeDetails.mrirNumber;
+    item.remarks = qrCodeDetails.remark;
+    item.username = qrCodeDetails.users || 'Current User';
+    item.modifiedDate = new Date().toISOString().split('T')[0];
+    item.productionOrderNumber = qrCodeDetails.productionOrderNumber || "NA";
+    item.projectNumber = qrCodeDetails.projectNumber || "NA";
+    item.disposition = qrCodeDetails.desposition || "NA";
+
+    console.log('Updated Grid Item:', item);
+    setSearchResults(updatedResults);
+    
+    // Enable submit button
+    setIsSubmitEnabled(true);
+
+    // Check if all items are processed
+    const unprocessedItems = updatedResults.filter(item => 
+      !item.isPrecheckComplete && !item.isUpdated
+    );
+
+    if (unprocessedItems.length === 0) {
+      showAlertMessage('All components have been pre-checked!', 'info');
+    }
+  };
+
+  const handleQuantityConfirm = (quantity: number) => {
+    if (pendingBarcodeData) {
+      updateGridItem(
+        pendingBarcodeData.qrCodeDetails,
+        pendingBarcodeData.matchingItem,
+        quantity
+      );
+      setPendingBarcodeData(null);
+    }
+    setQuantityDialogOpen(false);
   };
 
   // Helper function to get component type icon and color
@@ -515,6 +782,35 @@ const MakePrecheck: React.FC = () => {
     const endIndex = startIndex + rowsPerPage;
     return sortedResults.slice(startIndex, endIndex);
   }, [sortedResults, page, rowsPerPage]);
+
+  const updateGridItems = async (response: any[]) => {
+    if (!response?.length) return;
+
+    const newItems = response.map((item, index) => ({
+      sr: index + 1,
+      drawingNumber: item.drawingNumber,
+      nomenclature: item.nomenclature,
+      quantity: item.quantity,
+      idNumber: item.idNumber,
+      ir: item.irNumber,
+      msn: item.msnNumber,
+      mrirNumber: item.mrirNumber,
+      drawingNumberId: item.drawingNumberId,
+      prodSeriesId: item.prodSeriesId,
+      isPrecheckComplete: item.isPrecheckComplete,
+      isUpdated: item.isUpdated,
+      isSubmitted: false,
+      componentType: item.componentType,
+      username: item.username,
+      modifiedDate: item.modifiedDate,
+      remarks: item.remarks,
+      productionOrderNumber: item.productionOrderNumber,
+      projectNumber: item.projectNumber,
+      disposition: item.disposition
+    }));
+
+    setSearchResults(newItems);
+  };
 
   return (
     <Box sx={{ p: 1 }}>
@@ -687,7 +983,7 @@ const MakePrecheck: React.FC = () => {
             }}
             size="small"
             onClick={handleMakePrecheck}
-            disabled={isLoading}
+            disabled={!isMakePrecheckEnabled}
           >
             <QrCodeScannerIcon sx={{ mr: 1 }} />
             Make Precheck
@@ -718,7 +1014,7 @@ const MakePrecheck: React.FC = () => {
             }}
             size="small"
             onClick={handleSubmitPrecheck}
-            disabled={!isSubmitEnabled}
+            // disabled={!isSubmitEnabled}
           >
             <SendIcon sx={{ mr: 1 }} />
             Submit
@@ -888,7 +1184,7 @@ const MakePrecheck: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {isLoading ? (
+              {isLoadingLocal ? (
                 <TableRow>
                   <TableCell colSpan={10} align="center" sx={{ height: 150 }}>
                     <CircularProgress size={30} />
@@ -1015,29 +1311,13 @@ const MakePrecheck: React.FC = () => {
       </Paper>
 
       {/* Quantity Selection Dialog */}
-      <Dialog open={quantityDialogOpen} onClose={() => setQuantityDialogOpen(false)}>
-        <DialogTitle>Select Quantity</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            Maximum quantity available: {maxQuantity}
-                      </Typography>
-                        <TextField
-            autoFocus
-            margin="dense"
-            label="Quantity"
-            type="number"
-            fullWidth
-            variant="outlined"
-            value={selectedQuantity}
-            onChange={(e) => setSelectedQuantity(Math.min(parseInt(e.target.value) || 0, maxQuantity))}
-            inputProps={{ min: 1, max: maxQuantity }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setQuantityDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleQuantityConfirm} variant="contained">Confirm</Button>
-        </DialogActions>
-      </Dialog>
+      <QuantityDialog
+        open={quantityDialogOpen}
+        maxQuantity={maxQuantity}
+        defaultQuantity={selectedQuantity}
+        onClose={() => setQuantityDialogOpen(false)}
+        onConfirm={handleQuantityConfirm}
+      />
     </Box>
   );
 };
