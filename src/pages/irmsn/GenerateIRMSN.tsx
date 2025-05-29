@@ -234,17 +234,22 @@ export default function GenerateIRMSN() {
         mx: "auto",
       }}
     >
+      <Typography
+        variant="h5"
+        gutterBottom
+        sx={{
+          color: "primary.main",
+          fontWeight: 600,
+          mb: 2,
+          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+        }}
+      >
+        Generate IR/MSN Number
+      </Typography>
+
       {/* Main Form */}
       <Card elevation={2} sx={{ mb: 3 }}>
         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-          <Typography
-            variant="h6"
-            gutterBottom
-            sx={{ color: "primary.main", fontWeight: 600, mb: 3 }}
-          >
-            Generate IR/MSN Number
-          </Typography>
-
           <form onSubmit={handleSubmit(onSubmit)}>
             {/* Row 1: Drawing Number, Document Type, Production Series */}
             <Grid container spacing={2} sx={{ mb: 2 }}>

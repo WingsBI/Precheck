@@ -24,7 +24,7 @@ import ViewIRMSN from './pages/irmsn/ViewIRMSN';
 // QR Code Pages
 import BarcodeGeneration from './pages/qrcode/BarcodeGeneration';
 import ViewBarcode from './pages/qrcode/ViewBarcode';
-import ViewConsumedIn from './pages/qrcode/ViewConsumedIn';
+import ViewConsumedIn from './pages/precheck/ViewConsumedIn';
 
 // SOP Pages
 import SOP from './pages/sop/ViewSOP';
