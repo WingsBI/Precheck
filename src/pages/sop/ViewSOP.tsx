@@ -611,13 +611,29 @@ const ViewSOP: React.FC = () => {
   }, [treeData]);
 
   return (
+    
     <Box
       sx={{
         minHeight: "100vh",
         backgroundColor: "#f8fafc",
         position: "relative",
+        p: 1,
+        
       }}
     >
+      <Typography
+        variant="h6"
+        gutterBottom
+      sx={{ 
+          color: "primary.main",
+          fontWeight: 600,
+        mb: 2,
+        }}
+      >
+        View SOP
+            </Typography>
+
+
       <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 } }}>
         {/* Success/Error Messages */}
         <Fade in={!!(successMessage || error)}>
@@ -684,7 +700,7 @@ const ViewSOP: React.FC = () => {
                 backgroundColor: "#f8fafc",
                 borderBottom: "1px solid #e2e8f0",
                 py: { xs: 1, md: 1.5 },
-                minHeight: { xs: 40, md: 48 },
+                minHeight: { xs: 40, md: 30 },
                 "& .MuiAccordionSummary-content": {
                   alignItems: "center",
                   margin: "8px 0",
@@ -699,6 +715,7 @@ const ViewSOP: React.FC = () => {
                     fontSize: { xs: "0.9rem", md: "1rem" },
                     fontWeight: 500,
                     color: "#1e293b",
+                    
                   }}
                 >
                   Search Filters
@@ -707,7 +724,7 @@ const ViewSOP: React.FC = () => {
             </AccordionSummary>
 
             <AccordionDetails sx={{ p: { xs: 2, md: 3 } }}>
-              <Grid container spacing={2} alignItems="end">
+              <Grid container spacing={1} alignItems="end">
                 {/* Production Series */}
                 <Grid item xs={12} sm={6} md={3}>
                   <Controller
