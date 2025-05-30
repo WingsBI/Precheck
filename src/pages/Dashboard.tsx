@@ -62,7 +62,7 @@ const Dashboard: React.FC = () => {
       roles: [ADMIN_ROLE, STORE_ROLE]
     },
     {
-      title: 'Generate Barcode',
+      title: 'Add MFG Item',
       description: 'Access and manage Barcode generation related tasks',
       icon: <QrCodeScannerIcon sx={{ fontSize: 40 }} />,
       color: '#FF9800', // Orange
