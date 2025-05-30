@@ -76,7 +76,7 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
   background: "linear-gradient(135deg, #A8005A 0%, #d63384 100%)",
   boxShadow: "0 2px 8px rgba(168, 0, 90, 0.2)",
   [theme.breakpoints.up("lg")]: {
-    paddingLeft: drawerCollapsedWidth - 20, // Reduced to match Main component
+    paddingLeft: 0, // Remove the left padding on desktop
   },
 }));
 
@@ -543,7 +543,7 @@ export default function Layout() {
               aria-label="open drawer"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2, color: "white" }}
+              sx={{ mr: 0, color: "white" }}
             >
               <MenuIcon />
             </IconButton>
@@ -555,10 +555,15 @@ export default function Layout() {
               display: "flex",
               alignItems: "center",
               flexGrow: 1,
+              pl: { xs: 0, lg: 0 }, // Add slight padding on desktop
+              transition: theme.transitions.create("padding", {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
             }}  
           >
             <img
-              src="/assets/logo.jpg" // Replace with your actual logo path
+              src="/assets/logo.jpg"
               alt="Logo"
               style={{ height: 32, marginRight: 8, borderRadius: 10 }}
             />
