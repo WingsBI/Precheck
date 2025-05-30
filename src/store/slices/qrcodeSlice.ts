@@ -82,7 +82,7 @@ interface BatchInfo {
   quantity: number;
   batchQuantity: number;
   assemblyDrawingId: number;
-  isDownloading: boolean;
+  isDownloading?: boolean;
 }
 
 const initialState: QRCodeState = {

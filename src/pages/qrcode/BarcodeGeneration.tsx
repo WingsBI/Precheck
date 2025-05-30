@@ -274,7 +274,11 @@ export default function BarcodeGeneration() {
       remark: data.remark,
       quantity: data.quantity,
       ids: [],
-      batchIds: [],
+      batchIds: batchItems.map((item) => ({
+        quantity: item.quantity,
+        batchQuantity: item.batchQuantity,
+        assemblyDrawingId: item.assemblyDrawingId
+      })),
     };
 
     // Handle different component types
@@ -299,7 +303,7 @@ export default function BarcodeGeneration() {
         basePayload.batchIds = batchItems.map((item) => ({
           quantity: item.quantity,
           batchQuantity: item.batchQuantity,
-          assemblyDrawingId: item.assemblyDrawingId,
+          assemblyDrawingId: item.assemblyDrawingId
         }));
         break;
       case "FIM":
@@ -328,7 +332,28 @@ export default function BarcodeGeneration() {
 
   // Handle actions
   const handleReset = () => {
-    reset();
+    reset({
+      drawingNumber: '',
+      nomenclature: '',
+      productionSeries: '',
+      componentType: 'ID',
+      idType: 'series',
+      startRange: 1,
+      endRange: 1,
+      quantity: 1,
+      randomIds: Array(12).fill(''),
+      batchId: '',
+      unit: '',
+      manufacturingDate: new Date(),
+      irNumber: '',
+      msnNumber: '',
+      poNumber: '',
+      projectNumber: '',
+      mrirNumber: '',
+      disposition: 'Accepted',
+      location: '',
+      remark: ''
+    });
     setSelectedDrawing(null);
     setSelectedIRNumber(null);
     setSelectedMSNNumber(null);
@@ -579,8 +604,13 @@ export default function BarcodeGeneration() {
                         label="Nomenclature"
                         fullWidth
                         size="small"
-                        InputProps={{ readOnly: true }}
-                        sx={{ bgcolor: "grey.50" }}
+                        InputProps={{ 
+                          readOnly: true,
+                          style: { backgroundColor: '#f5f5f5' }
+                        }}
+                        InputLabelProps={{
+                          shrink: true
+                        }}
                       />
                     )}
                   />
@@ -822,7 +852,7 @@ export default function BarcodeGeneration() {
                       variant="outlined"
                       onClick={handleGenerateBatchData}
                       disabled={!selectedDrawing}
-                      size="extrasmall"
+                      size="small"
                       fullWidth
                     >
                       Get Batch Data
@@ -1206,8 +1236,13 @@ export default function BarcodeGeneration() {
                         label="Location"
                         fullWidth
                         size="small"
-                        InputProps={{ readOnly: true }}
-                        sx={{ bgcolor: "grey.50" }}
+                        InputProps={{ 
+                          readOnly: true,
+                          style: { backgroundColor: '#f5f5f5' }
+                        }}
+                        InputLabelProps={{
+                          shrink: true
+                        }}
                       />
                     )}
                   />
