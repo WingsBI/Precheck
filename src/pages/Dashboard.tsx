@@ -107,7 +107,7 @@ const Dashboard: React.FC = () => {
           mb: 4
         }}
       >
-        Dashboard
+        
       </Typography>
 
       <Grid container spacing={3}>
