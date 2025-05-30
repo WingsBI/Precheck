@@ -123,6 +123,10 @@ const LogoBox = styled(Box, {
   },
 }));
 
+const ADMIN_ROLE = "Admin";
+const QC_ROLE = "QC";
+const STORE_ROLE = "Store";
+
 export default function Layout() {
   const theme = useTheme();
   const location = useLocation();
@@ -155,11 +159,17 @@ export default function Layout() {
           icon: <VisibilityIcon />,
           path: "/irmsn/view",
         },
-        { text: "Create", icon: <AddIcon />, path: "/irmsn/generate" },
+        { 
+          text: "Create", 
+          icon: <AddIcon />, 
+          path: "/irmsn/generate",
+          roles: [ADMIN_ROLE, QC_ROLE]
+        },
         {
           text: "Search/Update",
           icon: <SearchIcon />,
           path: "/irmsn/search-update",
+          roles: [ADMIN_ROLE, QC_ROLE]
         },
       ],
     },
@@ -177,6 +187,7 @@ export default function Layout() {
           text: "Add MFG Item",
           icon: <AddIcon />,
           path: "/qrcode/generate",
+          roles: [ADMIN_ROLE, QC_ROLE]
         },
       ],
     },
@@ -185,7 +196,11 @@ export default function Layout() {
       icon: <AssignmentIcon />,
       path: "/precheck",
       subItems: [
-        { text: "View Precheck", icon: <VisibilityIcon />, path: "/precheck/view" },
+        { 
+          text: "View Precheck", 
+          icon: <VisibilityIcon />, 
+          path: "/precheck/view" 
+        },
         {
           text: "View Consumed In",
           icon: <SearchIcon />,
@@ -195,9 +210,20 @@ export default function Layout() {
           text: "Make Order",
           icon: <ShoppingCartIcon />,
           path: "/precheck/make-order",
+          roles: [ADMIN_ROLE, STORE_ROLE]
         },
-        { text: "Make Precheck", icon: <AddIcon />, path: "/precheck/make" },
-        { text: "Store In", icon: <StoreIcon />, path: "/precheck/store-in" },
+        { 
+          text: "Make Precheck", 
+          icon: <AddIcon />, 
+          path: "/precheck/make",
+          roles: [ADMIN_ROLE, STORE_ROLE]
+        },
+        { 
+          text: "Store In", 
+          icon: <StoreIcon />, 
+          path: "/precheck/store-in",
+          roles: [ADMIN_ROLE, STORE_ROLE]
+        },
       ],
     },
     {
@@ -212,7 +238,31 @@ export default function Layout() {
 
   // Filter menu items based on user role
   const getFilteredMenuItems = () => {
-    return menuItems; // Show all items for testing
+    if (!user) return [];
+
+    return menuItems.map(item => {
+      // If item has no subItems, return as is
+      if (!item.subItems) return item;
+
+      // Filter subItems based on roles
+      const filteredSubItems = item.subItems.filter(subItem => {
+        // If no roles specified, show to all users
+        if (!subItem.roles) return true;
+        
+        // If roles specified, check if user has required role
+        return subItem.roles.includes(user?.role || '');
+      });
+
+      // Return item with filtered subItems
+      return {
+        ...item,
+        subItems: filteredSubItems
+      };
+    }).filter(item => {
+      // Remove main menu items that have no visible subItems
+      if (item.subItems && item.subItems.length === 0) return false;
+      return true;
+    });
   };
 
   // Generate breadcrumbs based on current path
