@@ -194,24 +194,47 @@ const ViewPrecheck: React.FC = () => {
   };
 
   const handleExport = () => {
-    // According to the API spec, use ExportPrecheckdetails endpoint
-    const exportParams = {
-      productionOrderNumber: productionOrder || undefined,
-      productionSeriesId: selectedProductionSeries?.id || undefined,
-      id: idNumber ? parseInt(idNumber) : undefined,
-      drawingNumberId: selectedDrawing?.id || undefined
-    };
-    
-    // Only export if we have at least one parameter
-    if (exportParams.productionOrderNumber || exportParams.productionSeriesId || exportParams.id || exportParams.drawingNumberId) {
-      // Call the export API endpoint
-      // This would typically trigger a file download
-      console.log('Exporting precheck details with params:', exportParams);
-             // Call the actual export API
-       dispatch(exportPrecheckDetails(exportParams));
-    } else {
-      alert('Please enter search criteria before exporting');
+    // Create export parameters object with only defined values
+    const exportParams: {
+      productionOrderNumber?: string;
+      productionSeriesId?: number;
+      id?: number;
+      drawingNumberId?: number;
+    } = {};
+
+    // Only add parameters that have values
+    if (productionOrder) {
+      exportParams.productionOrderNumber = productionOrder;
     }
+    if (selectedProductionSeries?.id) {
+      exportParams.productionSeriesId = selectedProductionSeries.id;
+    }
+    if (idNumber) {
+      exportParams.id = parseInt(idNumber);
+    }
+    if (selectedDrawing?.id) {
+      exportParams.drawingNumberId = selectedDrawing.id;
+    }
+
+    // Check if at least one parameter is provided
+    if (Object.keys(exportParams).length === 0) {
+      alert('Please enter at least one search criteria before exporting');
+      return;
+    }
+
+    // Call the export API
+    dispatch(exportPrecheckDetails(exportParams))
+      .unwrap()
+      .then((result) => {
+        if (result.success) {
+          // You can show a success message here if needed
+          // toast.success(result.message);
+        }
+      })
+      .catch((error) => {
+        // Show error message
+        alert(error.message || 'Failed to export precheck details');
+      });
   };
 
   const handleReset = () => {
