@@ -125,6 +125,21 @@ export const getBarcodeDetails = createAsyncThunk(
   }
 );
 
+// Get Barcode Details with Parameters
+export const getBarcodeDetailsWithParameters = createAsyncThunk(
+  'qrcode/getBarcodeDetailsWithParameters',
+  async (params: { prodSeriesId: number; drawingNumberId: number }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(
+        `/api/QRCode/GetBarcodeDetailsWithParameters?ProdSeriesId=${params.prodSeriesId}&DrawingNumberId=${params.drawingNumberId}`
+      );
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch barcode details');
+    }
+  }
+);
+
 // Generate Batch QR Code
 export const generateBatchQRCode = createAsyncThunk(
   'qrcode/generateBatchQRCodeDetails',
@@ -329,6 +344,20 @@ const qrcodeSlice = createSlice({
         state.barcodeDetails = action.payload;
       })
       .addCase(getBarcodeDetails.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Get Barcode Details with Parameters
+      .addCase(getBarcodeDetailsWithParameters.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getBarcodeDetailsWithParameters.fulfilled, (state, action) => {
+        state.loading = false;
+        state.barcodeDetails = action.payload;
+      })
+      .addCase(getBarcodeDetailsWithParameters.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -17,16 +17,24 @@ import {
   Alert,
   IconButton,
   Collapse,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Divider,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { getBarcodeDetails } from '../../store/slices/qrcodeSlice';
+import { getBarcodeDetails, getBarcodeDetailsWithParameters } from '../../store/slices/qrcodeSlice';
+import { getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
 import { type RootState } from '../../store/store';
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from '../../store/store';
 import * as XLSX from 'xlsx';
+import { debounce } from '@mui/material/utils';
+import InputBase from '@mui/material/InputBase';
 
 interface QRCodeData {
   qrcodeId: string;
@@ -46,14 +54,17 @@ interface QRCodeData {
 const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
   const [open, setOpen] = useState(false);
 
+  // Add debugging console log
+  console.log("Row component - barcodeDetails:", barcodeDetails);
+
   return (
     <>
       <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
-        <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.qrCodeNumber}</TableCell>
-        <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>{barcodeDetails.productionSeriesId}</TableCell>
-        <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails.drawingNumber}</TableCell>
-        <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails.nomenclature}</TableCell>
-        <TableCell sx={{ textAlign: 'center', minWidth: '250px' }}>{barcodeDetails.consumedInDrawing}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails?.qrCodeNumber || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>{barcodeDetails?.productionSeriesId || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails?.drawingNumber || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails?.nomenclature || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '250px' }}>{barcodeDetails?.consumedInDrawing || 'N/A'}</TableCell>
         
         <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>
           <IconButton
@@ -86,13 +97,13 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
                 </TableHead>
                 <TableBody>
                   <TableRow> 
-                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails.qrCodeStatus}</TableCell>
-                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.irNumber}</TableCell>
-                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.msnNumber}</TableCell>
-                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.mrirNumber}</TableCell>
-                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.quantity}</TableCell>
-                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.desposition}</TableCell>
-                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails.users}</TableCell>
+                    <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails?.qrCodeStatus || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.irNumber || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.msnNumber || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.mrirNumber || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.quantity || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.desposition || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.users || 'N/A'}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -107,18 +118,101 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
 const ViewBarcode: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedProdSeriesId, setSelectedProdSeriesId] = useState<number | ''>('');
+  const [selectedDrawingNumberId, setSelectedDrawingNumberId] = useState<number | ''>('');
+  const [selectedProdSeries, setSelectedProdSeries] = useState('');
+  const [selectedDrawingNumber, setSelectedDrawingNumber] = useState('');
+  const [drawingSearchText, setDrawingSearchText] = useState('');
+  
+  // Get data from redux store
   const { barcodeDetails, loading, error } = useSelector((state: RootState) => state.qrcode);
+  const { productionSeries, drawingNumbers, isLoading } = useSelector((state: RootState) => state.common);
+
+  // Add debugging console logs
+  console.log("Redux state - barcodeDetails:", barcodeDetails);
+  console.log("Redux state - loading:", loading);
+  console.log("Redux state - error:", error);
+
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
     severity: 'success'
   });
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      return;
+  // Filtered drawing numbers based on search
+  const filteredDrawingNumbers = React.useMemo(() => {
+    if (!Array.isArray(drawingNumbers)) return [];
+    return drawingNumbers.filter(drawing => 
+      drawing.drawingNumber.toLowerCase().includes(drawingSearchText.toLowerCase())
+    );
+  }, [drawingNumbers, drawingSearchText]);
+
+  // Fetch production series on component mount
+  useEffect(() => {
+    dispatch(getAllProductionSeries());
+  }, [dispatch]);
+
+  // Handle production series change
+  const handleProdSeriesChange = (event: any) => {
+    const selectedSeries = productionSeries.find((series: any) => series.productionSeries === event.target.value);
+    console.log("selectedSeries", selectedSeries);
+    setSelectedProdSeries(event.target.value);
+    setSelectedProdSeriesId(selectedSeries ? selectedSeries.id : '');
+    
+    // Reset drawing number selection when production series changes
+    setSelectedDrawingNumber('');
+    setSelectedDrawingNumberId('');
+    setDrawingSearchText('');
+    
+    if (event.target.value && selectedSeries) {
+      dispatch(getDrawingNumbers({ componentType: '', search: event.target.value }));
     }
-    dispatch(getBarcodeDetails(searchQuery));
+  };
+
+  // Handle drawing number change
+  const handleDrawingNumberChange = (event: any) => {
+    const selectedDrawing = drawingNumbers.find((drawing: any) => drawing.drawingNumber === event.target.value);
+    console.log("selectedDrawing", selectedDrawing);
+    setSelectedDrawingNumber(event.target.value);
+    setSelectedDrawingNumberId(selectedDrawing ? selectedDrawing.id : '');
+  };
+
+  // Debounced search handler for drawing numbers
+  const debouncedDrawingSearch = React.useMemo(
+    () => debounce((searchValue: string) => {
+      if (selectedProdSeries) {
+        dispatch(getDrawingNumbers({ componentType: '', search: searchValue }));
+      }
+    }, 500),
+    [dispatch, selectedProdSeries]
+  );
+
+  // Handle drawing search change
+  const handleDrawingSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setDrawingSearchText(event.target.value);
+    debouncedDrawingSearch(event.target.value);
+  };
+
+  const handleFilterSearch = () => {
+    if (selectedProdSeriesId && selectedDrawingNumberId) {
+      console.log("Dispatching getBarcodeDetailsWithParameters with:");
+      console.log("selectedProdSeriesId:", selectedProdSeriesId);
+      console.log("selectedDrawingNumberId:", selectedDrawingNumberId);
+      console.log("selectedProdSeries:", selectedProdSeries);
+      console.log("selectedDrawingNumber:", selectedDrawingNumber);
+      
+      dispatch(getBarcodeDetailsWithParameters({
+        prodSeriesId: selectedProdSeriesId,
+        drawingNumberId: selectedDrawingNumberId
+      }));
+    } else {
+      // Show warning if either selection is missing
+      setSnackbar({
+        open: true,
+        message: 'Please select both Production Series and Drawing Number',
+        severity: 'error'
+      });
+    }
   };
 
   const handleCloseSnackbar = () => {
@@ -136,21 +230,24 @@ const ViewBarcode: React.FC = () => {
         return;
       }
 
+      // Check if barcodeDetails is an array or single object
+      const dataArray = Array.isArray(barcodeDetails) ? barcodeDetails : [barcodeDetails];
+      
       // Prepare data for Excel
-      const data = [{
-        'QRCode ID': barcodeDetails.qrCodeNumber,
-        'Prod Series': barcodeDetails.productionSeriesId,
-        'Drawing Number': barcodeDetails.drawingNumber,
-        'Nomenclature': barcodeDetails.nomenclature,
-        'Consumed In Drawing': barcodeDetails.consumedInDrawing,
-        'Status': barcodeDetails.qrCodeStatus,
-        'IR Number': barcodeDetails.irNumber,
-        'MSN Number': barcodeDetails.msnNumber,
-        'MRIR Number': barcodeDetails.mrirNumber,
-        'Quantity': barcodeDetails.quantity,
-        'Disposition': barcodeDetails.desposition,
-        'Username': barcodeDetails.users
-      }];
+      const data = dataArray.map(item => ({
+        'QRCode ID': item?.qrCodeNumber || 'N/A',
+        'Prod Series': item?.productionSeriesId || 'N/A',
+        'Drawing Number': item?.drawingNumber || 'N/A',
+        'Nomenclature': item?.nomenclature || 'N/A',
+        'Consumed In Drawing': item?.consumedInDrawing || 'N/A',
+        'Status': item?.qrCodeStatus || 'N/A',
+        'IR Number': item?.irNumber || 'N/A',
+        'MSN Number': item?.msnNumber || 'N/A',
+        'MRIR Number': item?.mrirNumber || 'N/A',
+        'Quantity': item?.quantity || 'N/A',
+        'Disposition': item?.desposition || 'N/A',
+        'Username': item?.users || 'N/A'
+      }));
 
       // Create worksheet
       const ws = XLSX.utils.json_to_sheet(data);
@@ -214,7 +311,11 @@ const ViewBarcode: React.FC = () => {
       XLSX.utils.book_append_sheet(wb, ws, 'QRCode Details');
 
       // Generate Excel file
-      XLSX.writeFile(wb, `QRCode_${barcodeDetails.qrCodeNumber}.xlsx`);
+      const filename = Array.isArray(barcodeDetails) && barcodeDetails.length > 1 
+        ? 'QRCode_Details.xlsx' 
+        : `QRCode_${barcodeDetails?.qrCodeNumber || 'Unknown'}.xlsx`;
+      
+      XLSX.writeFile(wb, filename);
 
       setSnackbar({
         open: true,
@@ -232,7 +333,7 @@ const ViewBarcode: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 1}}>
+    <Box sx={{ p: 1 }}>
       <Typography variant="h4" gutterBottom color="primary.main" fontWeight={600}>
         View QR Code
       </Typography>
@@ -240,11 +341,19 @@ const ViewBarcode: React.FC = () => {
         View and download existing QR codes
       </Typography>
       
-      <Paper sx={{ p: 0.5, mt: 3, pl: 2, pr: 2 }}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1, alignItems: 'center' }}>
+      <Paper sx={{ p: { xs: 1, sm: 2 }, mt: 3 }}>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            mb: 2,
+            flexDirection: { xs: 'column', sm: 'row' },
+            width: '100%'
+          }}
+        >
           <TextField
-            sx={{width: '40vw'}}
-            variant="outlined"
+            size="small"
             placeholder="Search QR Code ID"
             value={searchQuery}
             onChange={(e) => {
@@ -265,20 +374,158 @@ const ViewBarcode: React.FC = () => {
                 </InputAdornment>
               ),
             }}
-            size="small"
+            sx={{ 
+              width: { xs: '100%', sm: '20%' },
+              minWidth: { sm: '180px' }
+            }}
             error={!!error}
             helperText={error}
           />
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<DownloadIcon />}
-            onClick={handleDownload}
-            sx={{ minWidth: '120px', marginLeft: 'auto' }}
-            size="small"
+
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{
+              display: { xs: 'none', sm: 'block' }
+            }}
           >
-            Download
-          </Button>
+            OR
+          </Typography>
+
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 1, 
+            alignItems: 'center',
+            width: { xs: '100%', sm: 'auto' },
+            flexDirection: { xs: 'column', sm: 'row' }
+          }}>
+            <FormControl 
+              size="small" 
+              sx={{ 
+                width: { xs: '100%', sm: '150px' }
+              }}
+            >
+              <InputLabel>Prod Series</InputLabel>
+              <Select
+                value={selectedProdSeries}
+                label="Prod Series"
+                onChange={handleProdSeriesChange}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {Array.isArray(productionSeries) && productionSeries.map((series: any) => (
+                  <MenuItem key={series.productionSeriesId} value={series.productionSeries}>
+                    {series.productionSeries}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl 
+              size="small" 
+              sx={{ 
+                width: { xs: '100%', sm: '310px' }
+              }}
+            >
+              <InputLabel>Drawing Number</InputLabel>
+              <Select
+                value={selectedDrawingNumber}
+                label="Drawing Number"
+                onChange={handleDrawingNumberChange}
+                disabled={!selectedProdSeries}
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                      maxHeight: 350
+                    }
+                  },
+                  sx: {
+                    '& .MuiPaper-root': {
+                      width: '310px'
+                    }
+                  }
+                }}
+              >
+                <MenuItem dense sx={{ p: 0, sticky: 0 }}>
+                  <Box sx={{ p: 1, width: '100%' }}>
+                    <InputBase
+                      placeholder="Search drawing number..."
+                      value={drawingSearchText}
+                      onChange={handleDrawingSearchChange}
+                      startAdornment={
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      }
+                      sx={{ 
+                        width: '100%',
+                        '& input': { p: 0.5 }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </Box>
+                </MenuItem>
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {filteredDrawingNumbers.slice(0, 100).map((drawing: any) => (
+                  <MenuItem 
+                    key={drawing.drawingNumberId} 
+                    value={drawing.drawingNumber}
+                    sx={{
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word'
+                    }}
+                  >
+                    {drawing.drawingNumber}
+                  </MenuItem>
+                ))}
+                {filteredDrawingNumbers.length > 100 && (
+                  <MenuItem disabled>
+                    <em>Type to search more results...</em>
+                  </MenuItem>
+                )}
+              </Select>
+            </FormControl>
+
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 1,
+              width: { xs: '100%', sm: 'auto' },
+              justifyContent: { xs: 'space-between', sm: 'flex-start' }
+            }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleFilterSearch}
+                size="small"
+                disabled={!selectedProdSeries || !selectedDrawingNumber}
+                sx={{ 
+                  height: '40px',
+                  width: { xs: '45%', sm: 'auto' },
+                  minWidth: '150px'
+                }}
+              >
+                Search
+              </Button>
+
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownload}
+                size="small"
+                sx={{ 
+                  height: '40px',
+                  width: { xs: '45%', sm: 'auto' },
+                  minWidth: '150px'
+                }}
+              >
+                Download
+              </Button>
+            </Box>
+          </Box>
         </Box>
 
         <TableContainer>
@@ -295,7 +542,25 @@ const ViewBarcode: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {barcodeDetails && <Row barcodeDetails={barcodeDetails} />}
+              {/* Handle both array and single object cases */}
+              {Array.isArray(barcodeDetails) ? (
+                barcodeDetails.map((item, index) => (
+                  <Row key={index} barcodeDetails={item} />
+                ))
+              ) : (
+                barcodeDetails && <Row barcodeDetails={barcodeDetails} />
+              )}
+              
+              {/* Show message when no data */}
+              {!barcodeDetails && !loading && (
+                <TableRow>
+                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No data found. Please search for QR codes.
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -315,4 +580,4 @@ const ViewBarcode: React.FC = () => {
   );
 };
 
-export default ViewBarcode; 
+export default ViewBarcode;
