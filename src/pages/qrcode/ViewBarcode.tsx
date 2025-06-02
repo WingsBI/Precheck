@@ -35,6 +35,7 @@ import type { AppDispatch } from '../../store/store';
 import * as XLSX from 'xlsx';
 import { debounce } from '@mui/material/utils';
 import InputBase from '@mui/material/InputBase';
+import ReplayIcon from '@mui/icons-material/Replay';
 
 interface QRCodeData {
   qrcodeId: string;
@@ -332,6 +333,17 @@ const ViewBarcode: React.FC = () => {
     }
   };
 
+  const handleReset = () => {
+    setSearchQuery('');
+    setSelectedProdSeries('');
+    setSelectedProdSeriesId('');
+    setSelectedDrawingNumber('');
+    setSelectedDrawingNumberId('');
+    setDrawingSearchText('');
+    // Optionally, clear barcodeDetails if you want to clear the table as well
+    // dispatch({ type: 'qrcode/clearBarcodeDetails' }); // if you have such an action
+  };
+
   return (
     <Box sx={{ p: 1 }}>
       <Typography variant="h4" gutterBottom color="primary.main" fontWeight={600}>
@@ -376,7 +388,7 @@ const ViewBarcode: React.FC = () => {
             }}
             sx={{ 
               width: { xs: '100%', sm: '20%' },
-              minWidth: { sm: '180px' }
+              minWidth: { sm: '210px' }
             }}
             error={!!error}
             helperText={error}
@@ -395,14 +407,14 @@ const ViewBarcode: React.FC = () => {
           <Box sx={{ 
             display: 'flex', 
             gap: 1, 
-            alignItems: 'center',
+            alignItems: 'center', 
             width: { xs: '100%', sm: 'auto' },
             flexDirection: { xs: 'column', sm: 'row' }
           }}>
             <FormControl 
               size="small" 
               sx={{ 
-                width: { xs: '100%', sm: '150px' }
+                width: { xs: '100%', sm: '130px' }
               }}
             >
               <InputLabel>Prod Series</InputLabel>
@@ -425,7 +437,7 @@ const ViewBarcode: React.FC = () => {
             <FormControl 
               size="small" 
               sx={{ 
-                width: { xs: '100%', sm: '310px' }
+                width: { xs: '100%', sm: '250px' }
               }}
             >
               <InputLabel>Drawing Number</InputLabel>
@@ -504,7 +516,7 @@ const ViewBarcode: React.FC = () => {
                 sx={{ 
                   height: '40px',
                   width: { xs: '45%', sm: 'auto' },
-                  minWidth: '150px'
+                  minWidth: '100px'
                 }}
               >
                 Search
@@ -519,10 +531,25 @@ const ViewBarcode: React.FC = () => {
                 sx={{ 
                   height: '40px',
                   width: { xs: '45%', sm: 'auto' },
-                  minWidth: '150px'
+                  minWidth: '130px'
                 }}
               >
                 Download
+              </Button>
+
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<ReplayIcon />}
+                onClick={handleReset}
+                size="small"
+                sx={{ 
+                  height: '40px',
+                  width: { xs: '45%', sm: 'auto' },
+                  minWidth: '140px'
+                }}
+              >
+                Reset
               </Button>
             </Box>
           </Box>
