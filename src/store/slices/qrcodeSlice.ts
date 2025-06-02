@@ -157,24 +157,44 @@ export const generateBatchQRCode = createAsyncThunk(
 export const exportQRCode = createAsyncThunk(
   'qrcode/exportQRCode',
   async (qrCodeId: string, { rejectWithValue }) => {
+    if (!qrCodeId) {
+      return rejectWithValue('QR code ID must be provided');
+    }
+
     try {
-      const response = await api.get(`/api/QRCode/ExportQRCode?qrCodeId=${qrCodeId}`, {
-        responseType: 'blob'
+      const response = await api.post('/api/QRCode/ExportQrCode', [qrCodeId], {
+        responseType: 'blob',
+        headers: {
+          'accept': '*/*',
+          'Content-Type': 'application/json'
+        }
       });
 
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `QRCode_${qrCodeId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      if (response.data && response.data.size > 0) {
+        // Create download link for Excel file
+        const url = window.URL.createObjectURL(new Blob([response.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }));
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${qrCodeId}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
 
-      return response.data;
+        return { success: true, message: 'File downloaded successfully' };
+      } else {
+        throw new Error('No file content received from the API');
+      }
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to export QR code');
+      console.error('Error exporting QR code:', error);
+      return rejectWithValue(
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to export QR code to Excel'
+      );
     }
   }
 );
@@ -183,24 +203,44 @@ export const exportQRCode = createAsyncThunk(
 export const exportBulkQRCodes = createAsyncThunk(
   'qrcode/exportBulkQRCodes',
   async (qrCodes: string[], { rejectWithValue }) => {
+    if (!qrCodes || qrCodes.length === 0) {
+      return rejectWithValue('At least one QR code must be provided');
+    }
+
     try {
-      const response = await api.post('/api/QRCode/ExportBulkQRCodes', qrCodes, {
-        responseType: 'blob'
+      const response = await api.post('/api/QRCode/ExportQrCode', qrCodes, {
+        responseType: 'blob',
+        headers: {
+          'accept': '*/*',
+          'Content-Type': 'application/json'
+        }
       });
 
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `QRCodes_Bulk.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      if (response.data && response.data.size > 0) {
+        // Create download link for Excel file
+        const url = window.URL.createObjectURL(new Blob([response.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }));
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `QRCodes_Bulk_${new Date().toISOString().split('T')[0]}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
 
-      return response.data;
+        return { success: true, message: 'Bulk QR codes downloaded successfully' };
+      } else {
+        throw new Error('No file content received from the API');
+      }
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to export bulk QR codes');
+      console.error('Error exporting bulk QR codes:', error);
+      return rejectWithValue(
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to export bulk QR codes to Excel'
+      );
     }
   }
 );

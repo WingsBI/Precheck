@@ -153,14 +153,51 @@ export const storeInPrecheck = createAsyncThunk(
 
 export const exportPrecheckDetails = createAsyncThunk(
   'precheck/exportPrecheckDetails',
-  async (exportData: any, { rejectWithValue }) => {
+  async (exportData: {
+    productionOrderNumber?: string;
+    productionSeriesId?: number;
+    id?: number;
+    drawingNumberId?: number;
+  }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/api/Precheck/ExportPrecheckdetails', exportData, {
-        responseType: 'blob', // For file download
+      // Filter out undefined values
+      const filteredData = Object.fromEntries(
+        Object.entries(exportData).filter(([_, value]) => value !== undefined)
+      );
+
+      const response = await api.post('/api/Precheck/ExportPrecheckdetails', filteredData, {
+        responseType: 'blob',
+        headers: {
+          'accept': '*/*',
+          'Content-Type': 'application/json'
+        }
       });
-      return response.data;
+
+      if (response.data && response.data.size > 0) {
+        // Create download link for PDF file
+        const url = window.URL.createObjectURL(new Blob([response.data], { 
+          type: 'application/pdf'
+        }));
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `PrecheckExport_${new Date().toISOString().split('T')[0]}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        return { success: true, message: 'Precheck details exported successfully' };
+      } else {
+        throw new Error('No file content received from the API');
+      }
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to export precheck details');
+      console.error('Error exporting precheck details:', error);
+      return rejectWithValue(
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to export precheck details'
+      );
     }
   }
 );
