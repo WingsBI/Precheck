@@ -22,12 +22,13 @@ import {
   FormControl,
   InputLabel,
   Divider,
+  Autocomplete,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { getBarcodeDetails, getBarcodeDetailsWithParameters } from '../../store/slices/qrcodeSlice';
+import { getBarcodeDetails, getBarcodeDetailsWithParameters, clearBarcodeDetails } from '../../store/slices/qrcodeSlice';
 import { getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
 import { type RootState } from '../../store/store';
 import { useDispatch, useSelector } from "react-redux";
@@ -127,9 +128,8 @@ const ViewBarcode: React.FC = () => {
   
   // Get data from redux store
   const { barcodeDetails, loading, error } = useSelector((state: RootState) => state.qrcode);
-  const { productionSeries, drawingNumbers, isLoading } = useSelector((state: RootState) => state.common);
+  const { productionSeries, drawingNumbers } = useSelector((state: RootState) => state.common);
 
-  // Add debugging console logs
   console.log("Redux state - barcodeDetails:", barcodeDetails);
   console.log("Redux state - loading:", loading);
   console.log("Redux state - error:", error);
@@ -152,31 +152,6 @@ const ViewBarcode: React.FC = () => {
   useEffect(() => {
     dispatch(getAllProductionSeries());
   }, [dispatch]);
-
-  // Handle production series change
-  const handleProdSeriesChange = (event: any) => {
-    const selectedSeries = productionSeries.find((series: any) => series.productionSeries === event.target.value);
-    console.log("selectedSeries", selectedSeries);
-    setSelectedProdSeries(event.target.value);
-    setSelectedProdSeriesId(selectedSeries ? selectedSeries.id : '');
-    
-    // Reset drawing number selection when production series changes
-    setSelectedDrawingNumber('');
-    setSelectedDrawingNumberId('');
-    setDrawingSearchText('');
-    
-    if (event.target.value && selectedSeries) {
-      dispatch(getDrawingNumbers({ componentType: '', search: event.target.value }));
-    }
-  };
-
-  // Handle drawing number change
-  const handleDrawingNumberChange = (event: any) => {
-    const selectedDrawing = drawingNumbers.find((drawing: any) => drawing.drawingNumber === event.target.value);
-    console.log("selectedDrawing", selectedDrawing);
-    setSelectedDrawingNumber(event.target.value);
-    setSelectedDrawingNumberId(selectedDrawing ? selectedDrawing.id : '');
-  };
 
   // Debounced search handler for drawing numbers
   const debouncedDrawingSearch = React.useMemo(
@@ -340,8 +315,7 @@ const ViewBarcode: React.FC = () => {
     setSelectedDrawingNumber('');
     setSelectedDrawingNumberId('');
     setDrawingSearchText('');
-    // Optionally, clear barcodeDetails if you want to clear the table as well
-    // dispatch({ type: 'qrcode/clearBarcodeDetails' }); // if you have such an action
+    dispatch(clearBarcodeDetails());
   };
 
   return (
@@ -417,21 +391,31 @@ const ViewBarcode: React.FC = () => {
                 width: { xs: '100%', sm: '130px' }
               }}
             >
-              <InputLabel>Prod Series</InputLabel>
-              <Select
+              <Autocomplete
                 value={selectedProdSeries}
-                label="Prod Series"
-                onChange={handleProdSeriesChange}
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {Array.isArray(productionSeries) && productionSeries.map((series: any) => (
-                  <MenuItem key={series.productionSeriesId} value={series.productionSeries}>
-                    {series.productionSeries}
-                  </MenuItem>
-                ))}
-              </Select>
+                onChange={(event, newValue) => {
+                  const selectedSeries = productionSeries.find((series: any) => series.productionSeries === newValue);
+                  setSelectedProdSeries(newValue || '');
+                  setSelectedProdSeriesId(selectedSeries ? selectedSeries.id : '');
+                  setSelectedDrawingNumber('');
+                  setSelectedDrawingNumberId('');
+                  setDrawingSearchText('');
+                  if (newValue) {
+                    dispatch(getDrawingNumbers({ componentType: '', search: newValue }));
+                  }
+                }}
+                options={Array.isArray(productionSeries) ? productionSeries.map(series => series.productionSeries) : []}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Prod Series"
+                    size="small"
+                  />
+                )}
+                ListboxProps={{
+                  style: { maxHeight: 350 }
+                }}
+              />
             </FormControl>
 
             <FormControl 
@@ -440,65 +424,38 @@ const ViewBarcode: React.FC = () => {
                 width: { xs: '100%', sm: '250px' }
               }}
             >
-              <InputLabel>Drawing Number</InputLabel>
-              <Select
+              <Autocomplete
                 value={selectedDrawingNumber}
-                label="Drawing Number"
-                onChange={handleDrawingNumberChange}
-                disabled={!selectedProdSeries}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 350
-                    }
-                  },
-                  sx: {
-                    '& .MuiPaper-root': {
-                      width: '310px'
-                    }
-                  }
+                onChange={(event, newValue) => {
+                  const selectedDrawing = drawingNumbers.find((drawing: any) => drawing.drawingNumber === newValue);
+                  setSelectedDrawingNumber(newValue || '');
+                  setSelectedDrawingNumberId(selectedDrawing ? selectedDrawing.id : '');
                 }}
-              >
-                <MenuItem dense sx={{ p: 0, sticky: 0 }}>
-                  <Box sx={{ p: 1, width: '100%' }}>
-                    <InputBase
-                      placeholder="Search drawing number..."
-                      value={drawingSearchText}
-                      onChange={handleDrawingSearchChange}
-                      startAdornment={
-                        <InputAdornment position="start">
-                          <SearchIcon fontSize="small" />
-                        </InputAdornment>
-                      }
-                      sx={{ 
-                        width: '100%',
-                        '& input': { p: 0.5 }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </Box>
-                </MenuItem>
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {filteredDrawingNumbers.slice(0, 100).map((drawing: any) => (
-                  <MenuItem 
-                    key={drawing.drawingNumberId} 
-                    value={drawing.drawingNumber}
-                    sx={{
-                      whiteSpace: 'normal',
-                      wordBreak: 'break-word'
+                options={filteredDrawingNumbers.map(drawing => drawing.drawingNumber)}
+                filterOptions={(options, { inputValue }) => {
+                  return options.filter(option =>
+                    option.toLowerCase().includes(inputValue.toLowerCase())
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Drawing Number"
+                    size="small"
+                    onChange={(e) => {
+                      setDrawingSearchText(e.target.value);
+                      dispatch(getDrawingNumbers({ componentType: '', search: e.target.value }));
                     }}
-                  >
-                    {drawing.drawingNumber}
-                  </MenuItem>
-                ))}
-                {filteredDrawingNumbers.length > 100 && (
-                  <MenuItem disabled>
-                    <em>Type to search more results...</em>
-                  </MenuItem>
+                  />
                 )}
-              </Select>
+                ListboxProps={{
+                  style: { maxHeight: 350 }
+                }}
+                onInputChange={(event, newInputValue) => {
+                  setDrawingSearchText(newInputValue);
+                  dispatch(getDrawingNumbers({ componentType: '', search: newInputValue }));
+                }}
+              />
             </FormControl>
 
             <Box sx={{ 
@@ -546,7 +503,7 @@ const ViewBarcode: React.FC = () => {
                 sx={{ 
                   height: '40px',
                   width: { xs: '45%', sm: 'auto' },
-                  minWidth: '140px'
+                  minWidth: '120px'
                 }}
               >
                 Reset

@@ -3,7 +3,6 @@ import api from '../../services/api';
 import type {
   QRCodeItem as ImportedQRCodeItem,
   BarcodeDetails as ImportedBarcodeDetails,
-  QRCodePayload as ImportedQRCodePayload,
   BatchInfo as ImportedBatchInfo,
   IRNumber,
   MSNNumber
@@ -21,38 +20,6 @@ interface QRCodeState {
   generatedNumber: string | null;
   isDownloading: boolean;
   storeInQRCodeDetails: ImportedBarcodeDetails | null;
-}
-
-interface QRCodeItem {
-  id: number;
-  serialNumber: string;
-  qrCodeData: string;
-  qrCodeImage: string;
-  drawingNumber: string;
-  nomenclature: string;
-  productionSeries: string;
-  createdDate: string;
-  isSelected: boolean;
-  status: 'pending' | 'printed' | 'used';
-}
-
-interface BarcodeDetails {
-  qrCodeNumber: string;
-  productionSeriesId: number;
-  drawingNumber: string;
-  nomenclature: string;
-  consumedInDrawing: string;
-  qrCodeStatus: string;
-  irNumber: string;
-  msnNumber: string;
-  mrirNumber: string;
-  quantity: number;
-  desposition: string;
-  users: string;
-  productionOrderNumber: string;
-  projectNumber: string;
-  idNumber: string;
-  productionSeries: string;
 }
 
 interface QRCodePayload {
@@ -356,6 +323,9 @@ const qrcodeSlice = createSlice({
     setIsDownloading: (state, action) => {
       state.isDownloading = action.payload;
     },
+    clearBarcodeDetails: (state) => {
+      state.barcodeDetails = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -500,5 +470,5 @@ const qrcodeSlice = createSlice({
   },
 });
 
-export const { clearError, clearGeneratedNumber, clearQRCodeList, setIsDownloading } = qrcodeSlice.actions;
+export const { clearError, clearGeneratedNumber, clearQRCodeList, setIsDownloading, clearBarcodeDetails } = qrcodeSlice.actions;
 export default qrcodeSlice.reducer; 
