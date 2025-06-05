@@ -17,11 +17,9 @@ import {
   Alert,
   IconButton,
   Collapse,
-  Select,
-  MenuItem,
+  
   FormControl,
-  InputLabel,
-  Divider,
+
   Autocomplete,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -34,24 +32,10 @@ import { type RootState } from '../../store/store';
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from '../../store/store';
 import * as XLSX from 'xlsx';
-import { debounce } from '@mui/material/utils';
-import InputBase from '@mui/material/InputBase';
+
 import ReplayIcon from '@mui/icons-material/Replay';
 
-interface QRCodeData {
-  qrcodeId: string;
-  prodSeries: string;
-  drawingNumber: string;
-  nomenclature: string;
-  consumedInDrawing: string;
-  status: string;
-  irNumber: string;
-  msnNumber: string;
-  mrirNumber: string;
-  quantity: string;
-  desposition: string;
-  username: string;
-}
+
 
 const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
   const [open, setOpen] = useState(false);
@@ -100,7 +84,7 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
                 <TableBody>
                   <TableRow> 
                     <TableCell sx={{ textAlign: 'center'}}>{barcodeDetails?.qrCodeStatus || 'N/A'}</TableCell>
-                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.irNumber || 'N/A'}</TableCell>
+                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.irNumber || 'N/A'}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.msnNumber || 'N/A'}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.mrirNumber || 'N/A'}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.quantity || 'N/A'}</TableCell>
@@ -154,20 +138,10 @@ const ViewBarcode: React.FC = () => {
   }, [dispatch]);
 
   // Debounced search handler for drawing numbers
-  const debouncedDrawingSearch = React.useMemo(
-    () => debounce((searchValue: string) => {
-      if (selectedProdSeries) {
-        dispatch(getDrawingNumbers({ componentType: '', search: searchValue }));
-      }
-    }, 500),
-    [dispatch, selectedProdSeries]
-  );
+  
 
   // Handle drawing search change
-  const handleDrawingSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setDrawingSearchText(event.target.value);
-    debouncedDrawingSearch(event.target.value);
-  };
+ 
 
   const handleFilterSearch = () => {
     if (selectedProdSeriesId && selectedDrawingNumberId) {
@@ -388,7 +362,7 @@ const ViewBarcode: React.FC = () => {
             <FormControl 
               size="small" 
               sx={{ 
-                width: { xs: '100%', sm: '130px' }
+                width: { xs: '100%', sm: '150px' }
               }}
             >
               <Autocomplete

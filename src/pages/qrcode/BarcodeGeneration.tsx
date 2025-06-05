@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect,  useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
@@ -44,10 +44,7 @@ import {
   Refresh as RefreshIcon,
   ContentCopy as CopyIcon,
   GetApp as GetAppIcon,
-  Info as InfoIcon,
-  Settings as SettingsIcon,
-  Assignment as AssignmentIcon,
-  DateRange as DateRangeIcon,
+  
 } from "@mui/icons-material";
 import { useForm, Controller } from "react-hook-form";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -59,7 +56,7 @@ import type {
   QRCodeFormData,
   IRNumber,
   MSNNumber,
-  QRCodeItem,
+
   QRCodePayload,
 } from "../../types";
 import {
@@ -86,7 +83,7 @@ const useAppDispatch: () => AppDispatch = useDispatch;
 export default function BarcodeGeneration() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const isTablet = useMediaQuery(theme.breakpoints.down("lg"));
+ 
   const dispatch = useAppDispatch();
 
   // Redux state
@@ -97,7 +94,7 @@ export default function BarcodeGeneration() {
     batchItems,
     loading,
     error,
-    generatedNumber,
+   
     isDownloading,
   } = useSelector((state: RootState) => state.qrcode);
 
@@ -323,7 +320,10 @@ export default function BarcodeGeneration() {
   const onSubmit = async (data: QRCodeFormData) => {
     try {
       const payload = preparePayload(data);
-      await dispatch(generateQRCode(payload)).unwrap();
+      const response = await dispatch(generateQRCode(payload)).unwrap();
+      if (response && response.length > 0 && componentType === "BATCH") {
+        setValue("batchId", response[0].idNumber?.toString() || "");
+      }
       setSuccessMessage(`Successfully generated ${data.quantity} QR code(s)!`);
     } catch (error) {
       console.error("Error generating QR codes:", error);
@@ -816,15 +816,21 @@ export default function BarcodeGeneration() {
                     <Controller
                       name="batchId"
                       control={control}
-                      rules={{ required: "Batch ID is required" }}
                       render={({ field }) => (
                         <TextField
                           {...field}
-                          label="Batch ID *"
+                          label="Batch ID"
                           fullWidth
                           size="small"
                           error={!!errors.batchId}
                           helperText={errors.batchId?.message}
+                          InputProps={{ 
+                            readOnly: true,
+                            style: { backgroundColor: '#f5f5f5' }
+                          }}
+                          InputLabelProps={{
+                            shrink: true
+                          }}
                         />
                       )}
                     />
