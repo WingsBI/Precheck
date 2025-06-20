@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, IconButton, CircularProgress, Select, MenuItem, Button, FormControl, InputLabel, Autocomplete, Card, CardContent } from '@mui/material';
+import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, IconButton, CircularProgress, Select, MenuItem, Button, FormControl, InputLabel, Autocomplete, Card, CardContent, Alert } from '@mui/material';
+import api from '../../services/api';
 import SearchIcon from '@mui/icons-material/Search';
 import { fetchIRMSNList, fetchMSNList, clearTables } from '../../store/slices/irmsnSlice';
 import { getAllDepartments, getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
@@ -16,6 +17,7 @@ const ViewIRMSN: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { irmsnList, msnList, loading } = useSelector((state: RootState) => state.irmsn);
   const { departments, productionSeries, drawingNumbers, isLoading: isLoadingCommon } = useSelector((state: RootState) => state.common);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const [department, setDepartment] = React.useState('');
   const [productionSeriesValue, setProductionSeriesValue] = React.useState('');
   const [drawingNumber, setDrawingNumber] = React.useState('');
@@ -24,38 +26,38 @@ const ViewIRMSN: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
   const [selectedProductionSeries, setSelectedProductionSeries] = useState<any>(null);
   const [localLoading, setLocalLoading] = useState(false);
-  const [deptLoading, setDeptLoading] = useState(false);
-  const [prodSeriesLoading, setProdSeriesLoading] = useState(false);
+  const [localDrawingNumbers, setLocalDrawingNumbers] = useState<any[]>([]);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info' | null, message: string }>({ type: null, message: '' });
 
   const debouncedSearch = useMemo(
     () =>
-      debounce((searchValue: string) => {
+      debounce(async (search: string) => {
+        if (search.length < 3) {
+          setLocalDrawingNumbers([]);
+          setSelectedDrawing(null);
+          return;
+        }
         setLocalLoading(true);
-        dispatch(getDrawingNumbers({ search: searchValue }))
-          .finally(() => setLocalLoading(false));
+        try {
+          const response = await api.get("/api/Common/GetAllDrawingNumber", {
+            params: {
+              ComponentType: "",
+              search,
+              pageSize: 10, // Limit results for better performance
+            },
+          });
+          setLocalDrawingNumbers(response.data);
+        } catch (error) {
+          console.error("Error fetching drawing numbers:", error);
+          setLocalDrawingNumbers([]);
+        } finally {
+          setLocalLoading(false);
+        }
       }, 300),
-    [dispatch]
+    []
   );
 
-  const debouncedDeptSearch = useMemo(
-    () =>
-      debounce((searchValue: string) => {
-        setDeptLoading(true);
-        dispatch(getAllDepartments())
-          .finally(() => setDeptLoading(false));
-      }, 300),
-    [dispatch]
-  );
-
-  const debouncedProdSeriesSearch = useMemo(
-    () =>
-      debounce((searchValue: string) => {
-        setProdSeriesLoading(true);
-        dispatch(getAllProductionSeries())
-          .finally(() => setProdSeriesLoading(false));
-      }, 300),
-    [dispatch]
-  );
+  // Remove unnecessary debounced searches - departments and production series are loaded once
 
   const handleReset = () => {
     // Reset all fields to empty
@@ -74,28 +76,88 @@ const ViewIRMSN: React.FC = () => {
   useEffect(() => {
     dispatch(getAllDepartments());
     dispatch(getAllProductionSeries());
-    dispatch(getDrawingNumbers({}));
+    // Don't load all drawing numbers initially - load them only when user searches
   }, [dispatch]);
 
-  // Select first department by default
+  // Select first department by default if user doesn't have a specific department
   useEffect(() => {
-    if (departments.length > 0 && !department && !selectedDepartment) {
-      const firstDept = departments[0];
-      setDepartment(firstDept.id);
-      setSelectedDepartment(firstDept);
+    if (departments.length > 0 && !selectedDepartment) {
+      // Try to use user's department first, otherwise select first available
+      const userDept = currentUser?.deptid ? 
+        departments.find(dept => dept.id.toString() === currentUser.deptid.toString()) : null;
+      const deptToSelect = userDept || departments[0];
+      
+      if (deptToSelect) {
+        setDepartment(deptToSelect.id);
+        setSelectedDepartment(deptToSelect);
+      }
     }
-  }, [departments, department, selectedDepartment]);
+  }, [departments, selectedDepartment, currentUser?.deptid]);
 
-  const handleSearch = () => {
-    const params = {
-      drawingNumber: selectedDrawing?.drawingNumber || '',
-      productionSeries: selectedProductionSeries?.productionSeries || '',
-      departmentTypeId: selectedDepartment?.id || '',
-      stage: ''  // Add stage if needed
-    };
+  const handleSearch = async () => {
+    // Validate required fields like C# version does
+    const missingFields = [];
     
-    dispatch(fetchIRMSNList(params));
-    dispatch(fetchMSNList(params));
+    if (!selectedDepartment) {
+      missingFields.push('Department Type');
+    }
+    
+    if (!selectedProductionSeries) {
+      missingFields.push('Production Series');
+    }
+    
+    if (missingFields.length > 0) {
+      setStatusMessage({ 
+        type: 'error', 
+        message: `Please fill the following required fields: ${missingFields.join(', ')}` 
+      });
+      return;
+    }
+
+    try {
+      // Match C# parameter structure exactly
+      const params = {
+        drawingNumber: selectedDrawing?.drawingNumber || '', // Optional like C#
+        productionSeries: selectedProductionSeries?.productionSeries || '', // Required string value
+        departmentTypeId: selectedDepartment?.id?.toString() || '', // Required department ID
+        stage: ''  // Stage parameter
+      };
+      
+      console.log('Search params:', params); // Debug log
+      console.log('Current user context:', currentUser); // Debug log
+      console.log('Department ID:', selectedDepartment?.id); // Debug log
+      console.log('Production Series Value:', selectedProductionSeries?.productionSeries); // Debug log
+      
+      // Dispatch both actions and wait for them to complete
+      const [irResult, msnResult] = await Promise.all([
+        dispatch(fetchIRMSNList(params)),
+        dispatch(fetchMSNList(params))
+      ]);
+
+      // Show success message like C# version does
+      const irCount = irResult.payload?.length || 0;
+      const msnCount = msnResult.payload?.length || 0;
+
+      if (irCount > 0 || msnCount > 0) {
+        setStatusMessage({ 
+          type: 'success', 
+          message: `Data loaded successfully. IR Numbers: ${irCount}, MSN Numbers: ${msnCount}` 
+        });
+        console.log(`Data loaded successfully. IR: ${irCount}, MSN: ${msnCount}`);
+      } else {
+        setStatusMessage({ 
+          type: 'info', 
+          message: 'No records found for the selected criteria.' 
+        });
+        console.log('No records found for the selected criteria.');
+      }
+    } catch (error) {
+      console.error('Error loading IR/MSN numbers:', error);
+      setStatusMessage({ 
+        type: 'error', 
+        message: 'Error loading IR/MSN numbers. Please try again.' 
+      });
+    }
   };
 
   return (
@@ -112,6 +174,17 @@ const ViewIRMSN: React.FC = () => {
       >
         View IR/MSN
       </Typography>
+
+      {/* Status Message */}
+      {statusMessage.type && (
+        <Alert 
+          severity={statusMessage.type} 
+          sx={{ mb: 2 }}
+          onClose={() => setStatusMessage({ type: null, message: '' })}
+        >
+          {statusMessage.message}
+        </Alert>
+      )}
       {/* Form Controls */}
       <Card elevation={2} sx={{ mb: 3 }}>
         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
@@ -125,12 +198,7 @@ const ViewIRMSN: React.FC = () => {
                   return option.name || '';
                 }}
                 value={selectedDepartment}
-                loading={deptLoading}
-                onInputChange={(_, value) => {
-                  if (value.length >= 2) {
-                    debouncedDeptSearch(value);
-                  }
-                }}
+                loading={isLoadingCommon}
                 onChange={(_, value) => {
                   setSelectedDepartment(value);
                   setDepartment(value ? value.id : '');
@@ -153,7 +221,7 @@ const ViewIRMSN: React.FC = () => {
                       ...params.InputProps,
                       endAdornment: (
                         <>
-                          {deptLoading ? (
+                          {isLoadingCommon ? (
                             <CircularProgress color="inherit" size={16} />
                           ) : null}
                           {params.InputProps.endAdornment}
@@ -173,12 +241,7 @@ const ViewIRMSN: React.FC = () => {
                   return option.productionSeries || '';
                 }}
                 value={selectedProductionSeries}
-                loading={prodSeriesLoading}
-                onInputChange={(_, value) => {
-                  if (value.length >= 2) {
-                    debouncedProdSeriesSearch(value);
-                  }
-                }}
+                loading={isLoadingCommon}
                 onChange={(_, value) => {
                   setSelectedProductionSeries(value);
                   setProductionSeriesValue(value ? value.id : '');
@@ -201,7 +264,7 @@ const ViewIRMSN: React.FC = () => {
                       ...params.InputProps,
                       endAdornment: (
                         <>
-                          {prodSeriesLoading ? (
+                          {isLoadingCommon ? (
                             <CircularProgress color="inherit" size={16} />
                           ) : null}
                           {params.InputProps.endAdornment}
@@ -215,7 +278,7 @@ const ViewIRMSN: React.FC = () => {
             <FormControl sx={{ minWidth: 200 }} size="small">
               <Autocomplete
                 size="small"
-                options={drawingNumbers}
+                options={localDrawingNumbers}
                 getOptionLabel={(option) => {
                   if (typeof option === "string") return option;
                   return option.drawingNumber || '';
@@ -272,7 +335,7 @@ const ViewIRMSN: React.FC = () => {
               sx={{ minWidth: 100, height: 32 }}
               size="small"
               onClick={handleSearch}
-              disabled={!productionSeriesValue || loading}
+              disabled={!selectedDepartment || !selectedProductionSeries || loading}
             >
               Search
             </Button>
@@ -318,11 +381,11 @@ const ViewIRMSN: React.FC = () => {
                   <TableRow key={item.id} hover sx={{ height: 36 }}>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{index + 1}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.irNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumberRange}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{new Date(item.createdDate).toLocaleDateString()}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.userName}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.stage}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumberIdName || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumberRange || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.createdDate ? new Date(item.createdDate).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.userName || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.stage || '-'}</TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -364,12 +427,12 @@ const ViewIRMSN: React.FC = () => {
                   <TableRow key={item.id} hover sx={{ height: 36 }}>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{index + 1}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.msnNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumberRange}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.poNumber}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{new Date(item.createdDate).toLocaleDateString()}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.userName}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.stage}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumberIdName || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumberRange || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.productionOrderNumber || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.createdDate ? new Date(item.createdDate).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.userName || '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.stage || '-'}</TableCell>
                   </TableRow>
                 ))
               ) : (
