@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useSelector } from "react-redux";
 import {
   Box,
   Typography,
@@ -40,30 +41,30 @@ interface IRMSNItem {
   irNumber?: string;
   msnNumber?: string;
   drawingNumberId: number | null;
-  stage: string | null;
-  productionOrderNumber: string;
+  productionSeriesName: string | null;
+  stage: string;
+  productionOrderNumber: string | null;
   nomenclatureId: number | null;
   componentTypeId: number | null;
   quantity: number;
   remark: string | null;
   createdBy: number;
-  createdDate: string;
+  createdDate: string | null;
   modifiedBy: number | null;
   modifiedDate: string | null;
   projectNumber: string;
   supplier: string | null;
-  isActive: boolean;
-  drawingNumberIdName: string;
-  productionSeriesName: string;
-  nomenclature: string | null;
-  componentType: string;
-  prodSeriesId: number | null;
+  isActive: boolean | null;
+  drawingNumberIdName: string | null;
+  nomenclature: string;
+  componentType: string | null;
+  prodSeriesId: number;
   idNumberStart: number | null;
   idNumberEnd: number | null;
   userName: string | null;
-  departmentId: number | null;
-  idNumberRange: string;
-  sequenceNo: number | null;
+  departmentId: number;
+  idNumberRange: string | null;
+  sequenceNo: number;
 }
 
 interface SearchFormData {
@@ -82,6 +83,9 @@ interface UpdateFormData {
 export default function SearchUpdateIRMSN() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Get current user from auth state
+  const currentUser = useSelector((state: any) => state.auth.user);
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<IRMSNItem | null>(null);
@@ -141,17 +145,32 @@ export default function SearchUpdateIRMSN() {
               ? "/api/reports/GetAllIRNumber"
               : "/api/reports/GetAllMSNNumber";
 
+          // Try both id and userid fields from token
+          const userIdFromToken = currentUser?.id || currentUser?.userid;
+          const deptIdFromToken = currentUser?.deptid;
+          
+          const userId = userIdFromToken && !isNaN(Number(userIdFromToken)) ? Number(userIdFromToken) : undefined;
+          const departmentId = deptIdFromToken && !isNaN(Number(deptIdFromToken)) ? Number(deptIdFromToken) : undefined;
+          
+
+
           const response = await api.get(endpoint, {
-            params: { query },
+            params: { 
+              query,
+              userId,
+              departmentId
+            },
           });
+
+          
           setNumbers(response.data);
         } catch (error) {
-          console.error("Error fetching numbers:", error);
+          // Handle error silently or show user-friendly message
         } finally {
           setIsLoading(false);
         }
       }, 300),
-    [searchForm.documentType]
+    [searchForm.documentType, currentUser?.userid, currentUser?.deptid]
   );
 
   // Handle number selection
@@ -166,14 +185,42 @@ export default function SearchUpdateIRMSN() {
     );
 
     if (selectedData) {
-      setSelectedItem(selectedData);
-      setUpdateForm({
+      // Handle ID Number Range - check all possible field names
+      let idNumberRange = "";
+      
+      // Priority 1: Direct idNumberRange field
+      if (selectedData.idNumberRange && selectedData.idNumberRange.trim()) {
+        idNumberRange = selectedData.idNumberRange.trim();
+      }
+      // Priority 2: Construct from start/end numbers
+      else if (selectedData.idNumberStart !== null && selectedData.idNumberStart !== undefined && 
+               selectedData.idNumberEnd !== null && selectedData.idNumberEnd !== undefined) {
+        if (selectedData.idNumberStart === selectedData.idNumberEnd) {
+          idNumberRange = selectedData.idNumberStart.toString();
+        } else {
+          idNumberRange = `${selectedData.idNumberStart}-${selectedData.idNumberEnd}`;
+        }
+      }
+      // Priority 3: Create default range based on quantity if no ID data exists
+      else if (selectedData.quantity && selectedData.quantity > 0) {
+        // If we have quantity but no ID range, create a reasonable default
+        if (selectedData.quantity === 1) {
+          idNumberRange = "1";
+        } else {
+          idNumberRange = `1-${selectedData.quantity}`;
+        }
+      }
+      
+      const formData = {
         stage: selectedData.stage || "",
-        quantity: selectedData.quantity,
-        idNumberRange: selectedData.idNumberRange || "",
+        quantity: selectedData.quantity || 0,
+        idNumberRange: idNumberRange,
         supplier: selectedData.supplier || "",
         remark: selectedData.remark || "",
-      });
+      };
+      
+      setSelectedItem(selectedData);
+      setUpdateForm(formData);
     }
   };
 
@@ -234,7 +281,6 @@ export default function SearchUpdateIRMSN() {
       setTimeout(() => setSuccessMessage(""), 3000);
 
     } catch (error) {
-      console.error("Error updating:", error);
       setSuccessMessage("Failed to update. Please try again.");
       setTimeout(() => setSuccessMessage(""), 3000);
     } finally {
@@ -352,6 +398,14 @@ export default function SearchUpdateIRMSN() {
                   setSelectedNumber(number);
                   if (value) {
                     handleNumberSelect(number);
+                  } else {
+                    setUpdateForm({
+                      stage: "",
+                      quantity: 0,
+                      idNumberRange: "",
+                      supplier: "",
+                      remark: "",
+                    });
                   }
                 }}
                 renderInput={(params) => (
@@ -391,18 +445,22 @@ export default function SearchUpdateIRMSN() {
               <Typography variant="h6" color="primary" fontWeight="bold">
                 {selectedItem.irNumber || selectedItem.msnNumber}
               </Typography>
-              <Button
-                startIcon={<EditIcon />}
-                onClick={() => setEditDialogOpen(true)}
-                variant="contained"
-                size="small"
-                sx={{ 
-                  backgroundColor: "primary.main",
-                  color: "white"
-                }}
-              >
-                Edit
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  startIcon={<EditIcon />}
+                  onClick={() => {
+                    setEditDialogOpen(true);
+                  }}
+                  variant="contained"
+                  size="small"
+                  sx={{ 
+                    backgroundColor: "primary.main",
+                    color: "white"
+                  }}
+                >
+                  Edit
+                </Button>
+              </Stack>
             </Stack>
 
             <Grid container spacing={1.5}>
@@ -472,7 +530,12 @@ export default function SearchUpdateIRMSN() {
               <Grid item xs={12} md={4}>
                 <TextField
                   label="ID Nos"
-                  value={selectedItem.idNumberRange}
+                  value={selectedItem.idNumberRange || 
+                    (selectedItem.idNumberStart && selectedItem.idNumberEnd
+                      ? (selectedItem.idNumberStart === selectedItem.idNumberEnd 
+                          ? selectedItem.idNumberStart.toString()
+                          : `${selectedItem.idNumberStart}-${selectedItem.idNumberEnd}`)
+                      : "")}
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
@@ -689,6 +752,7 @@ export default function SearchUpdateIRMSN() {
               Update {selectedItem?.irNumber || selectedItem?.msnNumber}
             </Typography>
           </Stack>
+
         </DialogTitle>
 
         <DialogContent>
@@ -735,7 +799,7 @@ export default function SearchUpdateIRMSN() {
             {/* ID Number Range */}
             <Grid item xs={12} sm={8}>
               <TextField
-                label="ID Number Range"
+                label="ID Number Range *"
                 fullWidth
                 size="small"
                 value={updateForm.idNumberRange}
@@ -749,6 +813,7 @@ export default function SearchUpdateIRMSN() {
                   }));
                 }}
                 helperText="e.g., 1-100 or 1,2,3"
+                placeholder="Enter ID number range"
               />
             </Grid>
 

@@ -5,18 +5,35 @@ interface IRMSNItem {
   id: number;
   irNumber?: string;
   msnNumber?: string;
-  drawingNumber: string;
-  productionSeries: string;
-  nomenclature: string;
-  idNumberRange: string;
-  quantity: number;
-  projectNumber: string;
-  poNumber: string;
+  drawingNumberId: number | null;
+  productionSeriesName: string | null;
   stage: string;
-  supplier?: string;
-  remark?: string;
-  createdDate: string;
-  userName: string;
+  productionOrderNumber: string | null;
+  nomenclatureId: number | null;
+  componentTypeId: number | null;
+  quantity: number;
+  remark: string | null;
+  createdBy: number;
+  createdDate: string | null;
+  modifiedBy: number | null;
+  modifiedDate: string | null;
+  projectNumber: string;
+  supplier: string | null;
+  isActive: boolean | null;
+  drawingNumberIdName: string | null;
+  nomenclature: string;
+  componentType: string | null;
+  prodSeriesId: number;
+  idNumberStart: number | null;
+  idNumberEnd: number | null;
+  userName: string | null;
+  departmentId: number;
+  idNumberRange: string | null;
+  sequenceNo: number;
+  // Computed fields for compatibility
+  drawingNumber?: string;
+  productionSeries?: string;
+  poNumber?: string;
 }
 
 interface IRMSNState {
@@ -55,12 +72,44 @@ export const searchIRMSN = createAsyncThunk(
 // Generate IRMSN
 export const generateIRMSN = createAsyncThunk(
   'irmsn/generateIRMSN',
-  async (data: any, { rejectWithValue }) => {
+  async (data: any, { rejectWithValue, getState }) => {
     try {
+      // Get user context from auth state like C# controller does automatically
+      const state = getState() as any;
+      const currentUser = state.auth.user;
+      
+      // Add user context to the payload like C# controller does from JWT
+      const enhancedData = {
+        ...data,
+        // Map React form fields to API expected fields
+        drawingNumberId: data.drawingNumberId || data.DrawingNumberId,
+        nomenclatureId: data.nomenclatureId || data.NomenclatureId,
+        componentTypeId: data.componentTypeId || data.ComponentTypeId,
+        prodSeriesId: data.prodSeriesId || data.ProdSeriesId,
+        // 🔧 CRITICAL FIX: Map idRange to idNumberRange for proper storage
+        idNumberRange: data.idNumberRange || data.idRange || "",
+        // Also send original idRange for backwards compatibility
+        idRange: data.idRange || data.idNumberRange || "",
+        // User context fields (matching C# controller behavior)
+        createdBy: data.createdBy || (currentUser?.id || currentUser?.userid ? 
+          Number(currentUser.id || currentUser.userid) : undefined),
+        departmentId: data.departmentId || (currentUser?.deptid ? 
+          Number(currentUser.deptid) : undefined),
+        departmentName: data.departmentName || currentUser?.department || '',
+        // Additional field mappings
+        productionOrderNumber: data.poNumber || data.productionOrderNumber,
+        productionSeries: data.productionSeries,
+        drawingNumber: data.drawingNumber,
+      };
+      
       const endpoint = data.documentType === 'IR' ? '/api/reports/IRNumber' : '/api/reports/MSNNumber';
-      const response = await api.post(endpoint, data);
+      console.log(`Generating ${data.documentType} with enhanced payload:`, enhancedData);
+      
+      const response = await api.post(endpoint, enhancedData);
+      console.log(`${data.documentType} generation response:`, response.data);
       return response.data;
     } catch (error: any) {
+      console.error('Generation error:', error.response?.data || error);
       return rejectWithValue(error.response?.data?.message || 'Failed to generate IRMSN number');
     }
   }
@@ -87,18 +136,29 @@ export const fetchIRMSNList = createAsyncThunk(
     stage?: string, 
     productionSeries?: string, 
     departmentTypeId?: string 
-  }, { rejectWithValue }) => {
+  }, { rejectWithValue, getState }) => {
     try {
-      const response = await api.get('/api/reports/GetIRNumberByDrawingNumber', {
-        params: {
+      // Get user context from auth state like C# version
+      const state = getState() as any;
+      const currentUser = state.auth.user;
+      
+      const params = {
           DrawingNumber: drawingNumber || '',
           Stage: stage || '',
           Productionseries: productionSeries || '',
-          DepartmentTypeId: departmentTypeId || ''
-        }
-      });
+        DepartmentTypeId: departmentTypeId || '',
+        // Add user context like C# controller does
+        userId: currentUser?.id || currentUser?.userid ? 
+          Number(currentUser.id || currentUser.userid) : undefined,
+        departmentId: currentUser?.deptid ? 
+          Number(currentUser.deptid) : undefined
+      };
+      console.log('Fetching IR numbers with params:', params); // Debug log
+      const response = await api.get('/api/reports/GetIRNumberByDrawingNumber', { params });
+      console.log('IR numbers response:', response.data); // Debug log
       return response.data;
     } catch (error: any) {
+      console.error('Failed to fetch IR numbers:', error); // Debug log
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch IR numbers');
     }
   }
@@ -112,18 +172,29 @@ export const fetchMSNList = createAsyncThunk(
     stage?: string, 
     productionSeries?: string, 
     departmentTypeId?: string 
-  }, { rejectWithValue }) => {
+  }, { rejectWithValue, getState }) => {
     try {
-      const response = await api.get('/api/reports/GetMSNNumberByDrawingNumber', {
-        params: {
+      // Get user context from auth state like C# version
+      const state = getState() as any;
+      const currentUser = state.auth.user;
+      
+      const params = {
           DrawingNumber: drawingNumber || '',
           Stage: stage || '',
           Productionseries: productionSeries || '',
-          DepartmentTypeId: departmentTypeId || ''
-        }
-      });
+        DepartmentTypeId: departmentTypeId || '',
+        // Add user context like C# controller does
+        userId: currentUser?.id || currentUser?.userid ? 
+          Number(currentUser.id || currentUser.userid) : undefined,
+        departmentId: currentUser?.deptid ? 
+          Number(currentUser.deptid) : undefined
+      };
+      console.log('Fetching MSN numbers with params:', params); // Debug log
+      const response = await api.get('/api/reports/GetMSNNumberByDrawingNumber', { params });
+      console.log('MSN numbers response:', response.data); // Debug log
       return response.data;
     } catch (error: any) {
+      console.error('Failed to fetch MSN numbers:', error); // Debug log
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch MSN numbers');
     }
   }
@@ -179,6 +250,7 @@ const irmsnSlice = createSlice({
       })
       .addCase(fetchMSNList.fulfilled, (state, action) => {
         state.loading = false;
+        console.log('MSN List received:', action.payload); // Debug log
         state.msnList = action.payload;
       })
       .addCase(fetchMSNList.rejected, (state, action) => {
@@ -192,7 +264,9 @@ const irmsnSlice = createSlice({
       })
       .addCase(generateIRMSN.fulfilled, (state, action) => {
         state.loading = false;
-        state.generatedNumber = action.payload.irNumber;
+        // Handle both IR and MSN numbers
+        console.log('Generated number response:', action.payload); // Debug log
+        state.generatedNumber = action.payload.irNumber || action.payload.msnNumber;
       })
       .addCase(generateIRMSN.rejected, (state, action) => {
         state.loading = false;
