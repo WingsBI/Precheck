@@ -64,6 +64,7 @@ export default function GenerateIRMSN() {
   const { loading: isLoading, generatedNumber, error } = useSelector((state: RootState) => state.irmsn);
   const documentTypes = useSelector((state: RootState) => state.common.documentTypes);
   const productionSeries = useSelector((state: RootState) => state.common.productionSeries);
+  const currentAuthUser = useSelector((state: RootState) => state.auth.user);
 
   // Local state
   const [selectedDrawing, setSelectedDrawing] = useState<DrawingNumber | null>(
@@ -73,27 +74,20 @@ export default function GenerateIRMSN() {
   const [stages, setStages] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Load initial data and fetch current user
+  // Load initial data and set current user
   useEffect(() => {
     dispatch(getAllDocumentTypes());
     dispatch(getAllProductionSeries());
-    
-    // Fetch current user information
-    const fetchCurrentUser = async () => {
-      try {
-        // You may need to adjust this API endpoint based on your backend
-        const response = await api.get("/api/auth/currentuser");
-        setCurrentUser(response.data.userName || response.data.name || "N/A");
-      } catch (error) {
-        console.error("Error fetching current user:", error);
-        // Fallback to check localStorage or other sources
-        const storedUser = localStorage.getItem("userName") || localStorage.getItem("currentUser");
-        setCurrentUser(storedUser || "N/A");
-      }
-    };
-
-    fetchCurrentUser();
   }, [dispatch]);
+
+  // Update current user when auth state changes
+  useEffect(() => {
+    if (currentAuthUser?.username) {
+      setCurrentUser(currentAuthUser.username);
+    } else {
+      setCurrentUser("N/A");
+    }
+  }, [currentAuthUser]);
 
   // Debounced search function with local state
   const debouncedSearch = useMemo(
@@ -183,7 +177,71 @@ export default function GenerateIRMSN() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      await dispatch(generateIRMSN(data)).unwrap();
+      // Add user context like C# controller does automatically
+      const userEnhancedData = {
+        ...data,
+        // Add user context from auth state (like C# adds from JWT)
+        createdBy: currentAuthUser?.id || currentAuthUser?.userid ? 
+          Number(currentAuthUser.id || currentAuthUser.userid) : undefined,
+        departmentId: currentAuthUser?.deptid ? 
+          Number(currentAuthUser.deptid) : undefined,
+        departmentName: currentAuthUser?.department || '',
+        // Add drawing number related fields if selected
+        drawingNumberId: selectedDrawing?.id || undefined,
+        nomenclatureId: selectedDrawing?.nomenclatureId || undefined,
+        componentTypeId: selectedDrawing?.componentTypeId || undefined,
+        // 🔧 CRITICAL FIX: Map idRange to the correct API field name
+        idNumberRange: data.idRange || "", // Map form idRange to API idNumberRange
+        // Also send idRange for backwards compatibility
+        idRange: data.idRange || "",
+      };
+      
+      console.log('Generation payload with user context:', userEnhancedData);
+      const result = await dispatch(generateIRMSN(userEnhancedData)).unwrap();
+      
+      // After successful generation, test if the record is immediately searchable
+      if (result && (result.irNumber || result.msnNumber)) {
+        console.log('Successfully generated number:', result);
+        
+        // Test if the newly generated number can be found in search
+        const generatedNumberValue = result.irNumber || result.msnNumber;
+        const documentTypeValue = result.irNumber ? 'IR' : 'MSN';
+        
+        console.log(`Testing search for newly generated ${documentTypeValue} number:`, generatedNumberValue);
+        
+        // Add a delay then test search
+        setTimeout(async () => {
+          try {
+            const searchEndpoint = documentTypeValue === 'IR' 
+              ? '/api/reports/GetAllIRNumber' 
+              : '/api/reports/GetAllMSNNumber';
+              
+            const searchResponse = await api.get(searchEndpoint, {
+              params: {
+                query: generatedNumberValue,
+                userId: currentAuthUser?.id || currentAuthUser?.userid ? 
+                  Number(currentAuthUser.id || currentAuthUser.userid) : undefined,
+                departmentId: currentAuthUser?.deptid ? 
+                  Number(currentAuthUser.deptid) : undefined
+              }
+            });
+            
+            console.log(`Search test result for ${generatedNumberValue}:`, searchResponse.data);
+            
+                         if (searchResponse.data && searchResponse.data.length > 0) {
+               console.log('✅ Newly generated number is searchable!');
+               // Show success message to user
+               const successMsg = `${documentTypeValue} number ${generatedNumberValue} has been generated and is now searchable!`;
+               console.log(successMsg);
+             } else {
+               console.log('❌ Newly generated number not found in search - there may be a timing or parameter issue');
+               console.log('💡 Note: It may take a few moments for the database to sync. Try refreshing the Search/Update page.');
+             }
+          } catch (error) {
+            console.error('❌ Error testing search for newly generated number:', error);
+          }
+        }, 2000); // 2 second delay to allow database commit
+      }
     } catch (error) {
       console.error("Error generating number:", error);
     }
@@ -280,6 +338,10 @@ export default function GenerateIRMSN() {
                         onChange(value ? value.drawingNumber : "");
                         if (value) {
                           setValue("nomenclature", value.nomenclature || "");
+                          // Set hidden form fields like C# version does
+                          setValue("DrawingNumberId", value.id);
+                          setValue("NomenclatureId", value.nomenclatureId);
+                          setValue("ComponentTypeId", value.componentTypeId);
                         }
                       }}
                       isOptionEqualToValue={(option, value) =>
@@ -612,6 +674,20 @@ export default function GenerateIRMSN() {
                     </Tooltip>
                   </Box>
                 </Stack>
+                
+                {/* Help text for user */}
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    mt: 1, 
+                    display: "block", 
+                    color: "text.secondary",
+                    fontStyle: "italic"
+                  }}
+                >
+                  💡 Your number has been generated! It should now be searchable in the Search/Update page. 
+                  If you don't see it immediately, wait a moment and try again.
+                </Typography>
               </Box>
             )}
 
