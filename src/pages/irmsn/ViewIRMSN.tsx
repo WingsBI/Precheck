@@ -84,7 +84,7 @@ const ViewIRMSN: React.FC = () => {
     if (departments.length > 0 && !selectedDepartment) {
       // Try to use user's department first, otherwise select first available
       const userDept = currentUser?.deptid ? 
-        departments.find(dept => dept.id.toString() === currentUser.deptid.toString()) : null;
+        departments.find(dept => dept.id.toString() === currentUser.deptid?.toString()) : null;
       const deptToSelect = userDept || departments[0];
       
       if (deptToSelect) {
@@ -188,8 +188,14 @@ const ViewIRMSN: React.FC = () => {
       {/* Form Controls */}
       <Card elevation={2} sx={{ mb: 3 }}>
         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <FormControl sx={{ minWidth: 200 }} size="small">
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'column', md: 'row' }, 
+            alignItems: { xs: 'stretch', md: 'center' }, 
+            gap: { xs: 2, md: 1.5 },
+            flexWrap: 'wrap'
+          }}>
+            <FormControl sx={{ minWidth: { xs: '100%', md: 200 }, flex: { md: 1 } }} size="small">
               <Autocomplete
                 size="small"
                 options={departments}
@@ -232,7 +238,7 @@ const ViewIRMSN: React.FC = () => {
                 )}
               />
             </FormControl>
-            <FormControl sx={{ minWidth: 200 }} size="small">
+            <FormControl sx={{ minWidth: { xs: '100%', md: 200 }, flex: { md: 0.5 } }} size="small">
               <Autocomplete
                 size="small"
                 options={productionSeries}
@@ -275,7 +281,7 @@ const ViewIRMSN: React.FC = () => {
                 )}
               />
             </FormControl>
-            <FormControl sx={{ minWidth: 200 }} size="small">
+            <FormControl sx={{ minWidth: { xs: '100%', md: 200 }, flex: { md: 1 } }} size="small">
               <Autocomplete
                 size="small"
                 options={localDrawingNumbers}
@@ -329,26 +335,43 @@ const ViewIRMSN: React.FC = () => {
                 )}
               />
             </FormControl>
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ minWidth: 100, height: 32 }}
-              size="small"
-              onClick={handleSearch}
-              disabled={!selectedDepartment || !selectedProductionSeries || loading}
-            >
-              Search
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              sx={{ minWidth: 80, height: 32 }}
-              size="small"
-              onClick={handleReset}
-            >
-              <RefreshIcon sx={{ mr: 1 }} />
-              Reset
-            </Button>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 1, 
+              flexDirection: { xs: 'column', sm: 'row' },
+              width: { xs: '100%', md: 'auto' },
+              mt: { xs: 1, md: 0 }
+            }}>
+              <Button
+                variant="contained"
+                color="primary"
+                sx={{ 
+                  minWidth: { xs: '100%', sm: 100 }, 
+                  height: 32,
+                  flex: { xs: 1, sm: 'none' }
+                }}
+                size="small"
+                onClick={handleSearch}
+                disabled={!selectedDepartment || !selectedProductionSeries || loading}
+              >
+                <SearchIcon sx={{ mr: 1 }} />
+                Search
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                sx={{ 
+                  minWidth: { xs: '100%', sm: 80 }, 
+                  height: 32,
+                  flex: { xs: 1, sm: 'none' }
+                }}
+                size="small"
+                onClick={handleReset}
+              >
+                <RefreshIcon sx={{ mr: 1 }} />
+                Reset
+              </Button>
+            </Box>
           </Box>
         </CardContent>
       </Card>
@@ -357,7 +380,7 @@ const ViewIRMSN: React.FC = () => {
       <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2 }}>
         <Typography variant="subtitle1" align="center" fontWeight="bold" sx={{ mb: 1 }}>IR Numbers</Typography>
         <TableContainer sx={{ maxHeight: 400, overflow: 'auto' }}>
-          <Table stickyHeader sx={{ minWidth: 800 }} size="small">
+          <Table stickyHeader sx={{ minWidth: { xs: 600, md: 800 } }} size="small">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#f5f5f5', height: 36 }}>
                 <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>Sr No</TableCell>
@@ -402,7 +425,7 @@ const ViewIRMSN: React.FC = () => {
       <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2 }}>
         <Typography variant="subtitle1" align="center" fontWeight="bold" sx={{ mb: 1 }}>MSN Numbers</Typography>
         <TableContainer sx={{ maxHeight: 400, overflow: 'auto' }}>
-          <Table stickyHeader sx={{ minWidth: 800 }} size="small">
+          <Table stickyHeader sx={{ minWidth: { xs: 600, md: 800 } }} size="small">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#f5f5f5', height: 36 }}>
                 <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem' }}>Sr No</TableCell>
