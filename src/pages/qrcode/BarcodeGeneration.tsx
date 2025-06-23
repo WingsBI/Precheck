@@ -133,14 +133,27 @@ export default function BarcodeGeneration() {
     formState: { errors },
   } = useForm<QRCodeFormData>({
     defaultValues: {
+      drawingNumber: '',
+      nomenclature: '',
+      productionSeries: '',
       componentType: "ID",
       idType: "series",
-      quantity: 1,
-      startRange: 1,
-      endRange: 1,
-      disposition: "Accepted",
-      manufacturingDate: new Date(),
+      startRange: '' as any,
+      endRange: '' as any,
+      quantity: '' as any,
       randomIds: Array(12).fill(""),
+      batchId: '',
+      unit: '',
+      manufacturingDate: null as any,
+      expiryDate: undefined,
+      irNumber: '',
+      msnNumber: '',
+      poNumber: '',
+      projectNumber: '',
+      mrirNumber: '',
+      disposition: undefined as any,
+      location: '',
+      remark: ''
     },
   });
 
@@ -332,28 +345,55 @@ export default function BarcodeGeneration() {
 
   // Handle actions
   const handleReset = () => {
+    // Reset react-hook-form with empty values for all fields
     reset({
       drawingNumber: '',
       nomenclature: '',
       productionSeries: '',
       componentType: 'ID',
       idType: 'series',
-      startRange: 1,
-      endRange: 1,
-      quantity: 1,
+      startRange: '' as any,
+      endRange: '' as any,
+      quantity: '' as any,
       randomIds: Array(12).fill(''),
       batchId: '',
       unit: '',
-      manufacturingDate: new Date(),
+      manufacturingDate: null as any,
+      expiryDate: undefined,
       irNumber: '',
       msnNumber: '',
       poNumber: '',
       projectNumber: '',
       mrirNumber: '',
-      disposition: 'Accepted',
+      disposition: '' as any,
       location: '',
       remark: ''
     });
+
+    // Force reset ALL fields using setValue to ensure they are completely empty
+    setValue('drawingNumber', '');
+    setValue('nomenclature', '');
+    setValue('productionSeries', '');
+    setValue('startRange', '' as any);
+    setValue('endRange', '' as any);
+    setValue('quantity', '' as any);
+    setValue('manufacturingDate', null as any);
+    setValue('expiryDate', undefined);
+    setValue('componentType', 'ID');
+    setValue('idType', 'series');
+    setValue('disposition', '' as any);
+    setValue('unit', '');
+    setValue('irNumber', '');
+    setValue('msnNumber', '');
+    setValue('poNumber', '');
+    setValue('projectNumber', '');
+    setValue('mrirNumber', '');
+    setValue('location', '');
+    setValue('remark', '');
+    setValue('batchId', '');
+    setValue('randomIds', Array(12).fill(''));
+
+    // Reset all local state variables
     setSelectedDrawing(null);
     setSelectedIRNumber(null);
     setSelectedMSNNumber(null);
@@ -361,8 +401,16 @@ export default function BarcodeGeneration() {
     setIdType("series");
     setRandomIds(Array(12).fill(""));
     setSelectedBarcodes([]);
+    setSearchTerm("");
+    setPage(0);
+    setRowsPerPage(10);
+    
+    // Clear Redux state
     dispatch(clearGeneratedNumber());
     dispatch(clearQRCodeList());
+    dispatch(clearError());
+    
+    // Clear messages
     setSuccessMessage("");
   };
 
