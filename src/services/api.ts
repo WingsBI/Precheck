@@ -4,6 +4,14 @@ import { store } from '../store/store';
 import { logout } from '../store/slices/authSlice';
 import { isTokenExpired } from '../utils/jwtUtils';
 
+// Debug environment variables
+console.log('Environment variables:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  MODE: import.meta.env.MODE,
+  DEV: import.meta.env.DEV,
+  PROD: import.meta.env.PROD
+});
+
 if (!import.meta.env.VITE_API_BASE_URL) {
   console.warn('VITE_API_BASE_URL is not defined in environment variables');
 } 

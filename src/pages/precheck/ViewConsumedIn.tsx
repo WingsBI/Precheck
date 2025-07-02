@@ -152,13 +152,17 @@ const ViewConsumedIn: React.FC = () => {
         // Map the API response to our table format
         const mappedResults = result.payload.map((item: any, index: number) => ({
           sr: index + 1,
-          idNumber: item.idNumber || item.id || '',
-          consumedInDrawingNumber: item.consumedInDrawingNumber || item.drawingNumber || '',
-          poNumber: item.poNumber || item.productionOrderNumber || '',
+          idNumber: item.idNumber || '',
+          consumedInDrawingNumber: item.consumedInDrawing || '',
+          poNumber: item.consumedInProductionOrderNumber || '',
           irNumber: item.irNumber || '',
           msnNumber: item.msnNumber || '',
-          date: item.date || item.createdDate || '',
-          username: item.username || item.userName || ''
+          date: item.date ? new Date(item.date).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }) : '',
+          username: item.username || ''
         }));
         setSearchResults(mappedResults);
       } else {
