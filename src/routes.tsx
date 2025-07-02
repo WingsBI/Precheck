@@ -35,6 +35,9 @@ import ViewSOP from './pages/sop/ViewSOP';
 // Settings Pages
 import Settings from './pages/settings/Settings';
 
+// Components Pages
+import Components from './pages/components/Components';
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -88,6 +91,11 @@ export default function AppRoutes() {
         {/* Settings Module */}
         <Route path="settings">
           <Route index element={<Settings />} />
+        </Route>
+        
+        {/* Components Module */}
+        <Route path="components">
+          <Route index element={<Components />} />
         </Route>
       </Route>
 

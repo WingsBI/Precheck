@@ -234,6 +234,11 @@ export default function Layout() {
         { text: "View SOP", icon: <VisibilityIcon />, path: "/sop/view" },
       ],
     },
+    {
+      text: "Components",
+      icon: <DescriptionIcon />,
+      path: "/components",
+    },
   ];
 
   // Filter menu items based on user role
