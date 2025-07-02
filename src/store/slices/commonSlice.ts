@@ -7,6 +7,7 @@ interface CommonState {
   modules: any[];
   componentTypes: any[];
   drawingNumbers: any[];
+  allDrawingNumbers: any[];
   documentTypes: any[];
   productionSeries: any[];
   units: any[];
@@ -22,6 +23,7 @@ const initialState: CommonState = {
   modules: [],
   componentTypes: [],
   drawingNumbers: [],
+  allDrawingNumbers: [],
   documentTypes: [],
   productionSeries: [],
   units: [],
@@ -167,6 +169,19 @@ export const getSecurityQuestions = createAsyncThunk(
   }
 );
 
+// Fetch All Drawing Numbers
+export const fetchAllDrawingNumbers = createAsyncThunk(
+  'common/fetchAllDrawingNumbers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/Common/FetchAllDrawingNumbers');
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch all drawing numbers');
+    }
+  }
+);
+
 const commonSlice = createSlice({
   name: 'common',
   initialState,
@@ -294,6 +309,18 @@ const commonSlice = createSlice({
         state.isLoading = false;
       })
       .addCase(getSecurityQuestions.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.isLoading = false;
+      })
+      // Fetch All Drawing Numbers
+      .addCase(fetchAllDrawingNumbers.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(fetchAllDrawingNumbers.fulfilled, (state, action) => {
+        state.allDrawingNumbers = action.payload;
+        state.isLoading = false;
+      })
+      .addCase(fetchAllDrawingNumbers.rejected, (state, action) => {
         state.error = action.payload as string;
         state.isLoading = false;
       });

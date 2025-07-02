@@ -43,14 +43,32 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
   // Add debugging console log
   console.log("Row component - barcodeDetails:", barcodeDetails);
 
+  // Format created date
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'N/A';
+    }
+  };
+
   return (
     <>
       <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
         <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails?.qrCodeNumber || 'N/A'}</TableCell>
-        <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>{barcodeDetails?.productionSeriesId || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>{barcodeDetails?.productionSeries || 'N/A'}</TableCell>
         <TableCell sx={{ textAlign: 'center', minWidth: '200px' }}>{barcodeDetails?.drawingNumber || 'N/A'}</TableCell>
         <TableCell sx={{ textAlign: 'center', minWidth: '150px' }}>{barcodeDetails?.nomenclature || 'N/A'}</TableCell>
         <TableCell sx={{ textAlign: 'center', minWidth: '250px' }}>{barcodeDetails?.consumedInDrawing || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', minWidth: '120px' }}>{barcodeDetails?.idNumber || 'N/A'}</TableCell>
         
         <TableCell sx={{ textAlign: 'center', minWidth: '50px' }}>
           <IconButton
@@ -77,8 +95,10 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>MSN Number</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>MRIR Number</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Quantity</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>PO Number</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Disposition</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Username</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Created Date</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -88,8 +108,10 @@ const Row = ({ barcodeDetails }: { barcodeDetails: any }) => {
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.msnNumber || 'N/A'}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.mrirNumber || 'N/A'}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.quantity || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.productionOrderNumber || 'N/A'}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.desposition || 'N/A'}</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>{barcodeDetails?.users || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>{formatDate(barcodeDetails?.createdDate)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -170,7 +192,7 @@ const ViewBarcode: React.FC = () => {
   };
 
   const handleDownload = () => {
-    try {
+try {
       if (!barcodeDetails) {
         setSnackbar({
           open: true,
@@ -186,17 +208,26 @@ const ViewBarcode: React.FC = () => {
       // Prepare data for Excel
       const data = dataArray.map(item => ({
         'QRCode ID': item?.qrCodeNumber || 'N/A',
-        'Prod Series': item?.productionSeriesId || 'N/A',
+        'Prod Series': item?.productionSeries || 'N/A',
         'Drawing Number': item?.drawingNumber || 'N/A',
         'Nomenclature': item?.nomenclature || 'N/A',
         'Consumed In Drawing': item?.consumedInDrawing || 'N/A',
+        'ID Number': item?.idNumber || 'N/A',
         'Status': item?.qrCodeStatus || 'N/A',
         'IR Number': item?.irNumber || 'N/A',
         'MSN Number': item?.msnNumber || 'N/A',
         'MRIR Number': item?.mrirNumber || 'N/A',
         'Quantity': item?.quantity || 'N/A',
+        'PO Number': item?.productionOrderNumber || 'N/A',
         'Disposition': item?.desposition || 'N/A',
-        'Username': item?.users || 'N/A'
+        'Username': item?.users || 'N/A',
+        'Created Date': item?.createdDate ? new Date(item.createdDate).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : 'N/A'
       }));
 
       // Create worksheet
@@ -209,13 +240,16 @@ const ViewBarcode: React.FC = () => {
         { wch: 18 }, // Drawing Number
         { wch: 18 }, // Nomenclature
         { wch: 18 }, // Consumed In Drawing
+        { wch: 18 }, // ID Number
         { wch: 18 }, // Status
         { wch: 18 }, // IR Number
         { wch: 18 }, // MSN Number
         { wch: 18 }, // MRIR Number
         { wch: 18 }, // Quantity
+        { wch: 18 }, // PO Number
         { wch: 18 }, // Disposition
-        { wch: 18 }  // Username
+        { wch: 18 }, // Username
+        { wch: 18 }  // Created Date
       ];
 
       ws['!cols'] = columnWidths;
@@ -246,7 +280,7 @@ const ViewBarcode: React.FC = () => {
       };
 
       // Add styling to make text wrap and center-aligned
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:L2');
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:O2');
       for (let R = range.s.r; R <= range.e.r; ++R) {
         for (let C = range.s.c; C <= range.e.c; ++C) {
           const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
@@ -495,6 +529,7 @@ const ViewBarcode: React.FC = () => {
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '180px', textAlign: 'center' }}>Drawing Number</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>Nomenclature</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '150px', textAlign: 'center' }}>ConsumedInDrawing</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: '120px', textAlign: 'center' }}>ID Number</TableCell>
                 
                 <TableCell sx={{ fontWeight: 'bold', minWidth: '50px', textAlign: 'center' }}>Details</TableCell>
               </TableRow>
@@ -512,7 +547,7 @@ const ViewBarcode: React.FC = () => {
               {/* Show message when no data */}
               {!barcodeDetails && !loading && (
                 <TableRow>
-                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 4 }}>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
                       No data found. Please search for QR codes.
                     </Typography>
