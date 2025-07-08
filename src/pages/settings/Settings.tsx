@@ -112,6 +112,14 @@ export default function Settings() {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
+                  label="Username"
+                  value={user?.username || ''}
+                  disabled
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
                   label="Email"
                   value={user?.email || ''}
                   disabled
@@ -128,8 +136,8 @@ export default function Settings() {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Department ID"
-                  value={user?.departmentId || ''}
+                  label="Department"
+                  value={user?.department || ''}
                   disabled
                 />
               </Grid>

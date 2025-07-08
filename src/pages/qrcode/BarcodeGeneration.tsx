@@ -794,7 +794,7 @@ export default function BarcodeGeneration() {
                         <Controller
                           name="quantity"
                           control={control}
-                          rules={{ required: "Quantity is required", min: 1 }}
+                          rules={{ required: "Quantity is required", min: { value: 0.01, message: "Quantity must be greater than 0" } }}
                           render={({ field }) => (
                             <TextField
                               {...field}
@@ -804,6 +804,7 @@ export default function BarcodeGeneration() {
                               size="small"
                               error={!!errors.quantity}
                               helperText={errors.quantity?.message}
+                              inputProps={{ step: "0.01", min: "0.01" }}
                             />
                           )}
                         />
@@ -887,7 +888,7 @@ export default function BarcodeGeneration() {
                     <Controller
                       name="quantity"
                       control={control}
-                      rules={{ required: "Quantity is required", min: 1 }}
+                      rules={{ required: "Quantity is required", min: { value: 0.01, message: "Quantity must be greater than 0" } }}
                       render={({ field }) => (
                         <TextField
                           {...field}
@@ -897,6 +898,7 @@ export default function BarcodeGeneration() {
                           size="small"
                           error={!!errors.quantity}
                           helperText={errors.quantity?.message}
+                          inputProps={{ step: "0.01", min: "0.01" }}
                         />
                       )}
                     />
@@ -963,7 +965,7 @@ export default function BarcodeGeneration() {
                     <Controller
                       name="quantity"
                       control={control}
-                      rules={{ required: "Quantity is required", min: 1 }}
+                      rules={{ required: "Quantity is required", min: { value: 0.01, message: "Quantity must be greater than 0" } }}
                       render={({ field }) => (
                         <TextField
                           {...field}
@@ -973,6 +975,7 @@ export default function BarcodeGeneration() {
                           size="small"
                           error={!!errors.quantity}
                           helperText={errors.quantity?.message}
+                          inputProps={{ step: "0.01", min: "0.01" }}
                         />
                       )}
                     />

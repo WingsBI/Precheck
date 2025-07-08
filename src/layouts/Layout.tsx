@@ -599,7 +599,7 @@ export default function Layout() {
                   variant="body2"
                   sx={{ fontWeight: 600, color: "white" }}
                 >
-                  {user.userid}
+                  {user.username}
                 </Typography>
                 <Typography
                   variant="caption"
@@ -652,7 +652,7 @@ export default function Layout() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Settings"
-                    secondary={`ID: ${user.userid}`}
+                    secondary={`User: ${user.username}`}
                   />
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>
