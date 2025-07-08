@@ -30,7 +30,7 @@ interface QRCodePayload {
   rackLocationId: number;
   irNumberId: number;
   msnNumberId: number;
-  disposition: string;
+  desposition: string;
   productionOrderNumber: string;
   projectNumber: string;
   expiryDate: string;

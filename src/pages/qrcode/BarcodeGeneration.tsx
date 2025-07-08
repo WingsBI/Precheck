@@ -151,7 +151,7 @@ export default function BarcodeGeneration() {
       poNumber: '',
       projectNumber: '',
       mrirNumber: '',
-      disposition: undefined as any,
+      desposition: undefined as any,
       location: '',
       remark: ''
     },
@@ -271,7 +271,7 @@ export default function BarcodeGeneration() {
       rackLocationId: selectedDrawing?.rackLocationId || 0,
       irNumberId: selectedIRNumber?.id || 0,
       msnNumberId: selectedMSNNumber?.id || 0,
-      disposition: data.disposition,
+      desposition: data.desposition,
       productionOrderNumber: data.poNumber,
       projectNumber: data.projectNumber,
       expiryDate:
@@ -365,7 +365,7 @@ export default function BarcodeGeneration() {
       poNumber: '',
       projectNumber: '',
       mrirNumber: '',
-      disposition: '' as any,
+      desposition: '' as any,
       location: '',
       remark: ''
     });
@@ -381,7 +381,7 @@ export default function BarcodeGeneration() {
     setValue('expiryDate', undefined);
     setValue('componentType', 'ID');
     setValue('idType', 'series');
-    setValue('disposition', '' as any);
+    setValue('desposition', '' as any);
     setValue('unit', '');
     setValue('irNumber', '');
     setValue('msnNumber', '');
@@ -1251,7 +1251,7 @@ export default function BarcodeGeneration() {
                   Disposition *
                 </FormLabel>
                 <Controller
-                  name="disposition"
+                  name="desposition"
                   control={control}
                   rules={{ required: "Disposition is required" }}
                   render={({ field }) => (
@@ -1274,9 +1274,9 @@ export default function BarcodeGeneration() {
                     </RadioGroup>
                   )}
                 />
-                {errors.disposition && (
+                  {errors.desposition && (
                   <FormHelperText error>
-                    {errors.disposition.message}
+                    {errors.desposition.message}
                   </FormHelperText>
                 )}
               </Box>
