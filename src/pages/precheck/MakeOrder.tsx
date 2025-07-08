@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
   Typography,
-  Paper,
   Grid,
   TextField,
   Button,
@@ -44,6 +43,7 @@ interface BOMItem {
   drawingNumber: string;
   nomenclature: string;
   qty: number;
+  id: number; // ID of the specific BOM item's drawing number
 }
 
 interface QRCodeItem {
@@ -210,6 +210,7 @@ const MakeOrder: React.FC = () => {
           drawingNumber: item.drawingNumber || "",
           nomenclature: item.nomenclature || "",
           qty: item.quantity || 0,
+          id: item.drawingNumberId || item.drawingId || item.id || 0, // Use drawing number ID from make order response
         }));
         setBomData(mappedBomData);
       }
@@ -254,7 +255,7 @@ const MakeOrder: React.FC = () => {
     try {
       const requestData = {
         prodSeriesId: Number(formData.productionSeries.id),
-        drawingNumberId: Number(formData.drawingNumber.id),
+        drawingNumberId: Number(bomItem.id), // Use the BOM item's drawing number ID
         quantity: bomItem.qty || 1,
       };
 
