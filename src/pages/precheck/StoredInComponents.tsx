@@ -13,17 +13,17 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
-  IconButton,
-  Collapse,
   TextField,
   InputAdornment,
   TablePagination,
+  IconButton,
+  Collapse,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SearchIcon from '@mui/icons-material/Search';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -103,14 +103,16 @@ const Row = ({ component }: { component: StoredComponent }) => {
 
   return (
     <>
-      <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
-        <TableCell sx={{ textAlign: 'center', width: '140px' }}>{component?.qrCodeNumber || 'N/A'}</TableCell>
-        <TableCell sx={{ textAlign: 'center', width: '120px' }}>{component?.drawingNumber || 'N/A'}</TableCell>
-        <TableCell sx={{ textAlign: 'center', width: '120px' }}>{component?.nomenclature || 'N/A'}</TableCell>
-        <TableCell sx={{ textAlign: 'center', width: '80px' }}>{component?.idNumber || 'N/A'}</TableCell>
-        <TableCell sx={{ textAlign: 'center', width: '100px' }}>{component?.users || 'N/A'}</TableCell>
-        
-        <TableCell sx={{ textAlign: 'center', width: '60px' }}>
+      <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
+        <TableCell sx={{ textAlign: 'center', py: 1, fontSize: '0.875rem' }}>{component?.qrCodeNumber || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', py: 1, fontSize: '0.875rem' }}>{component?.productionOrderNumber || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', py: 1, fontSize: '0.875rem' }}>{component?.projectNumber || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', py: 1, fontSize: '0.875rem' }}>{component?.productionSeries || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', py: 1, fontSize: '0.875rem' }}>{component?.drawingNumber || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', py: 1, fontSize: '0.875rem' }}>{component?.idNumber || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', py: 1, fontSize: '0.875rem' }}>{component?.quantity || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', py: 1, fontSize: '0.875rem' }}>{component?.nomenclature || 'N/A'}</TableCell>
+        <TableCell sx={{ textAlign: 'center', py: 1 }}>
           <IconButton
             aria-label="expand row"
             size="small"
@@ -121,51 +123,47 @@ const Row = ({ component }: { component: StoredComponent }) => {
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 1 }}>
-              <Typography variant="h6" gutterBottom component="div">
-                Component Details
-              </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, py: 2 }}>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>Basic Info</Typography>
-                  <Typography variant="body2"><strong>Production Series:</strong> {component?.productionSeries || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>Component Type:</strong> {component?.componentType || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>Status:</strong> {component?.qrCodeStatus || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>Quantity:</strong> {component?.quantity || 'N/A'}</Typography>
-                </Box>
-                
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>Document Numbers</Typography>
-                  <Typography variant="body2"><strong>IR Number:</strong> {component?.irNumber || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>MSN Number:</strong> {component?.msnNumber || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>MRIR Number:</strong> {component?.mrirNumber || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>LN Item Code:</strong> {component?.lnItemCode || 'N/A'}</Typography>
-                </Box>
-                
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>Order Details</Typography>
-                  <Typography variant="body2"><strong>PO Number:</strong> {component?.productionOrderNumber || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>Project Number:</strong> {component?.projectNumber || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>Assembly Number:</strong> {component?.assemblyNumber || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>Consumed In:</strong> {component?.consumedInDrawing || 'N/A'}</Typography>
-                </Box>
-                
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>Location & Quality</Typography>
-                  <Typography variant="body2"><strong>Rack Location:</strong> {component?.rackLocation || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>Disposition:</strong> {component?.desposition || 'N/A'}</Typography>
-                  <Typography variant="body2"><strong>Remarks:</strong> {component?.remark || 'N/A'}</Typography>
-                </Box>
-                
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>Dates</Typography>
-                  <Typography variant="body2"><strong>Created:</strong> {formatDate(component?.createdDate)}</Typography>
-                  <Typography variant="body2"><strong>Manufacturing:</strong> {formatDate(component?.manufacturingDate)}</Typography>
-                  <Typography variant="body2"><strong>Expiry:</strong> {formatDate(component?.expiryDate)}</Typography>
-                </Box>
-              </Box>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.8rem' }}>Consumed in Drawing</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.8rem' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.8rem' }}>IR Number</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.8rem' }}>MSN Number</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.8rem' }}>MRIR Number</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.8rem' }}>Disposition</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.8rem' }}>Username</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ textAlign: 'center', fontSize: '0.8rem' }}>{component?.consumedInDrawing || '-'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>
+                      <Box
+                        sx={{
+                          bgcolor: component?.qrCodeStatus === 'readyforconsumption' ? '#e8f5e8' : '#fff3cd',
+                          color: component?.qrCodeStatus === 'readyforconsumption' ? '#2e7d32' : '#856404',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          fontSize: '0.75rem',
+                          display: 'inline-block',
+                        }}
+                      >
+                        {component?.qrCodeStatus || 'N/A'}
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: '0.8rem' }}>{component?.irNumber || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: '0.8rem' }}>{component?.msnNumber || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: '0.8rem' }}>{component?.mrirNumber || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: '0.8rem' }}>{component?.desposition || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: '0.8rem' }}>{component?.users || 'N/A'}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </Box>
           </Collapse>
         </TableCell>
@@ -465,32 +463,41 @@ const StoredInComponents: React.FC = () => {
           {/* Data Table */}
           <TableContainer sx={{ maxHeight: 600 }}>
             <Table stickyHeader size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50' }}>
-                    QR Code
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50' }}>
-                    Drawing Number
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50' }}>
-                    Nomenclature
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50' }}>
-                    ID Number
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50' }}>
-                    User
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50' }}>
-                    Details
-                  </TableCell>
-                </TableRow>
-              </TableHead>
+                              <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50', py: 1 }}>
+                      QRCode ID
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50', py: 1 }}>
+                      PO Number
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50', py: 1 }}>
+                      Project Number
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50', py: 1 }}>
+                      Prod Series
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50', py: 1 }}>
+                      Drawing Number
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50', py: 1 }}>
+                      ID
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50', py: 1 }}>
+                      Qty
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50', py: 1 }}>
+                      Nomenclature
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', bgcolor: 'grey.50', py: 1 }}>
+                      Details
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                       <CircularProgress size={40} />
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                         Loading stored components...
@@ -499,7 +506,7 @@ const StoredInComponents: React.FC = () => {
                   </TableRow>
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                       <Typography variant="body2" color="error">
                         {error}
                       </Typography>
@@ -511,7 +518,7 @@ const StoredInComponents: React.FC = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                       <Typography variant="body2" color="text.secondary">
                         No stored components found for the selected date
                       </Typography>
