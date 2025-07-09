@@ -328,6 +328,35 @@ export const updateQrCodeDetails = createAsyncThunk(
     }
   }
 );
+
+export const exportStoredComponents = createAsyncThunk(
+  'qrcode/exportStoredComponents',
+  async (date: string, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/api/QRCode/ExportStoredInComponentsByDate/${date}`, null, {
+        responseType: 'blob'
+      });
+
+      if (response.data) {
+        // Create download link for Excel file
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `StoredComponents_${date}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        return { success: true, message: 'Components exported successfully' };
+      } else {
+        throw new Error('No file content received from the API');
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to export components');
+    }
+  }
+);
 const qrcodeSlice = createSlice({
   name: 'qrcode',
   initialState,

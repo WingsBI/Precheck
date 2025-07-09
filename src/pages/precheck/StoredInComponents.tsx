@@ -29,7 +29,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from '../../store/store';
-import { getStoredComponentsByDate } from '../../store/slices/qrcodeSlice';
+import { getStoredComponentsByDate, exportStoredComponents } from '../../store/slices/qrcodeSlice';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 
@@ -254,108 +254,34 @@ const StoredInComponents: React.FC = () => {
   };
 
   const handleExport = () => {
-    try {
-      if (!filteredComponents.length) {
-        setSnackbar({
-          open: true,
-          message: 'No data available to export',
-          severity: 'error'
-        });
-        return;
-      }
-
-      // Prepare data for Excel
-      const data = filteredComponents.map(component => ({
-        'QR Code': component?.qrCodeNumber || 'N/A',
-        'Production Series': component?.productionSeries || 'N/A',
-        'Drawing Number': component?.drawingNumber || 'N/A',
-        'Nomenclature': component?.nomenclature || 'N/A',
-        'Component Type': component?.componentType || 'N/A',
-        'Consumed In Drawing': component?.consumedInDrawing || 'N/A',
-        'Assembly Number': component?.assemblyNumber || 'N/A',
-        'ID Number': component?.idNumber || 'N/A',
-        'Store In Date': (component?.modifiedDate || component?.createdDate) ? format(new Date(component.modifiedDate || component.createdDate), 'dd/MM/yyyy HH:mm') : 'N/A',
-        'Status': component?.qrCodeStatus || 'N/A',
-        'IR Number': component?.irNumber || 'N/A',
-        'MSN Number': component?.msnNumber || 'N/A',
-        'MRIR Number': component?.mrirNumber || 'N/A',
-        'Quantity': component?.quantity || 'N/A',
-        'PO Number': component?.productionOrderNumber || 'N/A',
-        'Project Number': component?.projectNumber || 'N/A',
-        'Disposition': component?.desposition || 'N/A',
-        'Rack Location': component?.rackLocation || 'N/A',
-        'LN Item Code': component?.lnItemCode || 'N/A',
-        'Username': component?.users || 'N/A',
-        'Remarks': component?.remark || 'N/A',
-        'Manufacturing Date': component?.manufacturingDate ? format(new Date(component.manufacturingDate), 'dd/MM/yyyy HH:mm') : 'N/A',
-        'Created Date': component?.createdDate ? format(new Date(component.createdDate), 'dd/MM/yyyy HH:mm') : 'N/A',
-        'Expiry Date': component?.expiryDate ? format(new Date(component.expiryDate), 'dd/MM/yyyy HH:mm') : 'N/A'
-      }));
-
-      // Create worksheet
-      const ws = XLSX.utils.json_to_sheet(data);
-
-      // Set column widths
-      const columnWidths = Array(24).fill({ wch: 18 });
-      ws['!cols'] = columnWidths;
-
-      // Define styles
-      const cellStyle = {
-        alignment: {
-          horizontal: 'center',
-          vertical: 'center',
-          wrapText: true
-        },
-        font: {
-          bold: false,
-          sz: 11
-        }
-      };
-
-      const headerStyle = {
-        ...cellStyle,
-        font: {
-          bold: true,
-          sz: 12
-        },
-        fill: {
-          bgColor: { rgb: "C0C0C0" }
-        }
-      };
-
-      // Apply styling
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:X2');
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
-          if (!ws[cell_address]) continue;
-          
-          ws[cell_address].s = R === 0 ? headerStyle : cellStyle;
-        }
-      }
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Stored Components');
-
-      // Generate filename with date
-      const dateStr = selectedDate ? format(selectedDate, 'dd-MM-yyyy') : 'unknown-date';
-      const filename = `Stored_Components_${dateStr}.xlsx`;
-      
-      XLSX.writeFile(wb, filename);
-
+    if (!selectedDate) {
       setSnackbar({
         open: true,
-        message: 'File exported successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to export file',
+        message: 'Please select a date first',
         severity: 'error'
       });
-      console.error('Export error:', error);
+      return;
     }
+
+    const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+    dispatch(exportStoredComponents(formattedDate))
+      .unwrap()
+      .then((result) => {
+        if (result.success) {
+          setSnackbar({
+            open: true,
+            message: result.message,
+            severity: 'success'
+          });
+        }
+      })
+      .catch((error) => {
+        setSnackbar({
+          open: true,
+          message: error.message || 'Failed to export components',
+          severity: 'error'
+        });
+      });
   };
 
   const handleCloseSnackbar = () => {
@@ -411,17 +337,6 @@ const StoredInComponents: React.FC = () => {
                 }
               }}
             />
-
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSearch}
-              disabled={!selectedDate || loading}
-              startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
-              sx={{ minWidth: '120px', height: '40px' }}
-            >
-              {loading ? 'Loading...' : 'Search'}
-            </Button>
 
             <TextField
               size="small"
