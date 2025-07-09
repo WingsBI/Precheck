@@ -15,6 +15,7 @@ import Precheck from './pages/precheck/Precheck';
 import ViewPrecheck from './pages/precheck/ViewPrecheck';
 import MakePrecheck from './pages/precheck/MakePrecheck';
 import StoreIn from './pages/precheck/StoreIn';
+import StoredInComponents from './pages/precheck/StoredInComponents';
 import MakeOrder from './pages/precheck/MakeOrder';
 
 import GenerateIRMSN from './pages/irmsn/GenerateIRMSN';
@@ -61,6 +62,7 @@ export default function AppRoutes() {
           <Route path="view" element={<ViewPrecheck />} />
           <Route path="make" element={<MakePrecheck />} />
           <Route path="store-in" element={<StoreIn />} />
+          <Route path="stored-components" element={<StoredInComponents />} />
           <Route path="make-order" element={<MakeOrder />} />
           <Route path="consumed" element={<ViewConsumedIn />} />
         </Route>

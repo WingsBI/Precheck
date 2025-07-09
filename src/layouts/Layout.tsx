@@ -224,6 +224,12 @@ export default function Layout() {
           path: "/precheck/store-in",
           roles: [ADMIN_ROLE, STORE_ROLE]
         },
+        { 
+          text: "Stored In Components", 
+          icon: <VisibilityIcon />, 
+          path: "/precheck/stored-components",
+          roles: [ADMIN_ROLE, STORE_ROLE]
+        },
       ],
     },
     {
