@@ -114,7 +114,7 @@ export interface QRCodePayload {
   rackLocationId: number;
   irNumberId: number;
   msnNumberId: number;
-  disposition: string;
+  desposition: string;
   productionOrderNumber: string;
   projectNumber: string;
   expiryDate: string;
@@ -183,7 +183,7 @@ export interface QRCodeFormData {
   poNumber: string;
   projectNumber: string;
   mrirNumber: string;
-  disposition: 'Accepted' | 'Rejected' | 'Used for QT';
+  desposition: 'Accepted' | 'Rejected' | 'Used for QT';
   location: string;
   remark: string;
 } 

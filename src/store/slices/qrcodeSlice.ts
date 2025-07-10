@@ -12,6 +12,7 @@ interface QRCodeState {
   qrcodeList: ImportedQRCodeItem[];
   consumedInList: any[];
   barcodeDetails: ImportedBarcodeDetails | null;
+  storedComponents: any[];
   irNumbers: IRNumber[];
   msnNumbers: MSNNumber[];
   batchItems: ImportedBatchInfo[];
@@ -30,7 +31,7 @@ interface QRCodePayload {
   rackLocationId: number;
   irNumberId: number;
   msnNumberId: number;
-  disposition: string;
+  desposition: string;
   productionOrderNumber: string;
   projectNumber: string;
   expiryDate: string;
@@ -56,6 +57,7 @@ const initialState: QRCodeState = {
   qrcodeList: [],
   consumedInList: [],
   barcodeDetails: null,
+  storedComponents: [],
   irNumbers: [],
   msnNumbers: [],
   batchItems: [],
@@ -103,6 +105,25 @@ export const getBarcodeDetailsWithParameters = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch barcode details');
+    }
+  }
+);
+
+// Get Stored Components by Date
+export const getStoredComponentsByDate = createAsyncThunk(
+  'qrcode/getStoredComponentsByDate',
+  async (storeInDate: string, { rejectWithValue }) => {
+    try {
+      // Format date as yyyy-MM-dd for the API endpoint
+      const dateObj = new Date(storeInDate.split('/').reverse().join('-'));
+      const formattedDate = dateObj.toISOString().split('T')[0]; // yyyy-MM-dd format
+      
+      const response = await api.get(
+        `/api/QRCode/GetStoredComponentsByDate/${formattedDate}`
+      );
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch stored components');
     }
   }
 );
@@ -307,6 +328,35 @@ export const updateQrCodeDetails = createAsyncThunk(
     }
   }
 );
+
+export const exportStoredComponents = createAsyncThunk(
+  'qrcode/exportStoredComponents',
+  async (date: string, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/api/QRCode/ExportStoredInComponentsByDate/${date}`, null, {
+        responseType: 'blob'
+      });
+
+      if (response.data) {
+        // Create download link for Excel file
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `StoredComponents_${date}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        return { success: true, message: 'Components exported successfully' };
+      } else {
+        throw new Error('No file content received from the API');
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to export components');
+    }
+  }
+);
 const qrcodeSlice = createSlice({
   name: 'qrcode',
   initialState,
@@ -466,6 +516,20 @@ const qrcodeSlice = createSlice({
       .addCase(updateQrCodeDetails.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Error updating QR code details';
+      })
+
+      // Get Stored Components by Date
+      .addCase(getStoredComponentsByDate.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getStoredComponentsByDate.fulfilled, (state, action) => {
+        state.loading = false;
+        state.storedComponents = action.payload;
+      })
+      .addCase(getStoredComponentsByDate.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

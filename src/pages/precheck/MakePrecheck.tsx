@@ -1,15 +1,15 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
   Typography,
-  Paper, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Button,
   FormControl,
@@ -25,10 +25,10 @@ import {
   Chip,
   Collapse,
   TablePagination,
-  DialogContentText
-} from '@mui/material';
+  DialogContentText,
+} from "@mui/material";
 import {
-  ExpandMore as ExpandMoreIcon, 
+  ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Inventory as InventoryIcon,
   QrCode as QrCodeIcon,
@@ -36,14 +36,22 @@ import {
   Settings as SettingsIcon,
   QrCodeScanner as QrCodeScannerIcon,
   Refresh as RefreshIcon,
-  Send as SendIcon
-} from '@mui/icons-material';
-import { viewPrecheckDetails, getAvailableComponents, makePrecheck, clearPrecheckData } from '../../store/slices/precheckSlice';
-import { getBarcodeDetails } from '../../store/slices/qrcodeSlice';
-import { getAllProductionSeries, getDrawingNumbers } from '../../store/slices/commonSlice';
-import type { RootState, AppDispatch } from '../../store/store';
-import debounce from 'lodash.debounce';
-import { useLocation, useNavigate } from 'react-router-dom';
+  Send as SendIcon,
+} from "@mui/icons-material";
+import {
+  viewPrecheckDetails,
+  getAvailableComponents,
+  makePrecheck,
+  clearPrecheckData,
+} from "../../store/slices/precheckSlice";
+import { getBarcodeDetails } from "../../store/slices/qrcodeSlice";
+import {
+  getAllProductionSeries,
+  getDrawingNumbers,
+} from "../../store/slices/commonSlice";
+import type { RootState, AppDispatch } from "../../store/store";
+import debounce from "lodash.debounce";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface BarcodeDetails {
   qrCodeStatusId: number;
@@ -85,6 +93,7 @@ interface GridItem {
   productionOrderNumber?: string;
   projectNumber?: string;
   disposition?: string;
+  unit?: string;
 }
 
 interface QuantityDialogProps {
@@ -100,7 +109,7 @@ const QuantityDialog: React.FC<QuantityDialogProps> = ({
   maxQuantity,
   defaultQuantity,
   onClose,
-  onConfirm
+  onConfirm,
 }) => {
   const [quantity, setQuantity] = useState(defaultQuantity);
   const [error, setError] = useState<string>("");
@@ -142,15 +151,19 @@ const QuantityDialog: React.FC<QuantityDialogProps> = ({
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pastedText = e.clipboardData.getData('text');
+    const pastedText = e.clipboardData.getData("text");
     validateInput(pastedText);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Allow only numbers, backspace, delete, and arrow keys
-    if (!/^\d$/.test(e.key) && 
-        !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key) &&
-        !(e.ctrlKey && e.key === 'a')) {
+    if (
+      !/^\d$/.test(e.key) &&
+      !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(
+        e.key
+      ) &&
+      !(e.ctrlKey && e.key === "a")
+    ) {
       e.preventDefault();
     }
   };
@@ -162,15 +175,15 @@ const QuantityDialog: React.FC<QuantityDialogProps> = ({
   };
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={onClose}
       PaperProps={{
         sx: {
-          width: '100%',
+          width: "100%",
           maxWidth: 400,
-          p: 2
-        }
+          p: 2,
+        },
       }}
     >
       <DialogTitle sx={{ pb: 1 }}>
@@ -195,34 +208,30 @@ const QuantityDialog: React.FC<QuantityDialogProps> = ({
           error={!!error}
           helperText={error}
           inputProps={{
-            inputMode: 'numeric',
-            pattern: '[0-9]*',
+            inputMode: "numeric",
+            pattern: "[0-9]*",
             min: 0,
             max: maxQuantity,
-            style: { fontSize: '1rem' }
+            style: { fontSize: "1rem" },
           }}
           SelectProps={{
-            native: true
+            native: true,
           }}
           variant="outlined"
           sx={{
-            '& .MuiOutlinedInput-root': {
-              '& fieldset': {
-                borderColor: error ? 'error.main' : 'grey.400'
-              }
-            }
+            "& .MuiOutlinedInput-root": {
+              "& fieldset": {
+                borderColor: error ? "error.main" : "grey.400",
+              },
+            },
           }}
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button 
-          onClick={onClose}
-          variant="outlined"
-          sx={{ minWidth: 100 }}
-        >
+        <Button onClick={onClose} variant="outlined" sx={{ minWidth: 100 }}>
           Cancel
         </Button>
-        <Button 
+        <Button
           onClick={handleConfirm}
           disabled={!!error || quantity < 0 || quantity > maxQuantity}
           variant="contained"
@@ -238,48 +247,60 @@ const QuantityDialog: React.FC<QuantityDialogProps> = ({
 const MakePrecheck: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { isLoading } = useSelector((state: RootState) => state.precheck);
-  const { productionSeries, drawingNumbers } = useSelector((state: RootState) => state.common);
+  const { productionSeries, drawingNumbers } = useSelector(
+    (state: RootState) => state.common
+  );
+  const { user } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Form state
   const [selectedDrawing, setSelectedDrawing] = useState<any>(null);
-  const [selectedProductionSeries, setSelectedProductionSeries] = useState<any>(null);
-  const [idNumber, setIdNumber] = useState('');
+  const [selectedProductionSeries, setSelectedProductionSeries] =
+    useState<any>(null);
+  const [idNumber, setIdNumber] = useState("");
   const [isLoadingLocal, setIsLoadingLocal] = useState(false);
-  
+
   // Track original values for validation
-  const [originalDrawingNumber, setOriginalDrawingNumber] = useState<string | null>(null);
-  const [originalProdSeries, setOriginalProdSeries] = useState<number | null>(null);
-  const [originalAssemblyNumber, setOriginalAssemblyNumber] = useState<string | null>(null);
+  const [originalDrawingNumber, setOriginalDrawingNumber] = useState<
+    string | null
+  >(null);
+  const [originalProdSeries, setOriginalProdSeries] = useState<number | null>(
+    null
+  );
+  const [originalAssemblyNumber, setOriginalAssemblyNumber] = useState<
+    string | null
+  >(null);
   const [hasLoadedData, setHasLoadedData] = useState(false);
-  
+
   // Loading states
   const [drawingLoading, setDrawingLoading] = useState(false);
   const [prodSeriesLoading, setProdSeriesLoading] = useState(false);
-  
+
   // Search results
   const [searchResults, setSearchResults] = useState<GridItem[]>([]);
   const [showResults, setShowResults] = useState(false);
-  
+
   // QR Code scanner state
-  const [barcodeText, setBarcodeText] = useState('');
+  const [barcodeText, setBarcodeText] = useState("");
   const [isSubmitEnabled, setIsSubmitEnabled] = useState(false);
-  
+
   // Quantity dialog state
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
   const [maxQuantity, setMaxQuantity] = useState(0);
   const [selectedQuantity, setSelectedQuantity] = useState(0);
   const [pendingBarcodeData, setPendingBarcodeData] = useState<any>(null);
-  
+
   // Alert state
-  const [alertMessage, setAlertMessage] = useState('');
-  const [alertSeverity, setAlertSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertSeverity, setAlertSeverity] = useState<
+    "success" | "error" | "info" | "warning"
+  >("info");
   const [showAlert, setShowAlert] = useState(false);
-  
+
   // Sorting state
-  const [orderBy, setOrderBy] = useState<string>('');
-  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+  const [orderBy, setOrderBy] = useState<string>("");
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
 
   // Expanded rows state
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -299,8 +320,9 @@ const MakePrecheck: React.FC = () => {
     () =>
       debounce((searchValue: string) => {
         setDrawingLoading(true);
-        dispatch(getDrawingNumbers({ search: searchValue }))
-          .finally(() => setDrawingLoading(false));
+        dispatch(getDrawingNumbers({ search: searchValue })).finally(() =>
+          setDrawingLoading(false)
+        );
       }, 300),
     [dispatch]
   );
@@ -309,8 +331,9 @@ const MakePrecheck: React.FC = () => {
     () =>
       debounce((searchValue: string) => {
         setProdSeriesLoading(true);
-        dispatch(getAllProductionSeries())
-          .finally(() => setProdSeriesLoading(false));
+        dispatch(getAllProductionSeries()).finally(() =>
+          setProdSeriesLoading(false)
+        );
       }, 300),
     [dispatch]
   );
@@ -331,7 +354,10 @@ const MakePrecheck: React.FC = () => {
     }
   }, [showAlert]);
 
-  const showAlertMessage = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+  const showAlertMessage = (
+    message: string,
+    severity: "success" | "error" | "info" | "warning" = "info"
+  ) => {
     setAlertMessage(message);
     setAlertSeverity(severity);
     setShowAlert(true);
@@ -339,29 +365,29 @@ const MakePrecheck: React.FC = () => {
 
   // Sorting functions
   const handleRequestSort = (property: string) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
     setOrderBy(property);
   };
 
   const sortedResults = useMemo(() => {
     if (!orderBy) return searchResults;
-    
+
     return [...searchResults].sort((a, b) => {
       let aValue = a[orderBy as keyof GridItem];
       let bValue = b[orderBy as keyof GridItem];
-      
+
       // Handle numeric values
-      if (orderBy === 'sr' || orderBy === 'quantity') {
+      if (orderBy === "sr" || orderBy === "quantity") {
         aValue = Number(aValue) || 0;
         bValue = Number(bValue) || 0;
       } else {
         // Handle string values
-        aValue = String(aValue || '').toLowerCase();
-        bValue = String(bValue || '').toLowerCase();
+        aValue = String(aValue || "").toLowerCase();
+        bValue = String(bValue || "").toLowerCase();
       }
-      
-      if (order === 'asc') {
+
+      if (order === "asc") {
         return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
       } else {
         return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
@@ -376,16 +402,17 @@ const MakePrecheck: React.FC = () => {
 
   const validateFields = () => {
     // Check if mandatory fields are filled
-    const mandatoryFieldsFilled = 
-      selectedDrawing?.drawingNumber && 
-      selectedProductionSeries?.id && 
+    const mandatoryFieldsFilled =
+      selectedDrawing?.drawingNumber &&
+      selectedProductionSeries?.id &&
       idNumber;
 
     // Check if the current combination is different from the previously loaded one
-    const hasDifferentCombination = !hasLoadedData ||
-      (selectedDrawing?.drawingNumber !== originalDrawingNumber ||
-       selectedProductionSeries?.id !== originalProdSeries ||
-       idNumber !== originalAssemblyNumber);
+    const hasDifferentCombination =
+      !hasLoadedData ||
+      selectedDrawing?.drawingNumber !== originalDrawingNumber ||
+      selectedProductionSeries?.id !== originalProdSeries ||
+      idNumber !== originalAssemblyNumber;
 
     // Enable button only if mandatory fields are filled AND
     // either we haven't loaded data yet OR the combination is different
@@ -408,7 +435,7 @@ const MakePrecheck: React.FC = () => {
       const payload = {
         DrawingNumberId: selectedDrawing?.id,
         ProductionSeriesId: selectedProductionSeries?.id,
-        Id: idNumber ? parseInt(idNumber) : undefined
+        Id: idNumber ? parseInt(idNumber) : undefined,
       };
 
       const response = await dispatch(viewPrecheckDetails(payload)).unwrap();
@@ -417,8 +444,11 @@ const MakePrecheck: React.FC = () => {
       setIsSubmitEnabled(true);
       setShowResults(true);
     } catch (error) {
-      console.error('Error in LoadGridData:', error);
-      showAlertMessage('Error loading data: ' + (error as Error).message, 'error');
+      console.error("Error in LoadGridData:", error);
+      showAlertMessage(
+        "Error loading data: " + (error as Error).message,
+        "error"
+      );
     } finally {
       setIsLoadingLocal(false);
       setIsMakePrecheckEnabled(false);
@@ -428,17 +458,19 @@ const MakePrecheck: React.FC = () => {
   const validateInputs = () => {
     const missingFields = [];
 
-    if (!selectedDrawing) missingFields.push('Drawing Number');
-    if (!selectedProductionSeries) missingFields.push('Production Series');
-    if (!idNumber) missingFields.push('Assembly Number');
+    if (!selectedDrawing) missingFields.push("Drawing Number");
+    if (!selectedProductionSeries) missingFields.push("Production Series");
+    if (!idNumber) missingFields.push("Assembly Number");
 
     if (missingFields.length > 0) {
       showAlertMessage(
-        `Please fill the following required fields:\n${missingFields.join(', ')}`,
-        'error'
+        `Please fill the following required fields:\n${missingFields.join(
+          ", "
+        )}`,
+        "error"
       );
       return false;
-      }
+    }
 
     return true;
   };
@@ -449,8 +481,11 @@ const MakePrecheck: React.FC = () => {
       setIsSubmitEnabled(false);
 
       const componentsToSubmit = searchResults
-        .filter(item => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete)
-        .map(item => ({
+        .filter(
+          (item) =>
+            item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete
+        )
+        .map((item) => ({
           ConsumedDrawingNo: `${selectedProductionSeries?.productionSeries}/${selectedDrawing?.drawingNumber}/${idNumber}`,
           ConsumedInDrawingNumberID: selectedDrawing?.id || 0,
           ConsumedInProdSeriesID: selectedProductionSeries?.id || 0,
@@ -461,30 +496,34 @@ const MakePrecheck: React.FC = () => {
           Id: 0,
           ProductionSeriesId: item.prodSeriesId || 0,
           Remarks: item.remarks || "",
-          Unit: "1",
+          Unit: item.unit || "1", // Use item unit if available, otherwise default to "1"
           IrNumber: item.ir || "",
           MsnNumber: item.msn || "",
           MrirNumber: item.mrirNumber || "",
           IdNumbers: item.idNumber || "",
           ComponentType: item.componentType || "",
           ProductionOrderNumber: item.productionOrderNumber || "NA",
-          CreatedBy: 89 // Using the fixed CreatedBy value as per the expected payload
+          CreatedBy: Number(user?.id) || 0, // Use logged-in user's ID
         }));
 
       if (!componentsToSubmit.length) {
-        showAlertMessage('No new components to submit', 'info');
+        showAlertMessage("No new components to submit", "info");
         return;
       }
 
-      console.log('Submitting components:', componentsToSubmit);
-      
-      const response = await dispatch(makePrecheck(componentsToSubmit)).unwrap();
-      
+      console.log("Submitting components:", componentsToSubmit);
+
+      const response = await dispatch(
+        makePrecheck(componentsToSubmit)
+      ).unwrap();
+
       if (response?.length) {
         // Update grid items as submitted
-        const updatedResults = searchResults.map(item => {
+        const updatedResults = searchResults.map((item) => {
           if (item.isUpdated && !item.isSubmitted) {
-            const responseItem = response.find((x: any) => x.DrawingNumberId === item.drawingNumberId);
+            const responseItem = response.find(
+              (x: any) => x.DrawingNumberId === item.drawingNumberId
+            );
             if (responseItem) {
               return {
                 ...item,
@@ -496,22 +535,25 @@ const MakePrecheck: React.FC = () => {
                 remarks: responseItem.Remarks,
                 ir: responseItem.IrNumber,
                 msn: responseItem.MsnNumber,
-                modifiedDate: responseItem.ModifiedDate
+                modifiedDate: responseItem.ModifiedDate,
               };
             }
           }
           return item;
         });
-        
+
         setSearchResults(updatedResults);
-        showAlertMessage('Precheck submitted successfully!', 'success');
+        showAlertMessage("Precheck submitted successfully!", "success");
       } else {
-        showAlertMessage('No data submitted.', 'info');
+        showAlertMessage("No data submitted.", "info");
         setIsSubmitEnabled(true);
       }
     } catch (error) {
-      console.error('Error submitting precheck:', error);
-      showAlertMessage(`Error submitting precheck: ${(error as Error).message}`, 'error');
+      console.error("Error submitting precheck:", error);
+      showAlertMessage(
+        `Error submitting precheck: ${(error as Error).message}`,
+        "error"
+      );
       setIsSubmitEnabled(true);
     } finally {
       setIsLoadingLocal(false);
@@ -524,8 +566,8 @@ const MakePrecheck: React.FC = () => {
     setHasLoadedData(false);
     setSelectedDrawing(null);
     setSelectedProductionSeries(null);
-    setIdNumber('');
-    setBarcodeText('');
+    setIdNumber("");
+    setBarcodeText("");
 
     // Clear original values
     setOriginalDrawingNumber(null);
@@ -541,7 +583,7 @@ const MakePrecheck: React.FC = () => {
     setIsSubmitEnabled(false);
 
     // Clear alerts
-    setAlertMessage('');
+    setAlertMessage("");
     setShowAlert(false);
 
     // Reset dialog states
@@ -551,7 +593,7 @@ const MakePrecheck: React.FC = () => {
     // Reset pagination
     setPage(0);
     setSelectedRow(null);
-    
+
     // Reset expanded rows
     setExpandedRows(new Set());
 
@@ -569,11 +611,11 @@ const MakePrecheck: React.FC = () => {
 
   const handleBarcodeChange = (value: string) => {
     setBarcodeText(value);
-    
+
     // Auto-process when barcode length is 12 or 15 digits
     if ((value.length === 12 || value.length === 15) && /^\d+$/.test(value)) {
       processBarcodeAsync(value);
-      setBarcodeText(''); // Clear after processing
+      setBarcodeText(""); // Clear after processing
     }
   };
 
@@ -583,110 +625,149 @@ const MakePrecheck: React.FC = () => {
       const qrCodeDetails = await dispatch(getBarcodeDetails(barcode)).unwrap();
 
       if (!qrCodeDetails) {
-        showAlertMessage('Invalid QR code or no data found', 'error');
+        showAlertMessage("Invalid QR code or no data found", "error");
         return;
       }
 
-      console.log('QR Code Details:', qrCodeDetails);
+      console.log("QR Code Details:", qrCodeDetails);
 
       // Check QR code status first - using the statusId from API
-      if (qrCodeDetails.qrCodeStatusId === 3 || qrCodeDetails.qrCodeStatus?.toLowerCase() === 'qrcodegenerated') {
-        showAlertMessage('Component not stored in. QR code is generated but not ready for consumption.', 'warning');
+      if (
+        qrCodeDetails.qrCodeStatusId === 3 ||
+        qrCodeDetails.qrCodeStatus?.toLowerCase() === "qrcodegenerated"
+      ) {
+        showAlertMessage(
+          "Component not stored in. QR code is generated but not ready for consumption.",
+          "warning"
+        );
         return;
       }
 
-      if (qrCodeDetails.qrCodeStatusId === 2 || qrCodeDetails.qrCodeStatus?.toLowerCase() === 'consumed') {
-        showAlertMessage('This QR code has already been consumed and cannot be used again.', 'error');
+      if (
+        qrCodeDetails.qrCodeStatusId === 2 ||
+        qrCodeDetails.qrCodeStatus?.toLowerCase() === "consumed"
+      ) {
+        showAlertMessage(
+          "This QR code has already been consumed and cannot be used again.",
+          "error"
+        );
         return;
       }
 
       // Only proceed if status is 1 (Available)
-      if (qrCodeDetails.qrCodeStatusId !== 1 && qrCodeDetails.qrCodeStatus?.toLowerCase() !== 'available') {
-        showAlertMessage('Invalid QR code status.', 'error');
+      if (
+        qrCodeDetails.qrCodeStatusId !== 1 &&
+        qrCodeDetails.qrCodeStatus?.toLowerCase() !== "available"
+      ) {
+        showAlertMessage("Invalid QR code status.", "error");
         return;
       }
 
       // Find potential matches with the same DrawingNumberId
       const potentialMatches = searchResults
         .map((item, index) => ({ item, index }))
-        .filter(x => x.item.drawingNumberId === qrCodeDetails.drawingNumberId);
+        .filter(
+          (x) => x.item.drawingNumberId === qrCodeDetails.drawingNumberId
+        );
 
-      console.log('Potential Matches:', potentialMatches);
+      console.log("Potential Matches:", potentialMatches);
 
       // If no matching DrawingNumberId found, show message and return
       if (!potentialMatches.length) {
-        showAlertMessage(`No components found with drawing number ${qrCodeDetails.drawingNumber}.`, 'info');
+        showAlertMessage(
+          `No components found with drawing number ${qrCodeDetails.drawingNumber}.`,
+          "info"
+        );
         return;
       }
 
       // Check for ID component type
-      if (potentialMatches.some(x => x.item.componentType?.toUpperCase() === 'ID')) {
-        const idAlreadyAssigned = searchResults.some(item =>
-          item.idNumber === qrCodeDetails.idNumber &&
-          item.drawingNumberId === qrCodeDetails.drawingNumberId
+      if (
+        potentialMatches.some(
+          (x) => x.item.componentType?.toUpperCase() === "ID"
+        )
+      ) {
+        const idAlreadyAssigned = searchResults.some(
+          (item) =>
+            item.idNumber === qrCodeDetails.idNumber &&
+            item.drawingNumberId === qrCodeDetails.drawingNumberId
         );
-        
+
         if (idAlreadyAssigned) {
           showAlertMessage(
             `ID ${qrCodeDetails.idNumber} has already been assigned to a component with drawing number ${qrCodeDetails.drawingNumber}.`,
-            'warning'
+            "warning"
           );
           return;
         }
       }
 
       // Find the first unprocessed item from potential matches
-      const matchingItem = potentialMatches.find(x => 
-        !x.item.isPrecheckComplete &&
-        !x.item.isUpdated &&
-        !x.item.idNumber
+      const matchingItem = potentialMatches.find(
+        (x) =>
+          !x.item.isPrecheckComplete && !x.item.isUpdated && !x.item.idNumber
       );
 
       if (matchingItem) {
         // Determine quantity based on component type
-      if (qrCodeDetails.componentType?.toUpperCase() !== 'ID') {
-        const maxQty = matchingItem.item.quantity || 0;
-        setMaxQuantity(maxQty);
-        setSelectedQuantity(maxQty);
-        setPendingBarcodeData({ qrCodeDetails, matchingItem });
-        setQuantityDialogOpen(true);
-      } else {
+        if (qrCodeDetails.componentType?.toUpperCase() !== "ID") {
+          const maxQty = matchingItem.item.quantity || 0;
+          setMaxQuantity(maxQty);
+          setSelectedQuantity(maxQty);
+          setPendingBarcodeData({ qrCodeDetails, matchingItem });
+          setQuantityDialogOpen(true);
+        } else {
           // For ID type, use the quantity from qrCodeDetails
           updateGridItem(
             qrCodeDetails,
             matchingItem,
             qrCodeDetails.quantity || 0
           );
-          showAlertMessage('Component details updated successfully.', 'success');
-      }
+          showAlertMessage(
+            "Component details updated successfully.",
+            "success"
+          );
+        }
       } else {
         // No unprocessed row found
         const totalMatchingItems = potentialMatches.length;
-        const processedMatchingItems = potentialMatches.filter(x => 
-          x.item.isPrecheckComplete || 
-          x.item.isUpdated || 
-          x.item.idNumber
+        const processedMatchingItems = potentialMatches.filter(
+          (x) =>
+            x.item.isPrecheckComplete || x.item.isUpdated || x.item.idNumber
         ).length;
 
-        if (totalMatchingItems > 0 && processedMatchingItems === totalMatchingItems) {
+        if (
+          totalMatchingItems > 0 &&
+          processedMatchingItems === totalMatchingItems
+        ) {
           showAlertMessage(
             `All components with drawing number ${qrCodeDetails.drawingNumber} have already been processed.`,
-            'info'
+            "info"
           );
         } else {
-          showAlertMessage('No matching unprocessed component found for the scanned barcode.', 'info');
+          showAlertMessage(
+            "No matching unprocessed component found for the scanned barcode.",
+            "info"
+          );
         }
       }
     } catch (error) {
-      console.error('Error processing barcode:', error);
-      showAlertMessage(`Error processing barcode: ${(error as Error).message}`, 'error');
+      console.error("Error processing barcode:", error);
+      showAlertMessage(
+        `Error processing barcode: ${(error as Error).message}`,
+        "error"
+      );
     }
   };
 
-  const updateGridItem = (qrCodeDetails: any, matchingItem: any, quantity: number) => {
+  const updateGridItem = (
+    qrCodeDetails: any,
+    matchingItem: any,
+    quantity: number
+  ) => {
     const updatedResults = [...searchResults];
     const item = updatedResults[matchingItem.index];
-    
+
     // Update the item with all fields from QR code details
     item.qrCode = qrCodeDetails.qrCodeNumber;
     item.isPrecheckComplete = false;
@@ -698,25 +779,26 @@ const MakePrecheck: React.FC = () => {
     item.componentType = qrCodeDetails.componentType;
     item.mrirNumber = qrCodeDetails.mrirNumber;
     item.remarks = qrCodeDetails.remark;
-    item.username = qrCodeDetails.users || 'Current User';
-    item.modifiedDate = new Date().toISOString().split('T')[0];
+    item.username = qrCodeDetails.users || "Current User";
+    item.modifiedDate = new Date().toISOString().split("T")[0];
     item.productionOrderNumber = qrCodeDetails.productionOrderNumber || "NA";
     item.projectNumber = qrCodeDetails.projectNumber || "NA";
     item.disposition = qrCodeDetails.desposition || "NA";
+    item.unit = qrCodeDetails.unit || item.unit || "1"; // Use QR code unit if available
 
-    console.log('Updated Grid Item:', item);
+    console.log("Updated Grid Item:", item);
     setSearchResults(updatedResults);
-    
+
     // Enable submit button
     setIsSubmitEnabled(true);
 
     // Check if all items are processed
-    const unprocessedItems = updatedResults.filter(item => 
-      !item.isPrecheckComplete && !item.isUpdated
+    const unprocessedItems = updatedResults.filter(
+      (item) => !item.isPrecheckComplete && !item.isUpdated
     );
 
     if (unprocessedItems.length === 0) {
-      showAlertMessage('All components have been pre-checked!', 'info');
+      showAlertMessage("All components have been pre-checked!", "info");
     }
   };
 
@@ -736,16 +818,48 @@ const MakePrecheck: React.FC = () => {
   const getComponentTypeChip = (componentType: string) => {
     const type = componentType?.toUpperCase();
     switch (type) {
-      case 'ID':
-        return <Chip icon={<QrCodeIcon />} label="ID" size="small" color="primary" variant="outlined" />;
-      case 'BATCH':
-        return <Chip icon={<InventoryIcon />} label="BATCH" size="small" color="secondary" variant="outlined" />;
-      case 'FIM':
-        return <Chip icon={<CategoryIcon />} label="FIM" size="small" color="success" variant="outlined" />;
-      case 'SI':
-        return <Chip icon={<SettingsIcon />} label="SI" size="small" color="warning" variant="outlined" />;
+      case "ID":
+        return (
+          <Chip
+            icon={<QrCodeIcon />}
+            label="ID"
+            size="small"
+            color="primary"
+            variant="outlined"
+          />
+        );
+      case "BATCH":
+        return (
+          <Chip
+            icon={<InventoryIcon />}
+            label="BATCH"
+            size="small"
+            color="secondary"
+            variant="outlined"
+          />
+        );
+      case "FIM":
+        return (
+          <Chip
+            icon={<CategoryIcon />}
+            label="FIM"
+            size="small"
+            color="success"
+            variant="outlined"
+          />
+        );
+      case "SI":
+        return (
+          <Chip
+            icon={<SettingsIcon />}
+            label="SI"
+            size="small"
+            color="warning"
+            variant="outlined"
+          />
+        );
       default:
-        return <Chip label={type || 'N/A'} size="small" variant="outlined" />;
+        return <Chip label={type || "N/A"} size="small" variant="outlined" />;
     }
   };
 
@@ -771,7 +885,9 @@ const MakePrecheck: React.FC = () => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
@@ -806,7 +922,8 @@ const MakePrecheck: React.FC = () => {
       remarks: item.remarks,
       productionOrderNumber: item.productionOrderNumber,
       projectNumber: item.projectNumber,
-      disposition: item.disposition
+      disposition: item.disposition,
+      unit: item.unit || "1", // Include unit field from API response
     }));
 
     setSearchResults(newItems);
@@ -817,45 +934,50 @@ const MakePrecheck: React.FC = () => {
       <Typography
         variant="h6"
         gutterBottom
-      sx={{ 
+        sx={{
           color: "primary.main",
           fontWeight: 600,
-        mb: 2,
+          mb: 2,
         }}
       >
         Make Precheck
-            </Typography>
-      
+      </Typography>
+
       {/* Alert */}
       {showAlert && (
-        <Alert 
-          severity={alertSeverity} 
+        <Alert
+          severity={alertSeverity}
           sx={{ mb: 2 }}
           onClose={() => setShowAlert(false)}
         >
           {alertMessage}
         </Alert>
       )}
-      
+
       {/* Form Controls */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        mb: 1, 
-        gap: 1.5,
-        flexWrap: 'wrap',
-        width: '100%'
-      }}>
-        <FormControl sx={{ 
-          minWidth: { xs: '100%', sm: 250 },
-          flex: { xs: '1 1 100%', sm: '0 1 auto' }
-        }} size="small">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          mb: 1,
+          gap: 1.5,
+          flexWrap: "wrap",
+          width: "100%",
+        }}
+      >
+        <FormControl
+          sx={{
+            minWidth: { xs: "100%", sm: 250 },
+            flex: { xs: "1 1 100%", sm: "0 1 auto" },
+          }}
+          size="small"
+        >
           <Autocomplete
             size="small"
             options={drawingNumbers}
             getOptionLabel={(option) => {
               if (typeof option === "string") return option;
-              return option.drawingNumber || '';
+              return option.drawingNumber || "";
             }}
             value={selectedDrawing}
             loading={drawingLoading}
@@ -868,24 +990,24 @@ const MakePrecheck: React.FC = () => {
               setSelectedDrawing(value);
             }}
             isOptionEqualToValue={(option, value) =>
-              option.id === (value?.id || '')
+              option.id === (value?.id || "")
             }
             renderOption={(props: any, option: any) => (
               <li {...props}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", py: 0.5 }}>
                   <Typography variant="body2">
                     {option.drawingNumber}
-              </Typography>
+                  </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {option.nomenclature || ''} | {option.componentType || ''}
-              </Typography>
-            </Box>
+                    {option.nomenclature || ""} | {option.componentType || ""}
+                  </Typography>
+                </Box>
               </li>
             )}
             renderInput={(params: any) => (
-                      <TextField
+              <TextField
                 {...params}
-                        label="Drawing Number *"
+                label="Drawing Number *"
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
@@ -897,21 +1019,24 @@ const MakePrecheck: React.FC = () => {
                     </>
                   ),
                 }}
-                      />
-                    )}
-                  />
+              />
+            )}
+          />
         </FormControl>
-        
-        <FormControl sx={{ 
-          minWidth: { xs: '100%', sm: 145 },
-          flex: { xs: '1 1 100%', sm: '0 1 auto' }
-        }} size="small">
+
+        <FormControl
+          sx={{
+            minWidth: { xs: "100%", sm: 145 },
+            flex: { xs: "1 1 100%", sm: "0 1 auto" },
+          }}
+          size="small"
+        >
           <Autocomplete
             size="small"
             options={productionSeries}
             getOptionLabel={(option) => {
               if (typeof option === "string") return option;
-              return option.productionSeries || '';
+              return option.productionSeries || "";
             }}
             value={selectedProductionSeries}
             loading={prodSeriesLoading}
@@ -924,7 +1049,7 @@ const MakePrecheck: React.FC = () => {
               setSelectedProductionSeries(value);
             }}
             isOptionEqualToValue={(option, value) =>
-              option.id === (value?.id || '')
+              option.id === (value?.id || "")
             }
             renderOption={(props, option) => (
               <li {...props}>
@@ -934,9 +1059,9 @@ const MakePrecheck: React.FC = () => {
               </li>
             )}
             renderInput={(params) => (
-                      <TextField
+              <TextField
                 {...params}
-                        label="Prod Series *"
+                label="Prod Series *"
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
@@ -948,16 +1073,19 @@ const MakePrecheck: React.FC = () => {
                     </>
                   ),
                 }}
-                      />
-                    )}
-                  />
-                      </FormControl>
-        
-        <FormControl sx={{ 
-          minWidth: { xs: '50%', sm: 100 },
-          flex: { xs: '1 1 50%', sm: '0 1' }
-        }} size="small">
-                      <TextField
+              />
+            )}
+          />
+        </FormControl>
+
+        <FormControl
+          sx={{
+            minWidth: { xs: "50%", sm: 100 },
+            flex: { xs: "1 1 50%", sm: "0 1" },
+          }}
+          size="small"
+        >
+          <TextField
             size="small"
             label="ID Num *"
             value={idNumber}
@@ -965,21 +1093,23 @@ const MakePrecheck: React.FC = () => {
             variant="outlined"
           />
         </FormControl>
-        
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 1.5,
-          flexWrap: 'wrap',
-          width: { xs: '100%', sm: 'auto' },
-          mt: { xs: 1, sm: 0 }
-        }}>
+
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1.5,
+            flexWrap: "wrap",
+            width: { xs: "100%", sm: "auto" },
+            mt: { xs: 1, sm: 0 },
+          }}
+        >
           <Button
             variant="contained"
             color="primary"
-            sx={{ 
-              minWidth: { xs: '100%', sm: 160 }, 
+            sx={{
+              minWidth: { xs: "100%", sm: 160 },
               height: 32,
-              flex: { xs: '1 1 100%', sm: '0 1 auto' }
+              flex: { xs: "1 1 100%", sm: "0 1 auto" },
             }}
             size="small"
             onClick={handleMakePrecheck}
@@ -988,14 +1118,14 @@ const MakePrecheck: React.FC = () => {
             <QrCodeScannerIcon sx={{ mr: 1 }} />
             Make Precheck
           </Button>
-          
+
           <Button
             variant="contained"
             color="error"
-            sx={{ 
-              minWidth: { xs: '100%', sm: 160 }, 
+            sx={{
+              minWidth: { xs: "100%", sm: 160 },
               height: 32,
-              flex: { xs: '1 1 100%', sm: '0 1 auto' }
+              flex: { xs: "1 1 100%", sm: "0 1 auto" },
             }}
             size="small"
             onClick={handleReset}
@@ -1003,14 +1133,14 @@ const MakePrecheck: React.FC = () => {
             <RefreshIcon sx={{ mr: 1 }} />
             Reset
           </Button>
-          
+
           <Button
             variant="contained"
             color="success"
-            sx={{ 
-              minWidth: { xs: '100%', sm: 160 }, 
+            sx={{
+              minWidth: { xs: "100%", sm: 160 },
               height: 32,
-              flex: { xs: '1 1 100%', sm: '0 1 auto' }
+              flex: { xs: "1 1 100%", sm: "0 1 auto" },
             }}
             size="small"
             onClick={handleSubmitPrecheck}
@@ -1023,21 +1153,23 @@ const MakePrecheck: React.FC = () => {
       </Box>
 
       {/* QR Code Scanner Section */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        mb: 1, 
-        gap: 1.5,
-        flexWrap: 'wrap',
-        width: '100%'
-      }}>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            fontWeight: 'bold',
-            fontSize: '0.875rem',
-            minWidth: 'auto',
-            width: { xs: '100%', sm: 'auto' }
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          mb: 1,
+          gap: 1.5,
+          flexWrap: "wrap",
+          width: "100%",
+        }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: "bold",
+            fontSize: "0.875rem",
+            minWidth: "auto",
+            width: { xs: "100%", sm: "auto" },
           }}
         >
           Scan Qr Code:
@@ -1047,25 +1179,25 @@ const MakePrecheck: React.FC = () => {
           value={barcodeText}
           onChange={(e) => handleBarcodeChange(e.target.value)}
           placeholder="Scan or enter QR code (12 or 15 digits)"
-          sx={{ 
-            width: { xs: '100%', sm: 300 },
-            flex: { xs: '1 1 100%', sm: '0 1 auto' }
+          sx={{
+            width: { xs: "100%", sm: 300 },
+            flex: { xs: "1 1 100%", sm: "0 1 auto" },
           }}
           disabled={!showResults || searchResults.length === 0}
           autoFocus={showResults && searchResults.length > 0}
         />
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            fontWeight: 'bold',
-            fontSize: '0.875rem',
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: "bold",
+            fontSize: "0.875rem",
             ml: { xs: 0, sm: 2 },
-            width: { xs: '100%', sm: 'auto' }
+            width: { xs: "100%", sm: "auto" },
           }}
         >
           <span>BOM Details of </span>
-          <span style={{ color: '#1976d2' }}>
-            {selectedDrawing?.drawingNumber || ''}
+          <span style={{ color: "#1976d2" }}>
+            {selectedDrawing?.drawingNumber || ""}
           </span>
         </Typography>
       </Box>
@@ -1074,111 +1206,224 @@ const MakePrecheck: React.FC = () => {
       {showResults && (
         <Typography
           variant="body2"
-          sx={{ 
-            mb: 1, 
-            fontWeight: 'medium',
-            width: '100%',
-            overflowWrap: 'break-word'
+          sx={{
+            mb: 1,
+            fontWeight: "medium",
+            width: "100%",
+            overflowWrap: "break-word",
           }}
         >
-          Showing results for {selectedProductionSeries?.productionSeries || 'A'} / {selectedDrawing?.drawingNumber || ''} / {idNumber || ''}
+          Showing results for{" "}
+          {selectedProductionSeries?.productionSeries || "A"} /{" "}
+          {selectedDrawing?.drawingNumber || ""} / {idNumber || ""}
         </Typography>
       )}
 
       {/* BOM Details Table */}
-      <Paper sx={{ mt: 1, mb: 1, p: 0.5, boxShadow: 2, width: '100%', overflow: 'hidden' }}>
-        <TableContainer sx={{ 
-          maxHeight: { xs: 400, sm: 500 }, 
-          overflow: 'auto',
-          width: '100%'
-        }}>
+      <Paper
+        sx={{
+          mt: 1,
+          mb: 1,
+          p: 0.5,
+          boxShadow: 2,
+          width: "100%",
+          overflow: "hidden",
+        }}
+      >
+        <TableContainer
+          sx={{
+            maxHeight: { xs: 400, sm: 500 },
+            overflow: "auto",
+            width: "100%",
+          }}
+        >
           <Table stickyHeader sx={{ minWidth: 1000 }} size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5', height: 24 }}>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 20 }}>
+              <TableRow sx={{ backgroundColor: "#f5f5f5", height: 24 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 20,
+                  }}
+                >
                   <TableSortLabel
-                    active={orderBy === 'sr'}
-                    direction={orderBy === 'sr' ? order : 'asc'}
-                    onClick={() => handleRequestSort('sr')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                    active={orderBy === "sr"}
+                    direction={orderBy === "sr" ? order : "asc"}
+                    onClick={() => handleRequestSort("sr")}
+                    sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
                   >
                     SR
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 80 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 80,
+                  }}
+                >
                   <TableSortLabel
-                    active={orderBy === 'drawingNumber'}
-                    direction={orderBy === 'drawingNumber' ? order : 'asc'}
-                    onClick={() => handleRequestSort('drawingNumber')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                    active={orderBy === "drawingNumber"}
+                    direction={orderBy === "drawingNumber" ? order : "asc"}
+                    onClick={() => handleRequestSort("drawingNumber")}
+                    sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
                   >
                     Drawing Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 100 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 100,
+                  }}
+                >
                   <TableSortLabel
-                    active={orderBy === 'nomenclature'}
-                    direction={orderBy === 'nomenclature' ? order : 'asc'}
-                    onClick={() => handleRequestSort('nomenclature')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                    active={orderBy === "nomenclature"}
+                    direction={orderBy === "nomenclature" ? order : "asc"}
+                    onClick={() => handleRequestSort("nomenclature")}
+                    sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
                   >
                     Nomenclature
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 40 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 40,
+                  }}
+                >
                   <TableSortLabel
-                    active={orderBy === 'quantity'}
-                    direction={orderBy === 'quantity' ? order : 'asc'}
-                    onClick={() => handleRequestSort('quantity')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                    active={orderBy === "quantity"}
+                    direction={orderBy === "quantity" ? order : "asc"}
+                    onClick={() => handleRequestSort("quantity")}
+                    sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
                   >
                     Qty
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 80 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 80,
+                  }}
+                >
                   <TableSortLabel
-                    active={orderBy === 'idNumber'}
-                    direction={orderBy === 'idNumber' ? order : 'asc'}
-                    onClick={() => handleRequestSort('idNumber')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                    active={orderBy === "idNumber"}
+                    direction={orderBy === "idNumber" ? order : "asc"}
+                    onClick={() => handleRequestSort("idNumber")}
+                    sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
                   >
                     ID Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 60 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 60,
+                  }}
+                >
                   <TableSortLabel
-                    active={orderBy === 'ir'}
-                    direction={orderBy === 'ir' ? order : 'asc'}
-                    onClick={() => handleRequestSort('ir')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                    active={orderBy === "ir"}
+                    direction={orderBy === "ir" ? order : "asc"}
+                    onClick={() => handleRequestSort("ir")}
+                    sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
                   >
                     IR
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 60 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 60,
+                  }}
+                >
                   <TableSortLabel
-                    active={orderBy === 'msn'}
-                    direction={orderBy === 'msn' ? order : 'asc'}
-                    onClick={() => handleRequestSort('msn')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                    active={orderBy === "msn"}
+                    direction={orderBy === "msn" ? order : "asc"}
+                    onClick={() => handleRequestSort("msn")}
+                    sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
                   >
                     MSN
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 80 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 80,
+                  }}
+                >
                   <TableSortLabel
-                    active={orderBy === 'mrirNumber'}
-                    direction={orderBy === 'mrirNumber' ? order : 'asc'}
-                    onClick={() => handleRequestSort('mrirNumber')}
-                    sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                    active={orderBy === "mrirNumber"}
+                    direction={orderBy === "mrirNumber" ? order : "asc"}
+                    onClick={() => handleRequestSort("mrirNumber")}
+                    sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
                   >
                     MRIR Number
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 80 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 80,
+                  }}
+                >
                   Type
                 </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.3, px: 0.8, fontSize: '0.85rem', minWidth: 40 }}>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f5f5f5",
+                    py: 0.3,
+                    px: 0.8,
+                    fontSize: "0.85rem",
+                    minWidth: 40,
+                  }}
+                >
                   Details
                 </TableCell>
               </TableRow>
@@ -1193,73 +1438,206 @@ const MakePrecheck: React.FC = () => {
               ) : paginatedResults.length > 0 ? (
                 paginatedResults.map((item, index) => (
                   <React.Fragment key={index}>
-                    <TableRow 
+                    <TableRow
                       hover
                       onDoubleClick={() => handleRowDoubleClick(index)}
                       sx={{
-                        backgroundColor: item.isPrecheckComplete 
-                          ? '#f0f0f0' 
-                          : selectedRow === (page * rowsPerPage + index)
-                            ? '#e3f2fd'
-                            : 'inherit',
+                        backgroundColor: item.isPrecheckComplete
+                          ? "#f0f0f0"
+                          : selectedRow === page * rowsPerPage + index
+                          ? "#e3f2fd"
+                          : "inherit",
                         opacity: item.isPrecheckComplete ? 0.7 : 1,
                         height: 36,
-                        cursor: 'pointer',
-                        '&:hover': {
-                          backgroundColor: item.isPrecheckComplete 
-                            ? '#f0f0f0' 
-                            : selectedRow === (page * rowsPerPage + index)
-                              ? '#bbdefb'
-                              : '#f5f5f5'
-                        }
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: item.isPrecheckComplete
+                            ? "#f0f0f0"
+                            : selectedRow === page * rowsPerPage + index
+                            ? "#bbdefb"
+                            : "#f5f5f5",
+                        },
                       }}
                     >
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.sr}</TableCell>
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumber}</TableCell>
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.nomenclature}</TableCell>
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.quantity}</TableCell>
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumber || '-'}</TableCell>
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.ir || '-'}</TableCell>
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.msn || '-'}</TableCell>
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.mrirNumber || '-'}</TableCell>
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>
-                        {getComponentTypeChip(item.componentType || '')}
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
+                        {item.sr}
                       </TableCell>
-                      <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
+                        {item.drawingNumber}
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
+                        {item.nomenclature}
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
+                        {item.quantity}
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
+                        {item.idNumber || "-"}
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
+                        {item.ir || "-"}
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
+                        {item.msn || "-"}
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
+                        {item.mrirNumber || "-"}
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
+                        {getComponentTypeChip(item.componentType || "")}
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                      >
                         <IconButton
                           size="small"
                           onClick={() => handleRowExpand(index)}
                           sx={{ p: 0.2 }}
                         >
-                          {expandedRows.has(index) ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                          {expandedRows.has(index) ? (
+                            <ExpandLessIcon fontSize="small" />
+                          ) : (
+                            <ExpandMoreIcon fontSize="small" />
+                          )}
                         </IconButton>
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={10}>
-                        <Collapse in={expandedRows.has(index)} timeout="auto" unmountOnExit>
+                      <TableCell
+                        style={{ paddingBottom: 0, paddingTop: 0 }}
+                        colSpan={10}
+                      >
+                        <Collapse
+                          in={expandedRows.has(index)}
+                          timeout="auto"
+                          unmountOnExit
+                        >
                           <Box sx={{ margin: 0.5 }}>
                             <Table size="small" aria-label="additional-details">
                               <TableHead>
                                 <TableRow>
-                                  <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0.2, px: 0.8 }}>Remarks</TableCell>
-                                  <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0.2, px: 0.8 }}>User</TableCell>
-                                  <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0.2, px: 0.8 }}>Date</TableCell>
-                                  <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0.2, px: 0.8 }}>Status</TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      fontWeight: "bold",
+                                      py: 0.2,
+                                      px: 0.8,
+                                    }}
+                                  >
+                                    Remarks
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      fontWeight: "bold",
+                                      py: 0.2,
+                                      px: 0.8,
+                                    }}
+                                  >
+                                    User
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      fontWeight: "bold",
+                                      py: 0.2,
+                                      px: 0.8,
+                                    }}
+                                  >
+                                    Date
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      fontWeight: "bold",
+                                      py: 0.2,
+                                      px: 0.8,
+                                    }}
+                                  >
+                                    Status
+                                  </TableCell>
                                 </TableRow>
                               </TableHead>
                               <TableBody>
                                 <TableRow>
-                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>
-                                    {item.remarks || '-'}
+                                  <TableCell
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      py: 0.2,
+                                      px: 0.8,
+                                    }}
+                                  >
+                                    {item.remarks || "-"}
                                   </TableCell>
-                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>{item.username || '-'}</TableCell>
-                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>{item.modifiedDate || '-'}</TableCell>
-                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>
-                                    <Chip 
-                                      label={item.isPrecheckComplete ? 'Completed' : item.isUpdated ? 'Updated' : 'Pending'} 
+                                  <TableCell
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      py: 0.2,
+                                      px: 0.8,
+                                    }}
+                                  >
+                                    {item.username || "-"}
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      py: 0.2,
+                                      px: 0.8,
+                                    }}
+                                  >
+                                    {item.modifiedDate || "-"}
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      py: 0.2,
+                                      px: 0.8,
+                                    }}
+                                  >
+                                    <Chip
+                                      label={
+                                        item.isPrecheckComplete
+                                          ? "Completed"
+                                          : item.isUpdated
+                                          ? "Updated"
+                                          : "Pending"
+                                      }
                                       size="small"
-                                      color={item.isPrecheckComplete ? 'success' : item.isUpdated ? 'warning' : 'default'}
+                                      color={
+                                        item.isPrecheckComplete
+                                          ? "success"
+                                          : item.isUpdated
+                                          ? "warning"
+                                          : "default"
+                                      }
                                       variant="outlined"
                                     />
                                   </TableCell>
@@ -1274,19 +1652,26 @@ const MakePrecheck: React.FC = () => {
                 ))
               ) : showResults ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ height: 150 }}>No records found</TableCell>
+                  <TableCell colSpan={10} align="center" sx={{ height: 150 }}>
+                    No records found
+                  </TableCell>
                 </TableRow>
               ) : (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ height: 150, color: 'text.secondary' }}>
-                    Enter search criteria and click "Make Precheck" to see BOM details
+                  <TableCell
+                    colSpan={10}
+                    align="center"
+                    sx={{ height: 150, color: "text.secondary" }}
+                  >
+                    Enter search criteria and click "Make Precheck" to see BOM
+                    details
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </TableContainer>
-        
+
         {/* Pagination */}
         {searchResults.length > 0 && (
           <TablePagination
@@ -1297,14 +1682,15 @@ const MakePrecheck: React.FC = () => {
             page={page}
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
-            sx={{ 
-              borderTop: '1px solid #e0e0e0',
-              '& .MuiTablePagination-toolbar': {
-                minHeight: 48
+            sx={{
+              borderTop: "1px solid #e0e0e0",
+              "& .MuiTablePagination-toolbar": {
+                minHeight: 48,
               },
-              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-                fontSize: '0.8rem'
-              }
+              "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
+                {
+                  fontSize: "0.8rem",
+                },
             }}
           />
         )}
@@ -1322,4 +1708,4 @@ const MakePrecheck: React.FC = () => {
   );
 };
 
-export default MakePrecheck; 
+export default MakePrecheck;
