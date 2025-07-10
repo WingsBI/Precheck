@@ -43,6 +43,8 @@ interface BOMItem {
   drawingNumber: string;
   nomenclature: string;
   qty: number;
+  availableQuantity: number;
+  totalQuantity: number;
   id: number; // ID of the specific BOM item's drawing number
 }
 
@@ -210,6 +212,8 @@ const MakeOrder: React.FC = () => {
           drawingNumber: item.drawingNumber || "",
           nomenclature: item.nomenclature || "",
           qty: item.quantity || 0,
+          availableQuantity: item.availableQuantity || 0,
+          totalQuantity: item.totalQuantity || 0,
           id: item.drawingNumberId || item.drawingId || item.id || 0, // Use drawing number ID from make order response
         }));
         setBomData(mappedBomData);
@@ -597,7 +601,10 @@ const MakeOrder: React.FC = () => {
                         Drawing Number
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600, bgcolor: "grey.50", py: 1 }}>
-                        Nomenclature
+                        Available Qty
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600, bgcolor: "grey.50", py: 1 }}>
+                        Total Qty
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600, bgcolor: "grey.50", py: 1 }}>
                         Qty
@@ -620,13 +627,14 @@ const MakeOrder: React.FC = () => {
                       >
                         <TableCell sx={{ py: 1 }}>{item.sr}</TableCell>
                         <TableCell sx={{ py: 1 }}>{item.drawingNumber}</TableCell>
-                        <TableCell sx={{ py: 1 }}>{item.nomenclature}</TableCell>
+                        <TableCell sx={{ py: 1 }}>{item.availableQuantity}</TableCell>
+                        <TableCell sx={{ py: 1 }}>{item.totalQuantity}</TableCell>
                         <TableCell sx={{ py: 1 }}>{item.qty}</TableCell>
                       </TableRow>
                     ))}
                     {bomData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} align="center" sx={{ py: 2, color: "text.secondary" }}>
+                        <TableCell colSpan={5} align="center" sx={{ py: 2, color: "text.secondary" }}>
                           No BOM data available
                         </TableCell>
                       </TableRow>
