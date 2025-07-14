@@ -189,6 +189,12 @@ export default function Layout() {
           path: "/qrcode/generate",
           roles: [ADMIN_ROLE, QC_ROLE]
         },
+        {
+          text: "New QR Code",
+          icon: <AddIcon />,
+          path: "/qrcode/generate-new",
+          roles: [ADMIN_ROLE, QC_ROLE]
+        },
       ],
     },
     {

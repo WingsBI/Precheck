@@ -186,4 +186,29 @@ export interface QRCodeFormData {
   desposition: 'Accepted' | 'Rejected' | 'Used for QT';
   location: string;
   remark: string;
+}
+
+export interface NewQRCodeFormData extends QRCodeFormData {
+  project: string;
+  partNo: string;
+  size: string;
+  shapes: string;
+  customerIC: string;
+  mrir: string;
+  qty: number;
+  srNo: string;
+  material: string;
+  htLotNo: string;
+  mfgDate: Date;
+  expireDate: Date;
+  tQty: number;
+  fan: string;
+  gic: string;
+  dtd: string;
+  qc: string;
+  pc: string;
+  irNo: string;
+  gfnNo: string;
+  wc: string;
+  desposition: 'Accepted' | 'Rejected' | 'Used for QT';
 } 
