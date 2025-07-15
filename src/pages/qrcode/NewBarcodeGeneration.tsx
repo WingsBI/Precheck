@@ -45,15 +45,11 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useForm, Controller } from "react-hook-form";
 import type { RootState, AppDispatch } from "../../store/store";
 import type { 
-  QRCodeFormData, 
-  QRCodePayload, 
-  DrawingNumber, 
-  IRNumber,
+  DrawingNumber,
   NewQRCodeFormData,
-  QRCodeItem
 } from "../../types";
 import {
-  generateQRCode,
+  generateStandardFieldQRCode,
   fetchIRNumbers,
   clearError,
   clearGeneratedNumber,
@@ -75,9 +71,7 @@ const NewBarcodeGeneration: React.FC = () => {
   // Redux state
   const {
     qrcodeList,
-    irNumbers,
     loading,
-    isDownloading,
   } = useSelector((state: RootState) => state.qrcode);
 
   const { drawingNumbers, productionSeries, units } = useSelector(
@@ -92,20 +86,6 @@ const NewBarcodeGeneration: React.FC = () => {
   const [selectedBarcodes, setSelectedBarcodes] = useState<number[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
-  // WC options for dropdown
-  const wcOptions = [
-    "WC-001",
-    "WC-002", 
-    "WC-003",
-    "WC-004",
-    "WC-005",
-    "WC-006",
-    "WC-007",
-    "WC-008",
-    "WC-009",
-    "WC-010"
-  ];
 
   // Disposition options for dropdown
   const dispositionOptions = [
@@ -210,10 +190,11 @@ const NewBarcodeGeneration: React.FC = () => {
     navigator.clipboard.writeText(text);
   };
 
+  console.log("listqrcode",qrcodeList);
   // Form submission
   const onSubmit = async (data: NewQRCodeFormData) => {
     try {
-      const payload: QRCodePayload = {
+      const payload = {
         productionSeriesId: productionSeries.find(
           (ps) => ps.productionSeries === data.productionSeries
         )?.id || 0,
@@ -221,23 +202,35 @@ const NewBarcodeGeneration: React.FC = () => {
         nomenclatureId: selectedDrawing?.nomenclatureId || 0,
         lnItemCodeId: selectedDrawing?.lnItemCodeId || 0,
         rackLocationId: selectedDrawing?.rackLocationId || 0,
-        irNumberId: 0, // IR number is now a text field
-        msnNumberId: 0, // Removed MSN number
-        desposition: data.desposition || "Accepted", // Use selected disposition
-        productionOrderNumber: data.project || data.poNumber || "",
-        projectNumber: data.project || data.projectNumber || "",
-        expiryDate: data.expireDate.toISOString(),
-        manufacturingDate: data.mfgDate.toISOString(),
         drawingNumberId: selectedDrawing?.id || 0,
         unitId: units.find((u) => u.unitName === data.unit)?.id || 0,
-        mrirNumber: data.mrir || data.mrirNumber || "",
-        remark: `Part No: ${data.partNo}, Size: ${data.size}, Shapes: ${data.shapes}, Customer IC: ${data.customerIC}, Material: ${data.material}, HT/Lot No: ${data.htLotNo}, FAN: ${data.fan}, GIC: ${data.gic}, DTD: ${data.dtd}, PC: ${data.pc}, IR No: ${data.irNo}, GFN No: ${data.gfnNo}, Sr No: ${data.srNo}, T Qty: ${data.tQty}, WC: ${data.wc}, IR Number: ${data.irNumber}`,
-        quantity: data.qty || data.quantity || 1,
-        ids: [1],
-        batchIds: [{ quantity: 0, batchQuantity: 0, assemblyDrawingId: 0 }],
+        quantity: data.qty,
+        desposition: data.desposition,
+        expiryDate: data.expireDate ? data.expireDate.toISOString() : "",
+        manufacturingDate: data.mfgDate ? data.mfgDate.toISOString() : "",
+        irNumber: data.irNumber,
+        poNumber: data.poNumber,
+        projectNumber: data.projectNumber,
+        mrirNumber: data.mrir,
+        partNo: data.partNo,
+        size: data.size,
+        shapes: data.shapes,
+        customerIC: data.customerIC,
+        material: data.material,
+        htLotNo: data.htLotNo,
+        fan: data.fan,
+        gic: data.gic,
+        dtd: data.dtd,
+        pc: data.pc,
+        irNo: data.irNo,
+        gfnNo: data.gfnNo,
+        srNo: data.srNo,
+        tQty: data.tQty,
+        wc: data.wc,
+        project: data.project,
       };
 
-      await dispatch(generateQRCode(payload)).unwrap();
+      await dispatch(generateStandardFieldQRCode(payload)).unwrap();
       setSuccessMessage("QR Code generated successfully!");
       
       // Clear success message after 3 seconds
@@ -529,23 +522,7 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="project"
-                    control={control}
-                    rules={{ required: "Project is required" }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Project *"
-                        fullWidth
-                        size="small"
-                        error={!!errors.project}
-                        helperText={errors.project?.message}
-                      />
-                    )}
-                  />
-                </Grid>
+              
 
                 <Grid item xs={12} md={4}>
                   <Controller
@@ -564,26 +541,8 @@ const NewBarcodeGeneration: React.FC = () => {
                     )}
                   />
                 </Grid>
-              </Grid>
-
-              {/* Row 5: IR Number, WC */}
-              <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="irNumber"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="IR Number"
-                        fullWidth
-                        size="small"
-                      />
-                    )}
-                  />
-                </Grid>
-
-                <Grid item xs={12} md={6}>
+                
+                <Grid item xs={12} md={4}>
                   <Controller
                     name="wc"
                     control={control}
