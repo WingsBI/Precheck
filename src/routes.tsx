@@ -24,6 +24,7 @@ import ViewIRMSN from './pages/irmsn/ViewIRMSN';
 
 // QR Code Pages
 import BarcodeGeneration from './pages/qrcode/BarcodeGeneration';
+import NewBarcodeGeneration from './pages/qrcode/NewBarcodeGeneration';
 import ViewBarcode from './pages/qrcode/ViewBarcode';
 import ViewConsumedIn from './pages/precheck/ViewConsumedIn';
 
@@ -79,6 +80,7 @@ export default function AppRoutes() {
         <Route path="qrcode">
           <Route index element={<ViewBarcode />} />
           <Route path="generate" element={<BarcodeGeneration />} />
+          <Route path="generate-new" element={<NewBarcodeGeneration />} />
           <Route path="view" element={<ViewBarcode />} />
         </Route>
         

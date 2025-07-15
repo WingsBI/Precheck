@@ -81,6 +81,19 @@ export const generateQRCode = createAsyncThunk(
   }
 );
 
+// Generate Standard Field QR Code
+export const generateStandardFieldQRCode = createAsyncThunk(
+  'qrcode/generateStandardFieldQRCode',
+  async (payload: any, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/QRCode/GenerateStandardFieldQRCodeDetails', payload);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to generate standard field QR code');
+    }
+  }
+);
+
 // Get Barcode Details
 export const getBarcodeDetails = createAsyncThunk(
   'qrcode/getBarcodeDetails',
@@ -390,6 +403,20 @@ const qrcodeSlice = createSlice({
         state.generatedNumber = action.payload[0]?.qrCodeNumber || null;
       })
       .addCase(generateQRCode.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Generate Standard Field QR Code
+      .addCase(generateStandardFieldQRCode.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(generateStandardFieldQRCode.fulfilled, (state, action) => {
+        state.loading = false;
+        state.qrcodeList = action.payload;
+      })
+      .addCase(generateStandardFieldQRCode.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
