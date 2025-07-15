@@ -190,7 +190,7 @@ export default function Layout() {
           roles: [ADMIN_ROLE, QC_ROLE]
         },
         {
-          text: "New QR Code",
+          text: "Generate STD QR Code",
           icon: <AddIcon />,
           path: "/qrcode/generate-new",
           roles: [ADMIN_ROLE, QC_ROLE]
@@ -494,7 +494,7 @@ export default function Layout() {
                       key={subItem.text}
                       onClick={() => handleSubItemClick(subItem)}
                       sx={{
-                        pl: 7,
+                        pl: 5,
                         py: 1,
                         mx: 1,
                         mb: 0.5,
@@ -552,7 +552,7 @@ export default function Layout() {
 
       {/* App Bar */}
       <StyledAppBar position="fixed">
-        <Toolbar sx={{ minHeight: 64 }}>
+        <Toolbar sx={{ minHeight: 64, display: 'flex', alignItems: 'center' }}>
           {/* Mobile menu button */}
           {isMobile && (
             <IconButton
@@ -571,34 +571,46 @@ export default function Layout() {
             sx={{
               display: "flex",
               alignItems: "center",
-              flexGrow: 1,
-              pl: { xs: 0, lg: 0 }, // Add slight padding on desktop
-              transition: theme.transitions.create("padding", {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
-            }}  
+            }}
           >
             <img
               src="/assets/logo.jpg"
               alt="Logo"
               style={{ height: 32, marginRight: 8, borderRadius: 10 }}
             />
-            <Typography
-              variant="h6"
-              noWrap
-              component="div"
-              sx={{
-                fontWeight: 600,
-                letterSpacing: 0.5,
-                color: "white",
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              Godrej Aerospace
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography
+                variant="h6"
+                noWrap
+                component="div"
+                sx={{
+                  fontWeight: 600,
+                  letterSpacing: 0.5,
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                Godrej Aerospace
+              </Typography>
+            </Box>
           </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#ffe0f0",
+              fontWeight: 600,
+              fontSize: "0.95rem",
+              letterSpacing: 0.5,
+              opacity: 0.85,
+              mr: 2,
+              mt: 2,
+              display: { xs: 'none', sm: 'block' }
+            }}
+          >
+            Precheck Version 1.1
+          </Typography>
 
           {/* User Profile */}
           {user && (

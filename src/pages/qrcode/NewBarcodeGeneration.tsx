@@ -260,7 +260,7 @@ const NewBarcodeGeneration: React.FC = () => {
               gutterBottom
               sx={{ color: "primary.main", mb: 3 }}
             >
-              Generate New QR Code
+              Generate Standard QR Code
             </Typography>
 
             {successMessage && (
