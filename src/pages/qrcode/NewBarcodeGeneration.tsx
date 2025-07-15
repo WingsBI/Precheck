@@ -44,10 +44,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useForm, Controller } from "react-hook-form";
 import type { RootState, AppDispatch } from "../../store/store";
-import type { 
-  DrawingNumber,
-  NewQRCodeFormData,
-} from "../../types";
+import type { DrawingNumber, NewQRCodeFormData } from "../../types";
 import {
   generateStandardFieldQRCode,
   fetchIRNumbers,
@@ -67,12 +64,11 @@ const NewBarcodeGeneration: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const dispatch = useDispatch<AppDispatch>();
-  
+
   // Redux state
-  const {
-    qrcodeList,
-    loading,
-  } = useSelector((state: RootState) => state.qrcode);
+  const { qrcodeList, loading } = useSelector(
+    (state: RootState) => state.qrcode
+  );
 
   const { drawingNumbers, productionSeries, units } = useSelector(
     (state: RootState) => state.common
@@ -81,18 +77,16 @@ const NewBarcodeGeneration: React.FC = () => {
   // Local state
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [selectedDrawing, setSelectedDrawing] = useState<DrawingNumber | null>(null);
+  const [selectedDrawing, setSelectedDrawing] = useState<DrawingNumber | null>(
+    null
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBarcodes, setSelectedBarcodes] = useState<number[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Disposition options for dropdown
-  const dispositionOptions = [
-    "Accepted",
-    "Rejected", 
-    "Used for QT"
-  ];
+  const dispositionOptions = ["Accepted", "Rejected", "Used for QT"];
 
   // Form setup
   const {
@@ -115,7 +109,7 @@ const NewBarcodeGeneration: React.FC = () => {
       projectNumber: "",
       mrirNumber: "",
       quantity: 1,
-      
+
       // New fields specific to this page
       project: "",
       partNo: "",
@@ -180,8 +174,8 @@ const NewBarcodeGeneration: React.FC = () => {
   const handleDownload = async () => {
     if (selectedBarcodes.length > 0) {
       const selectedQRCodes = qrcodeList
-        .filter(item => selectedBarcodes.includes(item.id))
-        .map(item => item.qrCodeNumber || item.serialNumber);
+        .filter((item) => selectedBarcodes.includes(item.id))
+        .map((item) => item.qrCodeNumber || item.serialNumber);
       await dispatch(exportBulkQRCodes(selectedQRCodes));
     }
   };
@@ -190,14 +184,15 @@ const NewBarcodeGeneration: React.FC = () => {
     navigator.clipboard.writeText(text);
   };
 
-  console.log("listqrcode",qrcodeList);
+  console.log("listqrcode", qrcodeList);
   // Form submission
   const onSubmit = async (data: NewQRCodeFormData) => {
     try {
       const payload = {
-        productionSeriesId: productionSeries.find(
-          (ps) => ps.productionSeries === data.productionSeries
-        )?.id || 0,
+        productionSeriesId:
+          productionSeries.find(
+            (ps) => ps.productionSeries === data.productionSeries
+          )?.id || 0,
         componentTypeId: selectedDrawing?.componentTypeId || 0,
         nomenclatureId: selectedDrawing?.nomenclatureId || 0,
         lnItemCodeId: selectedDrawing?.lnItemCodeId || 0,
@@ -232,7 +227,7 @@ const NewBarcodeGeneration: React.FC = () => {
 
       await dispatch(generateStandardFieldQRCode(payload)).unwrap();
       setSuccessMessage("QR Code generated successfully!");
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage("");
@@ -260,7 +255,11 @@ const NewBarcodeGeneration: React.FC = () => {
       <Box sx={{ p: 3 }}>
         <Card elevation={2}>
           <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ color: "primary.main", mb: 3 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ color: "primary.main", mb: 3 }}
+            >
               Generate New QR Code
             </Typography>
 
@@ -340,7 +339,10 @@ const NewBarcodeGeneration: React.FC = () => {
                               endAdornment: (
                                 <>
                                   {loading ? (
-                                    <CircularProgress color="inherit" size={16} />
+                                    <CircularProgress
+                                      color="inherit"
+                                      size={16}
+                                    />
                                   ) : null}
                                   {params.InputProps.endAdornment}
                                 </>
@@ -390,17 +392,26 @@ const NewBarcodeGeneration: React.FC = () => {
                     control={control}
                     rules={{ required: "Production Series is required" }}
                     render={({ field }) => (
-                      <FormControl fullWidth error={!!errors.productionSeries} size="small">
+                      <FormControl
+                        fullWidth
+                        error={!!errors.productionSeries}
+                        size="small"
+                      >
                         <InputLabel>Prod Series *</InputLabel>
                         <Select {...field} label="Prod Series *">
                           {productionSeries.map((series) => (
-                            <MenuItem key={series.id} value={series.productionSeries}>
+                            <MenuItem
+                              key={series.id}
+                              value={series.productionSeries}
+                            >
                               {series.productionSeries}
                             </MenuItem>
                           ))}
                         </Select>
                         {errors.productionSeries && (
-                          <FormHelperText>{errors.productionSeries.message}</FormHelperText>
+                          <FormHelperText>
+                            {errors.productionSeries.message}
+                          </FormHelperText>
                         )}
                       </FormControl>
                     )}
@@ -522,8 +533,6 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-              
-
                 <Grid item xs={12} md={4}>
                   <Controller
                     name="partNo"
@@ -541,7 +550,7 @@ const NewBarcodeGeneration: React.FC = () => {
                     )}
                   />
                 </Grid>
-                
+
                 <Grid item xs={12} md={4}>
                   <Controller
                     name="wc"
@@ -779,12 +788,7 @@ const NewBarcodeGeneration: React.FC = () => {
                     name="pc"
                     control={control}
                     render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="PC"
-                        fullWidth
-                        size="small"
-                      />
+                      <TextField {...field} label="PC" fullWidth size="small" />
                     )}
                   />
                 </Grid>
@@ -828,7 +832,11 @@ const NewBarcodeGeneration: React.FC = () => {
                     control={control}
                     rules={{ required: "Disposition is required" }}
                     render={({ field }) => (
-                      <FormControl fullWidth error={!!errors.desposition} size="small">
+                      <FormControl
+                        fullWidth
+                        error={!!errors.desposition}
+                        size="small"
+                      >
                         <InputLabel>Disposition *</InputLabel>
                         <Select {...field} label="Disposition *">
                           {dispositionOptions.map((option) => (
@@ -838,7 +846,9 @@ const NewBarcodeGeneration: React.FC = () => {
                           ))}
                         </Select>
                         {errors.desposition && (
-                          <FormHelperText>{errors.desposition.message}</FormHelperText>
+                          <FormHelperText>
+                            {errors.desposition.message}
+                          </FormHelperText>
                         )}
                       </FormControl>
                     )}
@@ -846,7 +856,16 @@ const NewBarcodeGeneration: React.FC = () => {
                 </Grid>
               </Grid>
 
-              <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: 2,
+                  pt: 2,
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
                 <Button
                   type="button"
                   variant="outlined"
@@ -1051,4 +1070,4 @@ const NewBarcodeGeneration: React.FC = () => {
   );
 };
 
-export default NewBarcodeGeneration; 
+export default NewBarcodeGeneration;
