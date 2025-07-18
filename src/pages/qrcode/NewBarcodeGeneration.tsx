@@ -39,6 +39,7 @@ import {
   ContentCopy as CopyIcon,
   GetApp as GetAppIcon,
 } from "@mui/icons-material";
+import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -84,6 +85,7 @@ const NewBarcodeGeneration: React.FC = () => {
   const [selectedBarcodes, setSelectedBarcodes] = useState<number[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [componentType, setComponentType] = useState<'FIM' | 'SI'>('FIM');
 
   // Disposition options for dropdown
   const dispositionOptions = ["Accepted", "Rejected", "Used for QT"];
@@ -223,6 +225,7 @@ const NewBarcodeGeneration: React.FC = () => {
         tQty: data.tQty,
         wc: data.wc,
         project: data.project,
+        componentType: componentType, // Add the selected component type
       };
 
       await dispatch(generateStandardFieldQRCode(payload)).unwrap();
@@ -255,13 +258,32 @@ const NewBarcodeGeneration: React.FC = () => {
       <Box sx={{ p: 3 }}>
         <Card elevation={2}>
           <CardContent>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ color: "primary.main", mb: 3 }}
-            >
-              Generate Standard QR Code
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ color: "primary.main" }}
+              >
+                Generate Standard QR Code
+              </Typography>
+              <ToggleButtonGroup
+                value={componentType}
+                exclusive
+                onChange={(_, newValue) => {
+                  if (newValue !== null) {
+                    setComponentType(newValue);
+                  }
+                }}
+                size="small"
+              >
+                <ToggleButton value="FIM" sx={{ minWidth: 100 }}>
+                  FIM
+                </ToggleButton>
+                <ToggleButton value="SI" sx={{ minWidth: 100 }}>
+                  SI
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
 
             {successMessage && (
               <Alert severity="success" sx={{ mb: 2 }}>
@@ -282,7 +304,6 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="drawingNumber"
                     control={control}
-                    rules={{ required: "Drawing Number is required" }}
                     render={({ field: { onChange, ...field } }) => (
                       <Autocomplete
                         {...field}
@@ -331,7 +352,7 @@ const NewBarcodeGeneration: React.FC = () => {
                         renderInput={(params) => (
                           <TextField
                             {...params}
-                            label="Drawing Number *"
+                            label="Drawing Number"
                             error={!!errors.drawingNumber}
                             helperText={errors.drawingNumber?.message}
                             InputProps={{
@@ -390,15 +411,14 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="productionSeries"
                     control={control}
-                    rules={{ required: "Production Series is required" }}
                     render={({ field }) => (
                       <FormControl
                         fullWidth
                         error={!!errors.productionSeries}
                         size="small"
                       >
-                        <InputLabel>Prod Series *</InputLabel>
-                        <Select {...field} label="Prod Series *">
+                        <InputLabel>Prod Series</InputLabel>
+                        <Select {...field} label="Prod Series">
                           {productionSeries.map((series) => (
                             <MenuItem
                               key={series.id}
@@ -447,11 +467,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="qty"
                     control={control}
-                    rules={{ required: "Quantity is required" }}
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        label="Quantity *"
+                        label="Quantity"
                         type="number"
                         fullWidth
                         size="small"
@@ -466,11 +485,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="unit"
                     control={control}
-                    rules={{ required: "Unit is required" }}
                     render={({ field }) => (
                       <FormControl fullWidth error={!!errors.unit} size="small">
-                        <InputLabel>Unit *</InputLabel>
-                        <Select {...field} label="Unit *">
+                        <InputLabel>Unit</InputLabel>
+                        <Select {...field} label="Unit">
                           {units.map((unit) => (
                             <MenuItem key={unit.id} value={unit.unitName}>
                               {unit.unitName}
@@ -489,11 +507,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="mfgDate"
                     control={control}
-                    rules={{ required: "Manufacturing Date is required" }}
                     render={({ field }) => (
                       <DatePicker
                         {...field}
-                        label="MFG Date *"
+                        label="MFG Date"
                         maxDate={new Date()}
                         slotProps={{
                           textField: {
@@ -515,11 +532,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="expireDate"
                     control={control}
-                    rules={{ required: "Expiry Date is required" }}
                     render={({ field }) => (
                       <DatePicker
                         {...field}
-                        label="Expire Date *"
+                        label="Expire Date"
                         slotProps={{
                           textField: {
                             size: "small",
@@ -537,11 +553,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="partNo"
                     control={control}
-                    rules={{ required: "Part No is required" }}
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        label="Part No *"
+                        label="Part No"
                         fullWidth
                         size="small"
                         error={!!errors.partNo}
@@ -555,11 +570,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="wc"
                     control={control}
-                    rules={{ required: "WC is required" }}
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        label="WC *"
+                        label="WC"
                         fullWidth
                         size="small"
                         error={!!errors.wc}
@@ -606,11 +620,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="mrir"
                     control={control}
-                    rules={{ required: "MRIR is required" }}
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        label="MRIR *"
+                        label="MRIR"
                         fullWidth
                         size="small"
                         error={!!errors.mrir}
@@ -830,15 +843,14 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="desposition"
                     control={control}
-                    rules={{ required: "Disposition is required" }}
                     render={({ field }) => (
                       <FormControl
                         fullWidth
                         error={!!errors.desposition}
                         size="small"
                       >
-                        <InputLabel>Disposition *</InputLabel>
-                        <Select {...field} label="Disposition *">
+                        <InputLabel>Disposition</InputLabel>
+                        <Select {...field} label="Disposition">
                           {dispositionOptions.map((option) => (
                             <MenuItem key={option} value={option}>
                               {option}
