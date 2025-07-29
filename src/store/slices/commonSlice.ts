@@ -189,6 +189,20 @@ const commonSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    clearAllData: (state) => {
+      state.departments = [];
+      state.modules = [];
+      state.componentTypes = [];
+      state.drawingNumbers = [];
+      state.allDrawingNumbers = [];
+      state.documentTypes = [];
+      state.productionSeries = [];
+      state.units = [];
+      state.userRoles = [];
+      state.plants = [];
+      state.securityQuestions = [];
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -327,5 +341,5 @@ const commonSlice = createSlice({
   },
 });
 
-export const { clearError } = commonSlice.actions;
+export const { clearError, clearAllData } = commonSlice.actions;
 export default commonSlice.reducer; 

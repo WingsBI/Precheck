@@ -101,6 +101,23 @@ export default function Precheck() {
     error,
   } = useSelector((state: RootState) => state.precheck);
 
+  // Format date function
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'N/A';
+    }
+  };
+
   // State management
   const [assemblyNumber, setAssemblyNumber] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -270,7 +287,7 @@ export default function Precheck() {
                 </Typography>
                 
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Date: {new Date(precheck.createdAt).toLocaleDateString()}
+                  Date: {formatDate(precheck.createdAt)}
                 </Typography>
 
                 <Collapse in={expandedCard === precheck.id}>
@@ -381,10 +398,10 @@ export default function Precheck() {
                   )}
                 </TableCell>
                 <TableCell>
-                  {new Date(precheck.createdAt).toLocaleDateString()}
+                  {formatDate(precheck.createdAt)}
                 </TableCell>
                 <TableCell>
-                  {new Date(precheck.updatedAt || precheck.createdAt).toLocaleDateString()}
+                  {formatDate(precheck.updatedAt || precheck.createdAt)}
                 </TableCell>
                 <TableCell align="center">
                   <Stack direction="row" spacing={1} justifyContent="center">

@@ -87,6 +87,23 @@ const schema = yup.object().shape({
 const MakeOrder: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
+  // Format date function
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'N/A';
+    }
+  };
+
   // Redux state
   const { isLoading, availableComponents } = useSelector(
     (state: RootState) => state.precheck
@@ -706,8 +723,8 @@ const MakeOrder: React.FC = () => {
                             <TableCell sx={{ py: 1 }}>{item.qty}</TableCell>
                             <TableCell sx={{ py: 1 }}>{item.status}</TableCell>
                             <TableCell sx={{ py: 1 }}>{item.location}</TableCell>
-                            <TableCell sx={{ py: 1 }}>{item.expiry}</TableCell>
-                            <TableCell sx={{ py: 1 }}>{item.mfg}</TableCell>
+                            <TableCell sx={{ py: 1 }}>{formatDate(item.expiry)}</TableCell>
+                            <TableCell sx={{ py: 1 }}>{formatDate(item.mfg)}</TableCell>
                           </TableRow>
                         ))}
                         {qrCodeData.length === 0 && (

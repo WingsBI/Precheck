@@ -246,13 +246,29 @@ const QuantityDialog: React.FC<QuantityDialogProps> = ({
 
 const MakePrecheck: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { isLoading } = useSelector((state: RootState) => state.precheck);
+
+  // Format date function
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      return "N/A";
+    }
+  };
+
+  // Redux state
   const { productionSeries, drawingNumbers } = useSelector(
     (state: RootState) => state.common
   );
   const { user } = useSelector((state: RootState) => state.auth);
-  const location = useLocation();
-  const navigate = useNavigate();
 
   // Form state
   const [selectedDrawing, setSelectedDrawing] = useState<any>(null);
@@ -516,7 +532,7 @@ const MakePrecheck: React.FC = () => {
       const response = await dispatch(
         makePrecheck(componentsToSubmit)
       ).unwrap();
-
+      console.log("Response maake precheck:", response);
       if (response?.length) {
         // Update grid items as submitted
         const updatedResults = searchResults.map((item) => {
@@ -751,10 +767,28 @@ const MakePrecheck: React.FC = () => {
           );
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing barcode:", error);
+      
+      // Extract user-friendly error message from API response
+      let errorMessage = "Error processing QR code";
+      
+      if (error?.payload) {
+        // Redux rejected action with payload
+        errorMessage = error.payload;
+      } else if (error?.response?.data?.message) {
+        // API returned a structured error response
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        // Standard error object
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        // String error
+        errorMessage = error;
+      }
+      
       showAlertMessage(
-        `Error processing barcode: ${(error as Error).message}`,
+        `Error processing QR Code ${barcode}: ${errorMessage}`,
         "error"
       );
     }
@@ -768,6 +802,9 @@ const MakePrecheck: React.FC = () => {
     const updatedResults = [...searchResults];
     const item = updatedResults[matchingItem.index];
 
+    // Get username from Redux auth state (which comes from JWT token)
+    const currentUsername = user?.username || "Current User";
+
     // Update the item with all fields from QR code details
     item.qrCode = qrCodeDetails.qrCodeNumber;
     item.isPrecheckComplete = false;
@@ -779,8 +816,8 @@ const MakePrecheck: React.FC = () => {
     item.componentType = qrCodeDetails.componentType;
     item.mrirNumber = qrCodeDetails.mrirNumber;
     item.remarks = qrCodeDetails.remark;
-    item.username = qrCodeDetails.users || "Current User";
-    item.modifiedDate = new Date().toISOString().split("T")[0];
+    item.username = currentUsername;
+    item.modifiedDate = new Date().toISOString();
     item.productionOrderNumber = qrCodeDetails.productionOrderNumber || "NA";
     item.projectNumber = qrCodeDetails.projectNumber || "NA";
     item.disposition = qrCodeDetails.desposition || "NA";
@@ -791,6 +828,10 @@ const MakePrecheck: React.FC = () => {
 
     // Enable submit button
     setIsSubmitEnabled(true);
+
+    // Show success message with scan time
+    const scanTime = formatDate(new Date().toISOString());
+    showAlertMessage(`QR Code scanned successfully at ${scanTime}!`, "success");
 
     // Check if all items are processed
     const unprocessedItems = updatedResults.filter(
@@ -1413,6 +1454,7 @@ const MakePrecheck: React.FC = () => {
                 >
                   Type
                 </TableCell>
+
                 <TableCell
                   align="center"
                   sx={{
@@ -1513,6 +1555,7 @@ const MakePrecheck: React.FC = () => {
                       >
                         {getComponentTypeChip(item.componentType || "")}
                       </TableCell>
+
                       <TableCell
                         align="center"
                         sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
@@ -1613,7 +1656,7 @@ const MakePrecheck: React.FC = () => {
                                       px: 0.8,
                                     }}
                                   >
-                                    {item.modifiedDate || "-"}
+                                    {formatDate(item.modifiedDate || "")}
                                   </TableCell>
                                   <TableCell
                                     sx={{

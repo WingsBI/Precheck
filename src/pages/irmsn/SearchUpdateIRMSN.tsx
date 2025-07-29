@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useSelector } from "react-redux";
 import {
   Box,
@@ -65,6 +65,7 @@ interface IRMSNItem {
   departmentId: number;
   idNumberRange: string | null;
   sequenceNo: number;
+  generatedBy: string | null;
 }
 
 interface SearchFormData {
@@ -148,21 +149,24 @@ export default function SearchUpdateIRMSN() {
           // Try both id and userid fields from token
           const userIdFromToken = currentUser?.id || currentUser?.userid;
           const deptIdFromToken = currentUser?.deptid;
-          
-          const userId = userIdFromToken && !isNaN(Number(userIdFromToken)) ? Number(userIdFromToken) : undefined;
-          const departmentId = deptIdFromToken && !isNaN(Number(deptIdFromToken)) ? Number(deptIdFromToken) : undefined;
-          
 
+          const userId =
+            userIdFromToken && !isNaN(Number(userIdFromToken))
+              ? Number(userIdFromToken)
+              : undefined;
+          const departmentId =
+            deptIdFromToken && !isNaN(Number(deptIdFromToken))
+              ? Number(deptIdFromToken)
+              : undefined;
 
           const response = await api.get(endpoint, {
-            params: { 
+            params: {
               query,
               userId,
-              departmentId
+              departmentId,
             },
           });
 
-          
           setNumbers(response.data);
         } catch (error) {
           // Handle error silently or show user-friendly message
@@ -187,14 +191,18 @@ export default function SearchUpdateIRMSN() {
     if (selectedData) {
       // Handle ID Number Range - check all possible field names
       let idNumberRange = "";
-      
+
       // Priority 1: Direct idNumberRange field
       if (selectedData.idNumberRange && selectedData.idNumberRange.trim()) {
         idNumberRange = selectedData.idNumberRange.trim();
       }
       // Priority 2: Construct from start/end numbers
-      else if (selectedData.idNumberStart !== null && selectedData.idNumberStart !== undefined && 
-               selectedData.idNumberEnd !== null && selectedData.idNumberEnd !== undefined) {
+      else if (
+        selectedData.idNumberStart !== null &&
+        selectedData.idNumberStart !== undefined &&
+        selectedData.idNumberEnd !== null &&
+        selectedData.idNumberEnd !== undefined
+      ) {
         if (selectedData.idNumberStart === selectedData.idNumberEnd) {
           idNumberRange = selectedData.idNumberStart.toString();
         } else {
@@ -210,7 +218,7 @@ export default function SearchUpdateIRMSN() {
           idNumberRange = `1-${selectedData.quantity}`;
         }
       }
-      
+
       const formData = {
         stage: selectedData.stage || "",
         quantity: selectedData.quantity || 0,
@@ -218,7 +226,7 @@ export default function SearchUpdateIRMSN() {
         supplier: selectedData.supplier || "",
         remark: selectedData.remark || "",
       };
-      
+
       setSelectedItem(selectedData);
       setUpdateForm(formData);
     }
@@ -227,12 +235,13 @@ export default function SearchUpdateIRMSN() {
   // Update function with immediate UI refresh
   const onUpdate = async () => {
     if (!selectedItem) return;
-    
+
     setIsLoading(true);
     try {
-      const endpoint = searchForm.documentType === "IR"
-        ? "/api/reports/UpdateIRNumber"
-        : "/api/reports/UpdateMSNNumber";
+      const endpoint =
+        searchForm.documentType === "IR"
+          ? "/api/reports/UpdateIRNumber"
+          : "/api/reports/UpdateMSNNumber";
 
       const payload = {
         [searchForm.documentType === "IR" ? "irNumber" : "msnNumber"]:
@@ -261,11 +270,9 @@ export default function SearchUpdateIRMSN() {
       };
 
       // Update the numbers array immediately
-      setNumbers(prevNumbers => 
-        prevNumbers.map(item => 
-          item.id === selectedItem.id 
-            ? updatedItem
-            : item
+      setNumbers((prevNumbers) =>
+        prevNumbers.map((item) =>
+          item.id === selectedItem.id ? updatedItem : item
         )
       );
 
@@ -279,7 +286,6 @@ export default function SearchUpdateIRMSN() {
 
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(""), 3000);
-
     } catch (error) {
       setSuccessMessage("Failed to update. Please try again.");
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -309,8 +315,20 @@ export default function SearchUpdateIRMSN() {
     return total;
   };
 
+
+
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 1}, maxWidth: "100%", mx: "auto", height: "100vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <Box
+      sx={{
+        p: { xs: 1, sm: 2, md: 1 },
+        maxWidth: "100%",
+        mx: "auto",
+        height: "100vh",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <Typography
         variant="h4"
         gutterBottom
@@ -318,7 +336,7 @@ export default function SearchUpdateIRMSN() {
           color: "primary.main",
           fontWeight: 600,
           mb: 2,
-          fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.25rem' }
+          fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.25rem" },
         }}
       >
         Search/Update IR/MSN
@@ -343,7 +361,12 @@ export default function SearchUpdateIRMSN() {
               <FormControl fullWidth>
                 <FormLabel
                   component="legend"
-                  sx={{ mb: 0.5, color: "text.primary", fontWeight: 600, fontSize: "0.875rem" }}
+                  sx={{
+                    mb: 0.5,
+                    color: "text.primary",
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                  }}
                 >
                   Document Type *
                 </FormLabel>
@@ -364,20 +387,24 @@ export default function SearchUpdateIRMSN() {
                     value="IR"
                     control={<Radio size="small" />}
                     label="IR Number"
-                    sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.875rem" } }}
+                    sx={{
+                      "& .MuiFormControlLabel-label": { fontSize: "0.875rem" },
+                    }}
                   />
                   <FormControlLabel
                     value="MSN"
                     control={<Radio size="small" />}
                     label="MSN Number"
-                    sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.875rem" } }}
+                    sx={{
+                      "& .MuiFormControlLabel-label": { fontSize: "0.875rem" },
+                    }}
                   />
                 </RadioGroup>
               </FormControl>
             </Grid>
 
             {/* Number Selection */}
-            <Grid item xs={12} md={8}>
+            <Grid item xs={12} md={6}>
               <Autocomplete
                 options={numbers}
                 loading={isLoading}
@@ -428,14 +455,52 @@ export default function SearchUpdateIRMSN() {
                 )}
               />
             </Grid>
+
+            {/* Reset Button */}
+            <Grid item xs={12} md={2}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setSearchForm({
+                    documentType: "IR",
+                    searchTerm: "",
+                  });
+                  setSelectedItem(null);
+                  setNumbers([]);
+                  setSelectedNumber("");
+                  setUpdateForm({
+                    stage: "",
+                    quantity: 0,
+                    idNumberRange: "",
+                    supplier: "",
+                    remark: "",
+                  });
+                  setSuccessMessage("");
+                }}
+                sx={{ width: "100%", height: 40 }}
+              >
+                Reset
+              </Button>
+            </Grid>
           </Grid>
         </CardContent>
       </Card>
 
       {/* Search Results */}
       {selectedItem && (
-        <Card elevation={2} sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <CardContent sx={{ p: { xs: 1.5, md: 2 }, flex: 1, overflow: "auto" }}>
+        <Card
+          elevation={2}
+          sx={{
+            flex: 1,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <CardContent
+            sx={{ p: { xs: 1.5, md: 2 }, flex: 1, overflow: "auto" }}
+          >
             <Stack
               direction="row"
               justifyContent="space-between"
@@ -453,9 +518,9 @@ export default function SearchUpdateIRMSN() {
                   }}
                   variant="contained"
                   size="small"
-                  sx={{ 
+                  sx={{
                     backgroundColor: "primary.main",
-                    color: "white"
+                    color: "white",
                   }}
                 >
                   Edit
@@ -472,10 +537,10 @@ export default function SearchUpdateIRMSN() {
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
@@ -486,10 +551,10 @@ export default function SearchUpdateIRMSN() {
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
@@ -500,14 +565,14 @@ export default function SearchUpdateIRMSN() {
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
-              
+
               {/* Second Row */}
               <Grid item xs={12} md={4}>
                 <TextField
@@ -515,34 +580,36 @@ export default function SearchUpdateIRMSN() {
                   value={selectedItem.nomenclature || ""}
                   fullWidth
                   size="small"
-                  InputProps={{ 
+                  InputProps={{
                     readOnly: true,
-                    sx: { fontSize: "0.875rem" }
+                    sx: { fontSize: "0.875rem" },
                   }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
+                  sx={{
+                    "& .MuiInputBase-input": {
                       backgroundColor: "grey.50",
-                      fontSize: "0.875rem"
-                    } 
+                      fontSize: "0.875rem",
+                    },
                   }}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
                   label="ID Nos"
-                  value={selectedItem.idNumberRange || 
+                  value={
+                    selectedItem.idNumberRange ||
                     (selectedItem.idNumberStart && selectedItem.idNumberEnd
-                      ? (selectedItem.idNumberStart === selectedItem.idNumberEnd 
-                          ? selectedItem.idNumberStart.toString()
-                          : `${selectedItem.idNumberStart}-${selectedItem.idNumberEnd}`)
-                      : "")}
+                      ? selectedItem.idNumberStart === selectedItem.idNumberEnd
+                        ? selectedItem.idNumberStart.toString()
+                        : `${selectedItem.idNumberStart}-${selectedItem.idNumberEnd}`
+                      : "")
+                  }
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
@@ -553,14 +620,14 @@ export default function SearchUpdateIRMSN() {
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
-              
+
               {/* Third Row */}
               <Grid item xs={12} md={4}>
                 <TextField
@@ -569,10 +636,10 @@ export default function SearchUpdateIRMSN() {
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
@@ -583,10 +650,10 @@ export default function SearchUpdateIRMSN() {
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
@@ -597,28 +664,28 @@ export default function SearchUpdateIRMSN() {
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
-              
+
               {/* Fourth Row */}
               <Grid item xs={12} md={4}>
-                <Typography
-                  variant="caption"
-                  sx={{ color: "text.secondary", display: "block", mb: 0.5 }}
-                >
-                  Generated by
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: 500, color: "text.primary" }}
-                >
-                  {selectedItem.userName || "N/A"}
-                </Typography>
+                <TextField
+                  label="Generated By"
+                  value={selectedItem.generatedBy || "N/A"}
+                  fullWidth
+                  size="small"
+                  InputProps={{ readOnly: true }}
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
+                  }}
+                />
               </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
@@ -627,10 +694,10 @@ export default function SearchUpdateIRMSN() {
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
@@ -641,10 +708,10 @@ export default function SearchUpdateIRMSN() {
                   fullWidth
                   size="small"
                   InputProps={{ readOnly: true }}
-                  sx={{ 
-                    "& .MuiInputBase-input": { 
-                      backgroundColor: "grey.50" 
-                    } 
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "grey.50",
+                    },
                   }}
                 />
               </Grid>
@@ -752,7 +819,6 @@ export default function SearchUpdateIRMSN() {
               Update {selectedItem?.irNumber || selectedItem?.msnNumber}
             </Typography>
           </Stack>
-
         </DialogTitle>
 
         <DialogContent>
@@ -805,11 +871,12 @@ export default function SearchUpdateIRMSN() {
                 value={updateForm.idNumberRange}
                 onChange={(e) => {
                   const range = e.target.value;
-                  const quantity = calculateQuantity(range);
+                  const calculatedQuantity = calculateQuantity(range);
+                  console.log('ID Range changed:', range, 'Calculated quantity:', calculatedQuantity);
                   setUpdateForm((prev) => ({
                     ...prev,
                     idNumberRange: range,
-                    quantity: quantity,
+                    quantity: calculatedQuantity,
                   }));
                 }}
                 helperText="e.g., 1-100 or 1,2,3"
@@ -825,11 +892,12 @@ export default function SearchUpdateIRMSN() {
                 size="small"
                 value={updateForm.quantity}
                 InputProps={{ readOnly: true }}
-                sx={{ 
-                  "& .MuiInputBase-input": { 
-                    backgroundColor: "grey.50" 
-                  } 
+                sx={{
+                  "& .MuiInputBase-input": {
+                    backgroundColor: "grey.50",
+                  },
                 }}
+                helperText={`Current quantity: ${updateForm.quantity}`}
               />
             </Grid>
 
@@ -853,6 +921,47 @@ export default function SearchUpdateIRMSN() {
         <DialogActions sx={{ p: 2 }}>
           <Button
             onClick={() => setEditDialogOpen(false)}
+            disabled={isLoading}
+            variant="outlined"
+            size="medium"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              // Reset form to original values
+              if (selectedItem) {
+                let idNumberRange = "";
+                if (selectedItem.idNumberRange && selectedItem.idNumberRange.trim()) {
+                  idNumberRange = selectedItem.idNumberRange.trim();
+                } else if (
+                  selectedItem.idNumberStart !== null &&
+                  selectedItem.idNumberStart !== undefined &&
+                  selectedItem.idNumberEnd !== null &&
+                  selectedItem.idNumberEnd !== undefined
+                ) {
+                  if (selectedItem.idNumberStart === selectedItem.idNumberEnd) {
+                    idNumberRange = selectedItem.idNumberStart.toString();
+                  } else {
+                    idNumberRange = `${selectedItem.idNumberStart}-${selectedItem.idNumberEnd}`;
+                  }
+                } else if (selectedItem.quantity && selectedItem.quantity > 0) {
+                  if (selectedItem.quantity === 1) {
+                    idNumberRange = "1";
+                  } else {
+                    idNumberRange = `1-${selectedItem.quantity}`;
+                  }
+                }
+
+                setUpdateForm({
+                  stage: selectedItem.stage || "",
+                  quantity: selectedItem.quantity || 0,
+                  idNumberRange: idNumberRange,
+                  supplier: selectedItem.supplier || "",
+                  remark: selectedItem.remark || "",
+                });
+              }
+            }}
             startIcon={<CancelIcon />}
             disabled={isLoading}
             variant="outlined"
