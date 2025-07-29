@@ -1,32 +1,43 @@
 # Build stage
-FROM node:18-alpine as build
+FROM node:18-alpine AS build
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm ci --only=production
 
-# Copy all files
+# Copy source files
 COPY . .
 
-# Build the app
+# Build the application
 RUN npm run build
 
 # Production stage
 FROM nginx:alpine
 
-# Copy nginx configuration
+# Copy custom nginx configuration (optional)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built files from build stage
+# Copy built application from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Expose port 80
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Set proper permissions
+RUN chown -R nextjs:nodejs /usr/share/nginx/html
+
+# Expose port
 EXPOSE 80
 
-# Start Nginx server
-CMD ["nginx", "-g", "daemon off;"] 
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost/ || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
