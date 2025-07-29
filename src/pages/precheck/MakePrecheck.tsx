@@ -249,31 +249,26 @@ const MakePrecheck: React.FC = () => {
 
   // Format date function
   const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     } catch (error) {
-      return 'N/A';
+      return "N/A";
     }
   };
 
   // Redux state
-  const { isLoading, availableComponents } = useSelector(
-    (state: RootState) => state.precheck
-  );
   const { productionSeries, drawingNumbers } = useSelector(
     (state: RootState) => state.common
   );
   const { user } = useSelector((state: RootState) => state.auth);
-  const location = useLocation();
-  const navigate = useNavigate();
 
   // Form state
   const [selectedDrawing, setSelectedDrawing] = useState<any>(null);
@@ -789,6 +784,9 @@ const MakePrecheck: React.FC = () => {
     const updatedResults = [...searchResults];
     const item = updatedResults[matchingItem.index];
 
+    // Get username from Redux auth state (which comes from JWT token)
+    const currentUsername = user?.username || "Current User";
+
     // Update the item with all fields from QR code details
     item.qrCode = qrCodeDetails.qrCodeNumber;
     item.isPrecheckComplete = false;
@@ -800,7 +798,7 @@ const MakePrecheck: React.FC = () => {
     item.componentType = qrCodeDetails.componentType;
     item.mrirNumber = qrCodeDetails.mrirNumber;
     item.remarks = qrCodeDetails.remark;
-    item.username = qrCodeDetails.users || "Current User";
+    item.username = currentUsername;
     item.modifiedDate = new Date().toISOString();
     item.productionOrderNumber = qrCodeDetails.productionOrderNumber || "NA";
     item.projectNumber = qrCodeDetails.projectNumber || "NA";
