@@ -323,7 +323,7 @@ export const fetchMSNNumbers = createAsyncThunk(
 // Action to update QR code details for store-in
 export const updateQrCodeDetails = createAsyncThunk(
   'qrcode/updateQrCodeDetails',
-  async (searchQuery: string) => {
+  async (searchQuery: string, { rejectWithValue }) => {
     try {
       const response = await api.post('/api/QRCode/ComponentStoreIn', JSON.stringify(searchQuery), {
         headers: {
@@ -337,7 +337,14 @@ export const updateQrCodeDetails = createAsyncThunk(
       
       return response.data;
     } catch (error: any) {
-      throw new Error("Error fetching QR code details: " + (error.message || error));
+      // Preserve the original error structure for proper error handling
+      if (error.response?.data?.message) {
+        return rejectWithValue(error.response.data.message);
+      } else if (error.message) {
+        return rejectWithValue(error.message);
+      } else {
+        return rejectWithValue("Error fetching QR code details");
+      }
     }
   }
 );

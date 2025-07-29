@@ -627,7 +627,7 @@ const ViewPrecheck: React.FC = () => {
                                 <TableRow>
                                   <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>{item.remarks || '-'}</TableCell>
                                   <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>{item.username || '-'}</TableCell>
-                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>{formatDate(item.createdDate || '')}</TableCell>
+                                  <TableCell sx={{ fontSize: '0.75rem', py: 0.2, px: 0.8 }}>{item.modifiedDate || '-'}</TableCell>
                                 </TableRow>
                               </TableBody>
                             </Table>

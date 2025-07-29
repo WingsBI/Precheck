@@ -532,7 +532,7 @@ const MakePrecheck: React.FC = () => {
       const response = await dispatch(
         makePrecheck(componentsToSubmit)
       ).unwrap();
-
+      console.log("Response maake precheck:", response);
       if (response?.length) {
         // Update grid items as submitted
         const updatedResults = searchResults.map((item) => {
@@ -767,10 +767,28 @@ const MakePrecheck: React.FC = () => {
           );
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing barcode:", error);
+      
+      // Extract user-friendly error message from API response
+      let errorMessage = "Error processing QR code";
+      
+      if (error?.payload) {
+        // Redux rejected action with payload
+        errorMessage = error.payload;
+      } else if (error?.response?.data?.message) {
+        // API returned a structured error response
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        // Standard error object
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        // String error
+        errorMessage = error;
+      }
+      
       showAlertMessage(
-        `Error processing barcode: ${(error as Error).message}`,
+        `Error processing QR Code ${barcode}: ${errorMessage}`,
         "error"
       );
     }
