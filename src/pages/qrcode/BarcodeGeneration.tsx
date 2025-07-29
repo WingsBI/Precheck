@@ -277,7 +277,20 @@ export default function BarcodeGeneration() {
       expiryDate:
         data.expiryDate?.toISOString() ||
         new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      manufacturingDate: data.manufacturingDate.toISOString(),
+      manufacturingDate: (() => {
+        // Get current Indian time (IST - UTC+5:30)
+        const now = new Date();
+        const indianTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); // Add 5.5 hours for IST
+        
+        // Combine the selected manufacturing date with current Indian time
+        const manufacturingDateWithTime = new Date(data.manufacturingDate);
+        manufacturingDateWithTime.setHours(indianTime.getHours());
+        manufacturingDateWithTime.setMinutes(indianTime.getMinutes());
+        manufacturingDateWithTime.setSeconds(indianTime.getSeconds());
+        manufacturingDateWithTime.setMilliseconds(indianTime.getMilliseconds());
+        
+        return manufacturingDateWithTime.toISOString();
+      })(),
       drawingNumberId: selectedDrawing?.id || 0,
       unitId: units.find((u) => u.unitName === data.unit)?.id || 0,
       mrirNumber: data.mrirNumber,

@@ -152,8 +152,16 @@ export default function GenerateIRMSN() {
 
   // Update stages when document type changes
   useEffect(() => {
-    setStages(documentType === "IR" ? IRStages : MSNStages);
-    setValue("stage", ""); // Reset stage when document type changes
+    const newStages = documentType === "IR" ? IRStages : MSNStages;
+    setStages(newStages);
+    
+    // Only reset stage if current stage doesn't exist in new stage list
+    // This preserves the stage value when switching between document types
+    const currentStage = watch("stage");
+    if (currentStage && !newStages.includes(currentStage)) {
+      setValue("stage", "");
+    }
+    // If current stage exists in new stage list, keep it as is
   }, [documentType, setValue]);
 
   // Watch for ID range changes
@@ -286,11 +294,32 @@ export default function GenerateIRMSN() {
   };
 
   const handleReset = () => {
-    reset();
+    // Reset form to default values
+    reset({
+      documentType: "IR",
+      quantity: 1,
+      drawingNumber: "",
+      productionSeries: "",
+      nomenclature: "",
+      idRange: "",
+      projectNumber: "",
+      poNumber: "",
+      stage: "",
+      supplier: "",
+      remark: "",
+    });
+    
+    // Clear generated number from store
     dispatch(clearGeneratedNumber());
+    
+    // Clear local state
     setSearchResults([]);
     setSelectedDrawing(null);
     setSearchTerm("");
+    setCopied(false);
+    
+    // Reset stages to IR stages (default)
+    setStages(IRStages);
   };
 
   // Stage options based on document type

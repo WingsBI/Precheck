@@ -246,7 +246,28 @@ const QuantityDialog: React.FC<QuantityDialogProps> = ({
 
 const MakePrecheck: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { isLoading } = useSelector((state: RootState) => state.precheck);
+
+  // Format date function
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'N/A';
+    }
+  };
+
+  // Redux state
+  const { isLoading, availableComponents } = useSelector(
+    (state: RootState) => state.precheck
+  );
   const { productionSeries, drawingNumbers } = useSelector(
     (state: RootState) => state.common
   );
@@ -780,7 +801,7 @@ const MakePrecheck: React.FC = () => {
     item.mrirNumber = qrCodeDetails.mrirNumber;
     item.remarks = qrCodeDetails.remark;
     item.username = qrCodeDetails.users || "Current User";
-    item.modifiedDate = new Date().toISOString().split("T")[0];
+    item.modifiedDate = new Date().toISOString();
     item.productionOrderNumber = qrCodeDetails.productionOrderNumber || "NA";
     item.projectNumber = qrCodeDetails.projectNumber || "NA";
     item.disposition = qrCodeDetails.desposition || "NA";
@@ -791,6 +812,10 @@ const MakePrecheck: React.FC = () => {
 
     // Enable submit button
     setIsSubmitEnabled(true);
+
+    // Show success message with scan time
+    const scanTime = formatDate(new Date().toISOString());
+    showAlertMessage(`QR Code scanned successfully at ${scanTime}!`, "success");
 
     // Check if all items are processed
     const unprocessedItems = updatedResults.filter(
@@ -1413,6 +1438,7 @@ const MakePrecheck: React.FC = () => {
                 >
                   Type
                 </TableCell>
+
                 <TableCell
                   align="center"
                   sx={{
@@ -1513,6 +1539,7 @@ const MakePrecheck: React.FC = () => {
                       >
                         {getComponentTypeChip(item.componentType || "")}
                       </TableCell>
+
                       <TableCell
                         align="center"
                         sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
@@ -1613,7 +1640,7 @@ const MakePrecheck: React.FC = () => {
                                       px: 0.8,
                                     }}
                                   >
-                                    {item.modifiedDate || "-"}
+                                    {formatDate(item.modifiedDate || "")}
                                   </TableCell>
                                   <TableCell
                                     sx={{

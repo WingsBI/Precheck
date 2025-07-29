@@ -202,7 +202,22 @@ const NewBarcodeGeneration: React.FC = () => {
         quantity: data.qty,
         desposition: data.desposition,
         expiryDate: data.expireDate ? data.expireDate.toISOString() : "",
-        manufacturingDate: data.mfgDate ? data.mfgDate.toISOString() : "",
+        manufacturingDate: (() => {
+          if (!data.mfgDate) return "";
+          
+          // Get current Indian time (IST - UTC+5:30)
+          const now = new Date();
+          const indianTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); // Add 5.5 hours for IST
+          
+          // Combine the selected manufacturing date with current Indian time
+          const manufacturingDateWithTime = new Date(data.mfgDate);
+          manufacturingDateWithTime.setHours(indianTime.getHours());
+          manufacturingDateWithTime.setMinutes(indianTime.getMinutes());
+          manufacturingDateWithTime.setSeconds(indianTime.getSeconds());
+          manufacturingDateWithTime.setMilliseconds(indianTime.getMilliseconds());
+          
+          return manufacturingDateWithTime.toISOString();
+        })(),
         irNumber: data.irNumber,
         poNumber: data.poNumber,
         projectNumber: data.projectNumber,
