@@ -109,7 +109,7 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials: { userId: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/api/Auth/Login', credentials);
+      const response = await api.post('https://wingsbi-precheck-api.azurewebsites.net/api/Auth/Login', credentials);
       const token = response.data.token;
       
       if (!token) {
