@@ -87,6 +87,32 @@ const NewBarcodeGeneration: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [componentType, setComponentType] = useState<'FIM' | 'SI'>('FIM');
 
+  // Visibility rules based on FIM vs SI (Purchase)
+  const fieldVisibility = useMemo(() => {
+    const isFIM = componentType === 'FIM';
+    return {
+      project: true,            // Project: Y (FIM), Y (SI)
+      partNo: true,             // Part No: Y, Y
+      size: true,               // Size: Y, Y
+      shapes: true,             // Shapes: Y, Y
+      customerIC: isFIM,        // Customer IC: Y (FIM), N (SI)
+      mrir: isFIM,              // MRIR: Y (FIM), N (SI)
+      qty: true,                // Qty: Y, Y
+      srNo: true,               // Sr No: Y, Y
+      material: true,           // Material: Y, Y
+      htLotNo: true,            // HT/Lot No: Y, Y
+      mfgDate: true,            // MFG DT: Y, Y
+      expireDate: true,         // EXPIRE DT: Y, Y
+      tQty: isFIM,              // T Qty: Y (FIM), N (SI)
+      fan: isFIM,               // FAN: Y (FIM), N (SI)
+      gic: isFIM,               // GIC: Y (FIM), N (SI)
+      dtd: true,                // Dtd: Y, Y
+      pc: isFIM,                // P C: Y (FIM), N (SI)
+      irNo: true,               // IR No: Y, Y
+      gfnNo: isFIM,             // GFN No: Y (FIM), N (SI)
+    } as const;
+  }, [componentType]);
+
   // Disposition options for dropdown
   const dispositionOptions = ["Accepted", "Rejected", "Used for QT"];
 
@@ -564,42 +590,44 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="partNo"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Part No"
-                        fullWidth
-                        size="small"
-                        error={!!errors.partNo}
-                        helperText={errors.partNo?.message}
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.project && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="project"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Project"
+                          fullWidth
+                          size="small"
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="wc"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="WC"
-                        fullWidth
-                        size="small"
-                        error={!!errors.wc}
-                        helperText={errors.wc?.message}
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.partNo && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="partNo"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Part No"
+                          fullWidth
+                          size="small"
+                          error={!!errors.partNo}
+                          helperText={errors.partNo?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
               </Grid>
 
-              {/* Row 6: PO Number, Project Number, MRIR Number - Common fields */}
+              {/* Row 6: PO Number, Project Number, MRIR (FIM only) */}
               <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid item xs={12} md={4}>
                   <Controller
@@ -631,25 +659,27 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="mrir"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="MRIR"
-                        fullWidth
-                        size="small"
-                        error={!!errors.mrir}
-                        helperText={errors.mrir?.message}
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.mrir && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="mrir"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="MRIR"
+                          fullWidth
+                          size="small"
+                          error={!!errors.mrir}
+                          helperText={errors.mrir?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
               </Grid>
 
-              {/* Row 7: Size, Shapes, Customer IC */}
+              {/* Row 7: Size, Shapes, Customer IC (FIM only) */}
               <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid item xs={12} md={4}>
                   <Controller
@@ -681,20 +711,22 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="customerIC"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Customer IC"
-                        fullWidth
-                        size="small"
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.customerIC && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="customerIC"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Customer IC"
+                          fullWidth
+                          size="small"
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
               </Grid>
 
               {/* Row 8: Sr No, Material, HT/Lot No */}
@@ -745,56 +777,64 @@ const NewBarcodeGeneration: React.FC = () => {
                 </Grid>
               </Grid>
 
-              {/* Row 9: T Qty, FAN, GIC */}
-              <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="tQty"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="T Qty"
-                        type="number"
-                        fullWidth
-                        size="small"
+              {/* Row 9: T Qty, FAN, GIC (FIM only) */}
+              {(fieldVisibility.tQty || fieldVisibility.fan || fieldVisibility.gic) && (
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  {fieldVisibility.tQty && (
+                    <Grid item xs={12} md={4}>
+                      <Controller
+                        name="tQty"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            label="T Qty"
+                            type="number"
+                            fullWidth
+                            size="small"
+                          />
+                        )}
                       />
-                    )}
-                  />
-                </Grid>
+                    </Grid>
+                  )}
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="fan"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="FAN"
-                        fullWidth
-                        size="small"
+                  {fieldVisibility.fan && (
+                    <Grid item xs={12} md={4}>
+                      <Controller
+                        name="fan"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            label="FAN"
+                            fullWidth
+                            size="small"
+                          />
+                        )}
                       />
-                    )}
-                  />
-                </Grid>
+                    </Grid>
+                  )}
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="gic"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="GIC"
-                        fullWidth
-                        size="small"
+                  {fieldVisibility.gic && (
+                    <Grid item xs={12} md={4}>
+                      <Controller
+                        name="gic"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            label="GIC"
+                            fullWidth
+                            size="small"
+                          />
+                        )}
                       />
-                    )}
-                  />
+                    </Grid>
+                  )}
                 </Grid>
-              </Grid>
+              )}
 
-              {/* Row 10: DTD, PC, IR No */}
+              {/* Row 10: DTD, PC (FIM only), IR No */}
               <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid item xs={12} md={4}>
                   <Controller
@@ -811,17 +851,19 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="pc"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField {...field} label="PC" fullWidth size="small" />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.pc && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="pc"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="PC" fullWidth size="small" />
+                      )}
+                    />
+                  </Grid>
+                )}
 
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={fieldVisibility.pc ? 4 : 8}>
                   <Controller
                     name="irNo"
                     control={control}
@@ -837,22 +879,24 @@ const NewBarcodeGeneration: React.FC = () => {
                 </Grid>
               </Grid>
 
-              {/* Row 11: GFN No, Disposition */}
+              {/* Row 11: GFN No (FIM only), Disposition */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="gfnNo"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="GFN No"
-                        fullWidth
-                        size="small"
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.gfnNo && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="gfnNo"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="GFN No"
+                          fullWidth
+                          size="small"
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
 
                 <Grid item xs={12} md={4}>
                   <Controller
