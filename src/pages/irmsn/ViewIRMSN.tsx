@@ -406,7 +406,13 @@ const ViewIRMSN: React.FC = () => {
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.irNumber}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumberIdName || '-'}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumberRange || '-'}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.createdDate ? new Date(item.createdDate).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.createdDate ? new Date(item.createdDate).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : '-'}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.userName || '-'}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.stage || '-'}</TableCell>
                   </TableRow>
@@ -453,7 +459,13 @@ const ViewIRMSN: React.FC = () => {
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.drawingNumberIdName || '-'}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.idNumberRange || '-'}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.productionOrderNumber || '-'}</TableCell>
-                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.createdDate ? new Date(item.createdDate).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.createdDate ? new Date(item.createdDate).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : '-'}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.userName || '-'}</TableCell>
                     <TableCell align="center" sx={{ py: 0.2, px: 0.8, fontSize: '0.75rem' }}>{item.stage || '-'}</TableCell>
                   </TableRow>

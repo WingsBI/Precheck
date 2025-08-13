@@ -173,8 +173,8 @@ const ViewPrecheck: React.FC = () => {
             componentType: item.componentType || '',
             remarks: item.remarks || '',
             username: item.username || '',
-            modifiedDate: item.modifiedDate ? new Date(item.modifiedDate).toLocaleDateString() : 
-                        item.createdDate ? new Date(item.createdDate).toLocaleDateString() : '',
+            modifiedDate: item.modifiedDate ? formatDate(item.modifiedDate) : 
+                        item.createdDate ? formatDate(item.createdDate) : '',
             isPrecheckComplete: item.isPrecheckComplete || false,
             consumedInDrawing: item.consumedInDrawing || '',
             productionOrderNumber: item.productionOrderNumber || '',
@@ -273,6 +273,23 @@ const ViewPrecheck: React.FC = () => {
         return <Chip icon={<SettingsIcon />} label="SI" size="small" color="warning" variant="outlined" />;
       default:
         return <Chip label={type || 'N/A'} size="small" variant="outlined" />;
+    }
+  };
+
+  // Format date function
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'N/A';
     }
   };
 

@@ -138,9 +138,9 @@ export default function BarcodeGeneration() {
       productionSeries: '',
       componentType: "ID",
       idType: "series",
-      startRange: '' as any,
-      endRange: '' as any,
-      quantity: '' as any,
+      startRange: 0,
+      endRange: 0,
+      quantity: 0,
       randomIds: Array(12).fill(""),
       batchId: '',
       unit: '',
@@ -277,12 +277,25 @@ export default function BarcodeGeneration() {
       expiryDate:
         data.expiryDate?.toISOString() ||
         new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      manufacturingDate: data.manufacturingDate.toISOString(),
+      manufacturingDate: (() => {
+        // Get current Indian time (IST - UTC+5:30)
+        const now = new Date();
+        const indianTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); // Add 5.5 hours for IST
+        
+        // Combine the selected manufacturing date with current Indian time
+        const manufacturingDateWithTime = new Date(data.manufacturingDate);
+        manufacturingDateWithTime.setHours(indianTime.getHours());
+        manufacturingDateWithTime.setMinutes(indianTime.getMinutes());
+        manufacturingDateWithTime.setSeconds(indianTime.getSeconds());
+        manufacturingDateWithTime.setMilliseconds(indianTime.getMilliseconds());
+        
+        return manufacturingDateWithTime.toISOString();
+      })(),
       drawingNumberId: selectedDrawing?.id || 0,
       unitId: units.find((u) => u.unitName === data.unit)?.id || 0,
       mrirNumber: data.mrirNumber,
       remark: data.remark,
-      quantity: data.quantity,
+      quantity: Number(data.quantity),
       ids: [],
       batchIds: batchItems.map((item) => ({
         quantity: item.quantity,
@@ -295,9 +308,11 @@ export default function BarcodeGeneration() {
     switch (data.componentType) {
       case "ID":
         if (data.idType === "series") {
+          const startRange = Number(data.startRange);
+          const quantity = Number(data.quantity);
           basePayload.ids = Array.from(
-            { length: data.quantity },
-            (_, i) => data.startRange + i
+            { length: quantity },
+            (_, i) => startRange + i
           );
         } else {
           basePayload.ids = data.randomIds
@@ -309,7 +324,7 @@ export default function BarcodeGeneration() {
       case "BATCH":
         basePayload.idNumber = data.batchId;
         basePayload.ids = [parseInt(data.batchId, 10) || 0];
-        basePayload.quantity = data.quantity;
+        basePayload.quantity = Number(data.quantity);
         basePayload.batchIds = batchItems.map((item) => ({
           quantity: item.quantity,
           batchQuantity: item.batchQuantity,
@@ -319,7 +334,7 @@ export default function BarcodeGeneration() {
       case "FIM":
       case "SI":
         basePayload.ids = [1];
-        basePayload.quantity = data.quantity;
+        basePayload.quantity = Number(data.quantity);
         basePayload.batchIds = [
           { quantity: 0, batchQuantity: 0, assemblyDrawingId: 0 },
         ];
@@ -352,9 +367,9 @@ export default function BarcodeGeneration() {
       productionSeries: '',
       componentType: 'ID',
       idType: 'series',
-      startRange: '' as any,
-      endRange: '' as any,
-      quantity: '' as any,
+      startRange: 0,
+      endRange: 0,
+      quantity: 0,
       randomIds: Array(12).fill(''),
       batchId: '',
       unit: '',
@@ -374,9 +389,9 @@ export default function BarcodeGeneration() {
     setValue('drawingNumber', '');
     setValue('nomenclature', '');
     setValue('productionSeries', '');
-    setValue('startRange', '' as any);
-    setValue('endRange', '' as any);
-    setValue('quantity', '' as any);
+    setValue('startRange', 0);
+    setValue('endRange', 0);
+    setValue('quantity', 0);
     setValue('manufacturingDate', null as any);
     setValue('expiryDate', undefined);
     setValue('componentType', 'ID');
@@ -446,8 +461,30 @@ export default function BarcodeGeneration() {
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setSuccessMessage("Copied to clipboard!");
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text)
+        .then(() => setSuccessMessage("Copied to clipboard!"))
+        .catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed"; // Prevent scrolling to bottom of page in MS Edge.
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      // @ts-ignore - execCommand is deprecated but still functional
+      document.execCommand("copy");
+      setSuccessMessage("Copied to clipboard!");
+    } catch (err) {
+      setSuccessMessage("Failed to copy!");
+    }
+    document.body.removeChild(textarea);
   };
 
   // Section Header Component

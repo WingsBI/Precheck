@@ -50,6 +50,12 @@ import {
 import { styled } from "@mui/material/styles";
 import type { RootState } from "../store/store";
 import { logout } from "../store/slices/authSlice";
+import { clearGeneratedNumber, clearTables } from "../store/slices/irmsnSlice";
+import { clearError as clearCommonError, clearAllData as clearCommonData } from "../store/slices/commonSlice";
+import { clearError as clearDashboardError } from "../store/slices/dashboardSlice";
+import { clearError as clearPrecheckError, clearPrecheckData } from "../store/slices/precheckSlice";
+import { clearError as clearQrcodeError, clearQRCodeList, clearBarcodeDetails } from "../store/slices/qrcodeSlice";
+import { clearError as clearSopError, clearSopData } from "../store/slices/sopSlice";
 const drawerWidth = 240;
 const drawerCollapsedWidth = 65;
 
@@ -367,6 +373,17 @@ export default function Layout() {
 
   const handleLogout = () => {
     dispatch(logout());
+    dispatch(clearGeneratedNumber());
+    dispatch(clearTables());
+    dispatch(clearCommonData());
+    dispatch(clearDashboardError());
+    dispatch(clearPrecheckError());
+    dispatch(clearPrecheckData());
+    dispatch(clearQrcodeError());
+    dispatch(clearQRCodeList());
+    dispatch(clearBarcodeDetails());
+    dispatch(clearSopError());
+    dispatch(clearSopData());
     navigate("/login");
     handleProfileMenuClose();
   };

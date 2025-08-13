@@ -40,7 +40,6 @@ import {
 } from "@mui/icons-material";
 import {
   viewPrecheckDetails,
-  getAvailableComponents,
   makePrecheck,
   clearPrecheckData,
 } from "../../store/slices/precheckSlice";
@@ -51,24 +50,9 @@ import {
 } from "../../store/slices/commonSlice";
 import type { RootState, AppDispatch } from "../../store/store";
 import debounce from "lodash.debounce";
-import { useLocation, useNavigate } from "react-router-dom";
 
-interface BarcodeDetails {
-  qrCodeStatusId: number;
-  drawingNumberId: number;
-  drawingNumber: string;
-  idNumber: string;
-  quantity: number;
-  irNumber: string;
-  msnNumber: string;
-  irNumberId: number;
-  msnNumberId: number;
-  idNumbers: number;
-  productionSeriesId: number;
-  componentType: string;
-  mrirNumber: string;
-  remark: string;
-}
+
+
 
 interface GridItem {
   sr: number;
@@ -246,13 +230,29 @@ const QuantityDialog: React.FC<QuantityDialogProps> = ({
 
 const MakePrecheck: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { isLoading } = useSelector((state: RootState) => state.precheck);
+
+  // Format date function
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      return "N/A";
+    }
+  };
+
+  // Redux state
   const { productionSeries, drawingNumbers } = useSelector(
     (state: RootState) => state.common
   );
   const { user } = useSelector((state: RootState) => state.auth);
-  const location = useLocation();
-  const navigate = useNavigate();
 
   // Form state
   const [selectedDrawing, setSelectedDrawing] = useState<any>(null);
@@ -329,7 +329,7 @@ const MakePrecheck: React.FC = () => {
 
   const debouncedProdSeriesSearch = useMemo(
     () =>
-      debounce((searchValue: string) => {
+      debounce(() => {
         setProdSeriesLoading(true);
         dispatch(getAllProductionSeries()).finally(() =>
           setProdSeriesLoading(false)
@@ -400,6 +400,23 @@ const MakePrecheck: React.FC = () => {
     validateFields();
   }, [selectedDrawing, selectedProductionSeries, idNumber]);
 
+  // Enable submit button when BOM is loaded (allow partial/complete submissions)
+  useEffect(() => {
+    const hasLoadedBOM = showResults && searchResults.length > 0;
+    setIsSubmitEnabled(hasLoadedBOM);
+    
+    if (hasLoadedBOM) {
+      const updatedItems = searchResults.filter(item => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete);
+      console.log("Submit button state check:", {
+        bomLoaded: hasLoadedBOM,
+        totalItems: searchResults.length,
+        availableToSubmit: updatedItems.length,
+        submittedItems: searchResults.filter(item => item.isSubmitted).length,
+        completedItems: searchResults.filter(item => item.isPrecheckComplete).length
+      });
+    }
+  }, [searchResults, showResults]);
+
   const validateFields = () => {
     // Check if mandatory fields are filled
     const mandatoryFieldsFilled =
@@ -441,8 +458,8 @@ const MakePrecheck: React.FC = () => {
       const response = await dispatch(viewPrecheckDetails(payload)).unwrap();
       await updateGridItems(response);
 
-      setIsSubmitEnabled(true);
       setShowResults(true);
+      // Submit button will be enabled automatically by useEffect when showResults becomes true
     } catch (error) {
       console.error("Error in LoadGridData:", error);
       showAlertMessage(
@@ -478,12 +495,11 @@ const MakePrecheck: React.FC = () => {
   const handleSubmitPrecheck = async () => {
     try {
       setIsLoadingLocal(true);
-      setIsSubmitEnabled(false);
 
       const componentsToSubmit = searchResults
         .filter(
           (item) =>
-            item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete
+            item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete && item.qrCode
         )
         .map((item) => ({
           ConsumedDrawingNo: `${selectedProductionSeries?.productionSeries}/${selectedDrawing?.drawingNumber}/${idNumber}`,
@@ -507,35 +523,77 @@ const MakePrecheck: React.FC = () => {
         }));
 
       if (!componentsToSubmit.length) {
-        showAlertMessage("No new components to submit", "info");
+        showAlertMessage("No scanned components to submit. Please scan QR codes first.", "info");
         return;
       }
 
-      console.log("Submitting components:", componentsToSubmit);
+      console.log(`Submitting ${componentsToSubmit.length} component(s):`, componentsToSubmit);
+      
+      // Validate payload before sending
+      const invalidComponents = componentsToSubmit.filter(comp => 
+        !comp.QrCodeNumber || !comp.DrawingNumberId || !comp.ConsumedInDrawingNumberID
+      );
+      
+      if (invalidComponents.length > 0) {
+        console.error("Invalid components found:", invalidComponents);
+        throw new Error(`${invalidComponents.length} component(s) have missing required data`);
+      }
 
       const response = await dispatch(
         makePrecheck(componentsToSubmit)
       ).unwrap();
-
-      if (response?.length) {
+      
+      console.log("Response make precheck:", response);
+      
+      // Handle different response structures
+      const responseData = Array.isArray(response) ? response : (response?.data || response || []);
+      
+      if (responseData && responseData.length > 0) {
+        // Create a map of submitted QR codes for faster lookup
+        const submittedQRCodes = new Set(
+          componentsToSubmit.map(comp => comp.QrCodeNumber)
+        );
+        
+        console.log("Submitted QR Codes:", Array.from(submittedQRCodes));
+        console.log("Response Data:", responseData);
+        
         // Update grid items as submitted
         const updatedResults = searchResults.map((item) => {
-          if (item.isUpdated && !item.isSubmitted) {
-            const responseItem = response.find(
-              (x: any) => x.DrawingNumberId === item.drawingNumberId
+          // Check if this item was in the submission batch
+          if (item.isUpdated && !item.isSubmitted && submittedQRCodes.has(item.qrCode || "")) {
+            // Find the corresponding response item by QR code or drawing number
+            const responseItem = responseData.find(
+              (x: any) => {
+                // Try matching by QR code first, then by drawing number
+                return (x.QrCodeNumber === item.qrCode) || 
+                       (x.DrawingNumberId === item.drawingNumberId && 
+                        x.IdNumbers === item.idNumber);
+              }
             );
+            
             if (responseItem) {
+              console.log("Matching response item found for QR:", item.qrCode, responseItem);
               return {
                 ...item,
                 isSubmitted: true,
                 isUpdated: false,
                 isPrecheckComplete: true,
-                mrirNumber: responseItem.MrirNumber,
-                quantity: responseItem.Quantity,
-                remarks: responseItem.Remarks,
-                ir: responseItem.IrNumber,
-                msn: responseItem.MsnNumber,
-                modifiedDate: responseItem.ModifiedDate,
+                mrirNumber: responseItem.MrirNumber || item.mrirNumber,
+                quantity: responseItem.Quantity || item.quantity,
+                remarks: responseItem.Remarks || item.remarks,
+                ir: responseItem.IrNumber || item.ir,
+                msn: responseItem.MsnNumber || item.msn,
+                modifiedDate: responseItem.ModifiedDate || new Date().toISOString(),
+              };
+            } else {
+              console.warn("No matching response item found for QR:", item.qrCode);
+              // Still mark as submitted even if no specific response match
+              return {
+                ...item,
+                isSubmitted: true,
+                isUpdated: false,
+                isPrecheckComplete: true,
+                modifiedDate: new Date().toISOString(),
               };
             }
           }
@@ -543,18 +601,60 @@ const MakePrecheck: React.FC = () => {
         });
 
         setSearchResults(updatedResults);
-        showAlertMessage("Precheck submitted successfully!", "success");
+        
+        // Count submitted and remaining items
+        const actualSubmittedCount = updatedResults.filter(item => 
+          submittedQRCodes.has(item.qrCode || "") && item.isSubmitted
+        ).length;
+        const remainingItems = updatedResults.filter(
+          (item) => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete
+        );
+        
+        console.log(`${actualSubmittedCount} item(s) submitted successfully. ${remainingItems.length} remaining items.`);
+        
+        if (actualSubmittedCount === 0) {
+          showAlertMessage(
+            "No components were submitted. Please check the console for errors and try again.",
+            "warning"
+          );
+        } else if (remainingItems.length > 0) {
+          showAlertMessage(
+            `${actualSubmittedCount} component(s) submitted successfully! ${remainingItems.length} component(s) remaining to submit.`,
+            "success"
+          );
+        } else {
+          showAlertMessage(
+            `All ${actualSubmittedCount} component(s) submitted successfully! Precheck completed.`,
+            "success"
+          );
+        }
       } else {
-        showAlertMessage("No data submitted.", "info");
-        setIsSubmitEnabled(true);
+        showAlertMessage("No data submitted or invalid response format.", "warning");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting precheck:", error);
+      
+      // Extract user-friendly error message
+      let errorMessage = "Error submitting precheck";
+      
+      if (error?.payload) {
+        // Redux rejected action with payload
+        errorMessage = error.payload;
+      } else if (error?.response?.data?.message) {
+        // API returned a structured error response
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        // Standard error object
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        // String error
+        errorMessage = error;
+      }
+      
       showAlertMessage(
-        `Error submitting precheck: ${(error as Error).message}`,
+        `Error submitting precheck: ${errorMessage}`,
         "error"
       );
-      setIsSubmitEnabled(true);
     } finally {
       setIsLoadingLocal(false);
     }
@@ -580,7 +680,7 @@ const MakePrecheck: React.FC = () => {
 
     // Reset button states
     setIsMakePrecheckEnabled(false);
-    setIsSubmitEnabled(false);
+    setIsSubmitEnabled(false); // Will be re-enabled when BOM is loaded
 
     // Clear alerts
     setAlertMessage("");
@@ -751,10 +851,28 @@ const MakePrecheck: React.FC = () => {
           );
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing barcode:", error);
+      
+      // Extract user-friendly error message from API response
+      let errorMessage = "Error processing QR code";
+      
+      if (error?.payload) {
+        // Redux rejected action with payload
+        errorMessage = error.payload;
+      } else if (error?.response?.data?.message) {
+        // API returned a structured error response
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        // Standard error object
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        // String error
+        errorMessage = error;
+      }
+      
       showAlertMessage(
-        `Error processing barcode: ${(error as Error).message}`,
+        `Error processing QR Code ${barcode}: ${errorMessage}`,
         "error"
       );
     }
@@ -768,6 +886,9 @@ const MakePrecheck: React.FC = () => {
     const updatedResults = [...searchResults];
     const item = updatedResults[matchingItem.index];
 
+    // Get username from Redux auth state (which comes from JWT token)
+    const currentUsername = user?.username || "Current User";
+
     // Update the item with all fields from QR code details
     item.qrCode = qrCodeDetails.qrCodeNumber;
     item.isPrecheckComplete = false;
@@ -779,8 +900,8 @@ const MakePrecheck: React.FC = () => {
     item.componentType = qrCodeDetails.componentType;
     item.mrirNumber = qrCodeDetails.mrirNumber;
     item.remarks = qrCodeDetails.remark;
-    item.username = qrCodeDetails.users || "Current User";
-    item.modifiedDate = new Date().toISOString().split("T")[0];
+    item.username = currentUsername;
+    item.modifiedDate = new Date().toISOString();
     item.productionOrderNumber = qrCodeDetails.productionOrderNumber || "NA";
     item.projectNumber = qrCodeDetails.projectNumber || "NA";
     item.disposition = qrCodeDetails.desposition || "NA";
@@ -789,8 +910,9 @@ const MakePrecheck: React.FC = () => {
     console.log("Updated Grid Item:", item);
     setSearchResults(updatedResults);
 
-    // Enable submit button
-    setIsSubmitEnabled(true);
+    // Show success message with scan time
+    const scanTime = formatDate(new Date().toISOString());
+    showAlertMessage(`QR Code scanned successfully at ${scanTime}!`, "success");
 
     // Check if all items are processed
     const unprocessedItems = updatedResults.filter(
@@ -881,7 +1003,7 @@ const MakePrecheck: React.FC = () => {
   };
 
   // Pagination handlers
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -1042,7 +1164,7 @@ const MakePrecheck: React.FC = () => {
             loading={prodSeriesLoading}
             onInputChange={(_, value) => {
               if (value.length >= 1) {
-                debouncedProdSeriesSearch(value);
+                debouncedProdSeriesSearch();
               }
             }}
             onChange={(_, value) => {
@@ -1144,7 +1266,7 @@ const MakePrecheck: React.FC = () => {
             }}
             size="small"
             onClick={handleSubmitPrecheck}
-            // disabled={!isSubmitEnabled}
+            disabled={!isSubmitEnabled || isLoadingLocal}
           >
             <SendIcon sx={{ mr: 1 }} />
             Submit
@@ -1413,6 +1535,7 @@ const MakePrecheck: React.FC = () => {
                 >
                   Type
                 </TableCell>
+
                 <TableCell
                   align="center"
                   sx={{
@@ -1513,6 +1636,7 @@ const MakePrecheck: React.FC = () => {
                       >
                         {getComponentTypeChip(item.componentType || "")}
                       </TableCell>
+
                       <TableCell
                         align="center"
                         sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
@@ -1613,7 +1737,7 @@ const MakePrecheck: React.FC = () => {
                                       px: 0.8,
                                     }}
                                   >
-                                    {item.modifiedDate || "-"}
+                                    {formatDate(item.modifiedDate || "")}
                                   </TableCell>
                                   <TableCell
                                     sx={{

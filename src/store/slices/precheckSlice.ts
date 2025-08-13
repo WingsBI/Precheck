@@ -37,10 +37,22 @@ export const makePrecheck = createAsyncThunk(
   'precheck/makePrecheck',
   async (request: any[], { rejectWithValue }) => {
     try {
+      console.log('Making precheck API call with payload:', request);
       const response = await api.post('/api/Precheck/MakePrecheck', request);
+      console.log('Precheck API response:', response);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to make precheck');
+      console.error('Precheck API error:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.message || error.response?.data || 'Bad request - Invalid data';
+        return rejectWithValue(errorMessage);
+      } else if (error.response?.status === 500) {
+        return rejectWithValue('Server error - Please try again later');
+      } else {
+        return rejectWithValue(error.response?.data?.message || 'Failed to make precheck');
+      }
     }
   }
 );
@@ -50,6 +62,7 @@ export const viewPrecheckDetails = createAsyncThunk(
   async (request: any, { rejectWithValue }) => {
     try {
       const response = await api.get('/api/precheck/ViewPrecheck', { params: request });
+      console.log("Response view precheck:", response);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to view precheck details');
@@ -208,11 +221,11 @@ export const getStoreInData = createAsyncThunk(
     try {
       const response = await api.get(`/api/Precheck/GetStoreAvailablComponents/${qrCode}`);
       if (!response.data) {
-        throw new Error("No store-in data found");
+        return rejectWithValue("No store-in data found");
       }
       return response.data;
     } catch (error: any) {
-      throw new Error("Error fetching store-in data: " + (error.message || error));
+      return rejectWithValue("Error fetching store-in data: " + (error.message || error));
     }
   }
 );

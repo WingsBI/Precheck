@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useState } from "react";
+import { useDispatch } from "react-redux";
 import {
   Box,
   Typography,
@@ -16,16 +16,16 @@ import {
   Collapse,
   Chip,
   Alert,
-  CircularProgress
-} from '@mui/material';
+  CircularProgress,
+} from "@mui/material";
 import {
   QrCodeScanner as QrCodeScannerIcon,
   ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
-} from '@mui/icons-material';
-import { getStoreInData } from '../../store/slices/precheckSlice';
-import { updateQrCodeDetails } from '../../store/slices/qrcodeSlice';
-import type { AppDispatch } from '../../store/store';
+  ExpandLess as ExpandLessIcon,
+} from "@mui/icons-material";
+import { getStoreInData } from "../../store/slices/precheckSlice";
+import { updateQrCodeDetails } from "../../store/slices/qrcodeSlice";
+import type { AppDispatch } from "../../store/store";
 
 interface QRCodeDetailsResponse {
   qrCodeNumber: string;
@@ -43,6 +43,7 @@ interface QRCodeDetailsResponse {
   qrCodeStatus: string;
   mrirNumber: string;
   idNumber: string;
+  createdDate?: string;
 }
 
 interface StoreInResponse {
@@ -58,20 +59,42 @@ interface StoreInResponse {
 
 const StoreIn: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const [qrCodeInput, setQrCodeInput] = useState('');
+  const [qrCodeInput, setQrCodeInput] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [alertMessage, setAlertMessage] = useState<{ message: string; type: 'success' | 'error' | 'info' }>({ message: '', type: 'info' });
+  const [alertMessage, setAlertMessage] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  }>({ message: "", type: "info" });
   const [qrCodeList, setQrCodeList] = useState<QRCodeDetailsResponse[]>([]);
   const [storeInList, setStoreInList] = useState<StoreInResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      return "N/A";
+    }
+  };
+
   const handleQRCodeScan = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQrCodeInput(value);
-    
-    if (value?.length === 15 || (value?.length === 12 && value.split('').every(char => /\d/.test(char)))) {
+
+    if (
+      value?.length === 15 ||
+      (value?.length === 12 && value.split("").every((char) => /\d/.test(char)))
+    ) {
       submitQRCode(value);
-      setQrCodeInput(''); // Clear after processing
+      setQrCodeInput(""); // Clear after processing
     }
   };
 
@@ -80,7 +103,10 @@ const StoreIn: React.FC = () => {
       setIsLoading(true);
 
       if (!qrCode?.trim()) {
-        setAlertMessage({ message: 'Please enter a valid QR Code ID.', type: 'error' });
+        setAlertMessage({
+          message: "Please enter a valid QR Code ID.",
+          type: "error",
+        });
         return;
       }
 
@@ -90,9 +116,12 @@ const StoreIn: React.FC = () => {
 
       // Call the UpdateQrCodeDetails API
       const qrCodeResult = await dispatch(updateQrCodeDetails(qrCode)).unwrap();
-      
+
       if (!qrCodeResult) {
-        setAlertMessage({ message: `QR Code ${qrCode} not found.`, type: 'error' });
+        setAlertMessage({
+          message: `QR Code ${qrCode} not found.`,
+          type: "error",
+        });
         return;
       }
 
@@ -112,12 +141,16 @@ const StoreIn: React.FC = () => {
         users: qrCodeResult.users,
         qrCodeStatus: qrCodeResult.qrCodeStatus,
         mrirNumber: qrCodeResult.mrirNumber,
-        idNumber: qrCodeResult.idNumber
+        idNumber: qrCodeResult.idNumber,
+        createdDate: qrCodeResult.createdDate,
       };
       setQrCodeList([gridModel]);
 
-      if (qrCodeResult.qrCodeStatus?.toLowerCase() === 'consumed') {
-        setAlertMessage({ message: `QR Code ${qrCode} has been consumed.`, type: 'info' });
+      if (qrCodeResult.qrCodeStatus?.toLowerCase() === "consumed") {
+        setAlertMessage({
+          message: `QR Code ${qrCode} has been consumed.`,
+          type: "info",
+        });
       }
 
       // Get store-in data
@@ -125,21 +158,25 @@ const StoreIn: React.FC = () => {
 
       if (storeInResult && storeInResult.length > 0) {
         setStoreInList(storeInResult);
-        setAlertMessage({ 
-          message: `QR Code ${qrCode} processed successfully. ${storeInResult.length} store-in record(s) found.`, 
-          type: 'success' 
+        setAlertMessage({
+          message: `QR Code ${qrCode} processed successfully. ${storeInResult.length} store-in record(s) found.`,
+          type: "success",
         });
       } else {
-        setAlertMessage({ message: `No store-in records found for QR Code ${qrCode}.`, type: 'info' });
+        setAlertMessage({
+          message: `No store-in records found for QR Code ${qrCode}.`,
+          type: "info",
+        });
       }
 
-      setQrCodeInput('');
-
+      setQrCodeInput("");
     } catch (error: any) {
-      console.error('Error processing QR Code:', error);
-      setAlertMessage({ 
-        message: `Error processing QR Code ${qrCode}: ${error.message || error}`, 
-        type: 'error' 
+      console.error("Error processing QR Code:", error);
+      setAlertMessage({
+        message: `Error processing QR Code ${qrCode}: ${
+          error.message || error
+        }`,
+        type: "error",
       });
     } finally {
       setIsLoading(false);
@@ -151,24 +188,29 @@ const StoreIn: React.FC = () => {
   };
 
   const reset = () => {
-    setQrCodeInput('');
+    setQrCodeInput("");
     setQrCodeList([]);
     setStoreInList([]);
-    setAlertMessage({ message: '', type: 'info' });
+    setAlertMessage({ message: "", type: "info" });
   };
 
   return (
     <Box sx={{ p: 1 }}>
-      <Typography variant="h4" gutterBottom color="primary.main" fontWeight={600}>
+      <Typography
+        variant="h4"
+        gutterBottom
+        color="primary.main"
+        fontWeight={600}
+      >
         Store In
       </Typography>
 
       {/* Alert Message */}
       {alertMessage.message && (
-        <Alert 
-          severity={alertMessage.type} 
+        <Alert
+          severity={alertMessage.type}
           sx={{ mb: 2 }}
-          onClose={() => setAlertMessage({ message: '', type: 'info' })}
+          onClose={() => setAlertMessage({ message: "", type: "info" })}
         >
           {alertMessage.message}
         </Alert>
@@ -176,14 +218,14 @@ const StoreIn: React.FC = () => {
 
       {/* QR Code Scanning Section */}
       <Paper sx={{ p: 2, mt: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-          <Typography 
-            variant="h6" 
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+          <Typography
+            variant="h6"
             color="primary.main"
-            sx={{ 
+            sx={{
               fontWeight: 600,
-              minWidth: 'fit-content',
-              whiteSpace: 'nowrap'
+              minWidth: "fit-content",
+              whiteSpace: "nowrap",
             }}
           >
             Scanned QR Code Details:
@@ -205,7 +247,7 @@ const StoreIn: React.FC = () => {
                 </InputAdornment>
               ),
             }}
-            sx={{ maxWidth: '400px' }}
+            sx={{ maxWidth: "400px" }}
           />
         </Box>
 
@@ -214,15 +256,19 @@ const StoreIn: React.FC = () => {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ textAlign: 'center'}}>QRCode ID</TableCell>
-                <TableCell sx={{ textAlign: 'center'}}>PO Number</TableCell>
-                <TableCell sx={{ textAlign: 'center'}}>Project Number</TableCell>
-                <TableCell sx={{ textAlign: 'center'}}>Prod Series</TableCell>
-                <TableCell sx={{ textAlign: 'center'}}>Drawing Number</TableCell>
-                <TableCell sx={{ textAlign: 'center'}}>ID</TableCell>
-                <TableCell sx={{ textAlign: 'center'}}>Qty</TableCell>
-                <TableCell sx={{ textAlign: 'center'}}>Nomenclature</TableCell>
-                <TableCell sx={{ textAlign: 'center'}}>Details</TableCell>
+                <TableCell sx={{ textAlign: "center" }}>QRCode ID</TableCell>
+                <TableCell sx={{ textAlign: "center" }}>PO Number</TableCell>
+                <TableCell sx={{ textAlign: "center" }}>
+                  Project Number
+                </TableCell>
+                <TableCell sx={{ textAlign: "center" }}>Prod Series</TableCell>
+                <TableCell sx={{ textAlign: "center" }}>
+                  Drawing Number
+                </TableCell>
+                <TableCell sx={{ textAlign: "center" }}>ID</TableCell>
+                <TableCell sx={{ textAlign: "center" }}>Qty</TableCell>
+                <TableCell sx={{ textAlign: "center" }}>Nomenclature</TableCell>
+                <TableCell sx={{ textAlign: "center" }}>Details</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -230,56 +276,121 @@ const StoreIn: React.FC = () => {
                 qrCodeList.map((details, index) => (
                   <React.Fragment key={index}>
                     <TableRow>
-                      <TableCell sx={{ textAlign: 'left', minWidth: '150px' }}>{details.qrCodeNumber}</TableCell>
-                      <TableCell sx={{ textAlign: 'center'}}>{details.productionOrderNumber}</TableCell>
-                      <TableCell sx={{ textAlign: 'center'}}>{details.projectNumber}</TableCell>
-                      <TableCell sx={{ textAlign: 'center'}}>{details.productionSeries}</TableCell>
-                      <TableCell sx={{ textAlign: 'center'}}>{details.drawingNumber}</TableCell>
-                      <TableCell sx={{ textAlign: 'center'}}>{details.idNumber}</TableCell>
-                      <TableCell sx={{ textAlign: 'center'}}>{details.quantity}</TableCell>
-                      <TableCell sx={{ textAlign: 'center'}}>{details.nomenclature}</TableCell>
+                      <TableCell sx={{ textAlign: "left", minWidth: "150px" }}>
+                        {details.qrCodeNumber}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: "center" }}>
+                        {details.productionOrderNumber}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: "center" }}>
+                        {details.projectNumber}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: "center" }}>
+                        {details.productionSeries}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: "center" }}>
+                        {details.drawingNumber}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: "center" }}>
+                        {details.idNumber}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: "center" }}>
+                        {details.quantity}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: "center" }}>
+                        {details.nomenclature}
+                      </TableCell>
                       <TableCell align="center">
                         <IconButton
                           size="small"
-                          onClick={() => handleExpandClick(details.qrCodeNumber)}
+                          onClick={() =>
+                            handleExpandClick(details.qrCodeNumber)
+                          }
                         >
-                          {expandedRow === details.qrCodeNumber ? 
-                            <ExpandLessIcon /> : <ExpandMoreIcon />}
+                          {expandedRow === details.qrCodeNumber ? (
+                            <ExpandLessIcon />
+                          ) : (
+                            <ExpandMoreIcon />
+                          )}
                         </IconButton>
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
-                        <Collapse in={expandedRow === details.qrCodeNumber} timeout="auto" unmountOnExit>
+                      <TableCell
+                        style={{ paddingBottom: 0, paddingTop: 0 }}
+                        colSpan={9}
+                      >
+                        <Collapse
+                          in={expandedRow === details.qrCodeNumber}
+                          timeout="auto"
+                          unmountOnExit
+                        >
                           <Box sx={{ margin: 1 }}>
                             <Table size="small" aria-label="details">
                               <TableHead>
                                 <TableRow>
                                   <TableCell>Consumed in Drawing</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>Status</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>IR Number</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>MSN Number</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>MRIR Number</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>Disposition</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>Username</TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    Status
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    IR Number
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    MSN Number
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    MRIR Number
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    Disposition
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    Username
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    Created Date
+                                  </TableCell>
                                 </TableRow>
                               </TableHead>
                               <TableBody>
                                 <TableRow>
-                                  <TableCell>{details.consumedInDrawing || '-'}</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>
-                                    <Chip 
-                                      label={details.qrCodeStatus || 'N/A'} 
+                                  <TableCell>
+                                    {details.consumedInDrawing || "-"}
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    <Chip
+                                      label={details.qrCodeStatus || "N/A"}
                                       size="small"
-                                      color={details.qrCodeStatus?.toLowerCase() === 'available' ? 'success' : 'default'}
+                                      color={
+                                        details.qrCodeStatus?.toLowerCase() ===
+                                        "available"
+                                          ? "success"
+                                          : "default"
+                                      }
                                       variant="outlined"
                                     />
                                   </TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>{details.irNumber || '-'}</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>{details.msnNumber || '-'}</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>{details.mrirNumber || '-'}</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>{details.desposition || '-'}</TableCell>
-                                  <TableCell sx={{ textAlign: 'center'}}>{details.users || '-'}</TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    {details.irNumber || "-"}
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    {details.msnNumber || "-"}
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    {details.mrirNumber || "-"}
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    {details.desposition || "-"}
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    {details.users || "-"}
+                                  </TableCell>
+                                  <TableCell sx={{ textAlign: "center" }}>
+                                    {details.createdDate
+                                      ? formatDate(details.createdDate)
+                                      : "-"}
+                                  </TableCell>
                                 </TableRow>
                               </TableBody>
                             </Table>
@@ -291,7 +402,9 @@ const StoreIn: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">No QR code scanned</TableCell>
+                  <TableCell colSpan={9} align="center">
+                    No QR code scanned
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -309,11 +422,15 @@ const StoreIn: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 600 }}>Drawing Number</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Production Series</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>
+                  Production Series
+                </TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>ID Number</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Quantity</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Project Number</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Production Order Number</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>
+                  Production Order Number
+                </TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Created By Name</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Created Date</TableCell>
               </TableRow>
@@ -327,19 +444,23 @@ const StoreIn: React.FC = () => {
                 </TableRow>
               ) : storeInList.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">No store-in records found</TableCell>
+                  <TableCell colSpan={8} align="center">
+                    No store-in records found
+                  </TableCell>
                 </TableRow>
               ) : (
                 storeInList.map((row, index) => (
                   <TableRow key={index}>
-                    <TableCell sx={{ textAlign: 'left', minWidth: '200px' }}>{row.drawingNumber}</TableCell>
+                    <TableCell sx={{ textAlign: "left", minWidth: "200px" }}>
+                      {row.drawingNumber}
+                    </TableCell>
                     <TableCell>{row.productionSeries}</TableCell>
                     <TableCell>{row.idNumber}</TableCell>
                     <TableCell>{row.quantity}</TableCell>
                     <TableCell>{row.projectNumber}</TableCell>
                     <TableCell>{row.productionOrderNumber}</TableCell>
                     <TableCell>{row.createdByName}</TableCell>
-                    <TableCell>{row.createdDate}</TableCell>
+                    <TableCell>{formatDate(row.createdDate)}</TableCell>
                   </TableRow>
                 ))
               )}
