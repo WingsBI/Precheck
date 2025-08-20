@@ -46,6 +46,42 @@ interface QRCodePayload {
   batchIds: BatchInfo[];
 }
 
+// New Standard Field QR Code Payload Interface
+export interface StandardFieldQRCodePayload {
+  productionSeriesId: number;
+  componentTypeId: number;
+  nomenclatureId: number;
+  lnItemCodeId: number;
+  rackLocationId: number;
+  drawingNumberId: number;
+  unitId: number;
+  quantity: number;
+  desposition: string;
+  expiryDate: string;
+  manufacturingDate: string;
+  irNumber: string;
+  poNumber: string;
+  projectNumber: string;
+  mrirNumber: string;
+  partNo: string;
+  size: string;
+  shapes: string;
+  customerIC: string;
+  material: string;
+  htLotNo: string;
+  fan: string;
+  gic: string;
+  dtd: string;
+  pc: string;
+  irNo: string;
+  gfnNo: string;
+  srNo: string;
+  tQty: string;
+  wc: string;
+  project: string;
+  toggleComponentTypeId: number;
+}
+
 interface BatchInfo {
   quantity: number;
   batchQuantity: number;

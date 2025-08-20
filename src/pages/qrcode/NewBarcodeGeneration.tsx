@@ -39,12 +39,14 @@ import {
   ContentCopy as CopyIcon,
   GetApp as GetAppIcon,
 } from "@mui/icons-material";
+import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useForm, Controller } from "react-hook-form";
 import type { RootState, AppDispatch } from "../../store/store";
 import type { DrawingNumber, NewQRCodeFormData } from "../../types";
+
 import {
   generateStandardFieldQRCode,
   fetchIRNumbers,
@@ -52,6 +54,7 @@ import {
   clearGeneratedNumber,
   exportQRCode,
   exportBulkQRCodes,
+  type StandardFieldQRCodePayload,
 } from "../../store/slices/qrcodeSlice";
 import {
   getDrawingNumbers,
@@ -84,6 +87,35 @@ const NewBarcodeGeneration: React.FC = () => {
   const [selectedBarcodes, setSelectedBarcodes] = useState<number[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [componentType, setComponentType] = useState<'FIM' | 'SI'>('FIM');
+
+  // Visibility rules based on FIM vs SI (Purchase)
+  const fieldVisibility = useMemo(() => {
+    const isFIM = componentType === 'FIM';
+    return {
+      project: true,            // Project: Y (FIM), Y (SI)
+      partNo: true,             // Part No: Y, Y
+      size: true,               // Size: Y, Y
+      shapes: true,             // Shapes: Y, Y
+      customerIC: isFIM,        // Customer IC: Y (FIM), N (SI)
+      mrir: isFIM,              // MRIR: Y (FIM), N (SI)
+      qty: true,                // Qty: Y, Y
+      srNo: true,               // Sr No: Y, Y
+      material: true,           // Material: Y, Y
+      htLotNo: true,            // HT/Lot No: Y, Y
+      mfgDate: true,            // MFG DT: Y, Y
+      expireDate: true,         // EXPIRE DT: Y, Y
+      tQty: isFIM,              // T Qty: Y (FIM), N (SI)
+      fan: isFIM,               // FAN: Y (FIM), N (SI)
+      gic: isFIM,               // GIC: Y (FIM), N (SI)
+      dtd: true,                // Dtd: Y, Y
+      pc: isFIM,                // P C: Y (FIM), N (SI)
+      irNo: true,               // IR No: Y, Y
+      gfnNo: isFIM,             // GFN No: Y (FIM), N (SI)
+    } as const;
+  }, [componentType]);
+
+  
 
   // Disposition options for dropdown
   const dispositionOptions = ["Accepted", "Rejected", "Used for QT"];
@@ -123,7 +155,7 @@ const NewBarcodeGeneration: React.FC = () => {
       htLotNo: "",
       mfgDate: new Date(),
       expireDate: new Date(),
-      tQty: 0,
+      tQty: 1,
       fan: "",
       gic: "",
       dtd: "",
@@ -135,6 +167,19 @@ const NewBarcodeGeneration: React.FC = () => {
       desposition: "Accepted",
     },
   });
+
+  // Clear FIM-only fields when switching to SI
+  useEffect(() => {
+    if (componentType === 'SI') {
+      setValue('customerIC', '');
+      setValue('mrir', '');
+      setValue('tQty', 0);
+      setValue('fan', '');
+      setValue('gic', '');
+      setValue('pc', '');
+      setValue('gfnNo', '');
+    }
+  }, [componentType, setValue]);
 
   // Load initial data
   useEffect(() => {
@@ -188,12 +233,34 @@ const NewBarcodeGeneration: React.FC = () => {
   // Form submission
   const onSubmit = async (data: NewQRCodeFormData) => {
     try {
+      // Validate mandatory fields
+      if (!selectedDrawing) {
+        setErrorMessage("Please select a drawing number");
+        return;
+      }
+
+      if (!data.productionSeries) {
+        setErrorMessage("Please select a production series");
+        return;
+      }
+
+      if (!data.unit) {
+        setErrorMessage("Please select a unit");
+        return;
+      }
+
+      if (!data.qty || data.qty <= 0) {
+        setErrorMessage("Please enter a valid quantity");
+        return;
+      }
+
+      const isFIM = componentType === 'FIM';
       const payload = {
         productionSeriesId:
           productionSeries.find(
             (ps) => ps.productionSeries === data.productionSeries
           )?.id || 0,
-        componentTypeId: selectedDrawing?.componentTypeId || 0,
+        componentTypeId: selectedDrawing?.componentTypeId || 1,
         nomenclatureId: selectedDrawing?.nomenclatureId || 0,
         lnItemCodeId: selectedDrawing?.lnItemCodeId || 0,
         rackLocationId: selectedDrawing?.rackLocationId || 0,
@@ -221,23 +288,24 @@ const NewBarcodeGeneration: React.FC = () => {
         irNumber: data.irNumber,
         poNumber: data.poNumber,
         projectNumber: data.projectNumber,
-        mrirNumber: data.mrir,
+        mrirNumber: isFIM ? data.mrir : "",
         partNo: data.partNo,
         size: data.size,
         shapes: data.shapes,
-        customerIC: data.customerIC,
+        customerIC: isFIM ? data.customerIC : "",
         material: data.material,
         htLotNo: data.htLotNo,
-        fan: data.fan,
-        gic: data.gic,
+        fan: isFIM ? data.fan : "",
+        gic: isFIM ? data.gic : "",
         dtd: data.dtd,
-        pc: data.pc,
+        pc: isFIM ? data.pc : "",
         irNo: data.irNo,
-        gfnNo: data.gfnNo,
+        gfnNo: isFIM ? data.gfnNo : "",
         srNo: data.srNo,
-        tQty: data.tQty,
+        tQty: isFIM ? String(data.tQty ?? '') : '',
         wc: data.wc,
-        project: data.project,
+        project: data.project, // Add the selected component type
+        toggleComponentTypeId: componentType === 'FIM' ? 1 : 4,
       };
 
       await dispatch(generateStandardFieldQRCode(payload)).unwrap();
@@ -270,13 +338,32 @@ const NewBarcodeGeneration: React.FC = () => {
       <Box sx={{ p: 3 }}>
         <Card elevation={2}>
           <CardContent>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ color: "primary.main", mb: 3 }}
-            >
-              Generate Standard QR Code
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ color: "primary.main" }}
+              >
+                Generate Standard QR Code
+              </Typography>
+              <ToggleButtonGroup
+                value={componentType}
+                exclusive
+                onChange={(_, newValue) => {
+                  if (newValue !== null) {
+                    setComponentType(newValue);
+                  }
+                }}
+                size="small"
+              >
+                <ToggleButton value="FIM" sx={{ minWidth: 100 }}>
+                  FIM
+                </ToggleButton>
+                <ToggleButton value="SI" sx={{ minWidth: 100 }}>
+                  SI
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
 
             {successMessage && (
               <Alert severity="success" sx={{ mb: 2 }}>
@@ -297,7 +384,6 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="drawingNumber"
                     control={control}
-                    rules={{ required: "Drawing Number is required" }}
                     render={({ field: { onChange, ...field } }) => (
                       <Autocomplete
                         {...field}
@@ -405,7 +491,6 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="productionSeries"
                     control={control}
-                    rules={{ required: "Production Series is required" }}
                     render={({ field }) => (
                       <FormControl
                         fullWidth
@@ -413,7 +498,7 @@ const NewBarcodeGeneration: React.FC = () => {
                         size="small"
                       >
                         <InputLabel>Prod Series *</InputLabel>
-                        <Select {...field} label="Prod Series *">
+                        <Select {...field} label="Prod Series">
                           {productionSeries.map((series) => (
                             <MenuItem
                               key={series.id}
@@ -462,7 +547,6 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="qty"
                     control={control}
-                    rules={{ required: "Quantity is required" }}
                     render={({ field }) => (
                       <TextField
                         {...field}
@@ -481,11 +565,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="unit"
                     control={control}
-                    rules={{ required: "Unit is required" }}
                     render={({ field }) => (
                       <FormControl fullWidth error={!!errors.unit} size="small">
                         <InputLabel>Unit *</InputLabel>
-                        <Select {...field} label="Unit *">
+                        <Select {...field} label="Unit">
                           {units.map((unit) => (
                             <MenuItem key={unit.id} value={unit.unitName}>
                               {unit.unitName}
@@ -504,11 +587,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="mfgDate"
                     control={control}
-                    rules={{ required: "Manufacturing Date is required" }}
                     render={({ field }) => (
                       <DatePicker
                         {...field}
-                        label="MFG Date *"
+                        label="MFG Date"
                         maxDate={new Date()}
                         slotProps={{
                           textField: {
@@ -530,11 +612,10 @@ const NewBarcodeGeneration: React.FC = () => {
                   <Controller
                     name="expireDate"
                     control={control}
-                    rules={{ required: "Expiry Date is required" }}
                     render={({ field }) => (
                       <DatePicker
                         {...field}
-                        label="Expire Date *"
+                        label="Expire Date"
                         slotProps={{
                           textField: {
                             size: "small",
@@ -548,44 +629,44 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="partNo"
-                    control={control}
-                    rules={{ required: "Part No is required" }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Part No *"
-                        fullWidth
-                        size="small"
-                        error={!!errors.partNo}
-                        helperText={errors.partNo?.message}
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.project && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="project"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Project"
+                          fullWidth
+                          size="small"
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="wc"
-                    control={control}
-                    rules={{ required: "WC is required" }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="WC *"
-                        fullWidth
-                        size="small"
-                        error={!!errors.wc}
-                        helperText={errors.wc?.message}
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.partNo && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="partNo"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Part No"
+                          fullWidth
+                          size="small"
+                          error={!!errors.partNo}
+                          helperText={errors.partNo?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
               </Grid>
 
-              {/* Row 6: PO Number, Project Number, MRIR Number - Common fields */}
+              {/* Row 6: PO Number, Project Number, MRIR (FIM only) */}
               <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid item xs={12} md={4}>
                   <Controller
@@ -617,26 +698,27 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="mrir"
-                    control={control}
-                    rules={{ required: "MRIR is required" }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="MRIR *"
-                        fullWidth
-                        size="small"
-                        error={!!errors.mrir}
-                        helperText={errors.mrir?.message}
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.mrir && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="mrir"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="MRIR"
+                          fullWidth
+                          size="small"
+                          error={!!errors.mrir}
+                          helperText={errors.mrir?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
               </Grid>
 
-              {/* Row 7: Size, Shapes, Customer IC */}
+              {/* Row 7: Size, Shapes, Customer IC (FIM only) */}
               <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid item xs={12} md={4}>
                   <Controller
@@ -668,20 +750,22 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="customerIC"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Customer IC"
-                        fullWidth
-                        size="small"
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.customerIC && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="customerIC"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Customer IC"
+                          fullWidth
+                          size="small"
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
               </Grid>
 
               {/* Row 8: Sr No, Material, HT/Lot No */}
@@ -732,56 +816,64 @@ const NewBarcodeGeneration: React.FC = () => {
                 </Grid>
               </Grid>
 
-              {/* Row 9: T Qty, FAN, GIC */}
-              <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="tQty"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="T Qty"
-                        type="number"
-                        fullWidth
-                        size="small"
+              {/* Row 9: T Qty, FAN, GIC (FIM only) */}
+              {(fieldVisibility.tQty || fieldVisibility.fan || fieldVisibility.gic) && (
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  {fieldVisibility.tQty && (
+                    <Grid item xs={12} md={4}>
+                      <Controller
+                        name="tQty"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            label="T Qty"
+                            type="number"
+                            fullWidth
+                            size="small"
+                          />
+                        )}
                       />
-                    )}
-                  />
-                </Grid>
+                    </Grid>
+                  )}
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="fan"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="FAN"
-                        fullWidth
-                        size="small"
+                  {fieldVisibility.fan && (
+                    <Grid item xs={12} md={4}>
+                      <Controller
+                        name="fan"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            label="FAN"
+                            fullWidth
+                            size="small"
+                          />
+                        )}
                       />
-                    )}
-                  />
-                </Grid>
+                    </Grid>
+                  )}
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="gic"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="GIC"
-                        fullWidth
-                        size="small"
+                  {fieldVisibility.gic && (
+                    <Grid item xs={12} md={4}>
+                      <Controller
+                        name="gic"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            label="GIC"
+                            fullWidth
+                            size="small"
+                          />
+                        )}
                       />
-                    )}
-                  />
+                    </Grid>
+                  )}
                 </Grid>
-              </Grid>
+              )}
 
-              {/* Row 10: DTD, PC, IR No */}
+              {/* Row 10: DTD, PC (FIM only), IR No */}
               <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid item xs={12} md={4}>
                   <Controller
@@ -798,17 +890,19 @@ const NewBarcodeGeneration: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="pc"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField {...field} label="PC" fullWidth size="small" />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.pc && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="pc"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="PC" fullWidth size="small" />
+                      )}
+                    />
+                  </Grid>
+                )}
 
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={fieldVisibility.pc ? 4 : 8}>
                   <Controller
                     name="irNo"
                     control={control}
@@ -824,36 +918,37 @@ const NewBarcodeGeneration: React.FC = () => {
                 </Grid>
               </Grid>
 
-              {/* Row 11: GFN No, Disposition */}
+              {/* Row 11: GFN No (FIM only), Disposition */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="gfnNo"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="GFN No"
-                        fullWidth
-                        size="small"
-                      />
-                    )}
-                  />
-                </Grid>
+                {fieldVisibility.gfnNo && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="gfnNo"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="GFN No"
+                          fullWidth
+                          size="small"
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
 
                 <Grid item xs={12} md={4}>
                   <Controller
                     name="desposition"
                     control={control}
-                    rules={{ required: "Disposition is required" }}
                     render={({ field }) => (
                       <FormControl
                         fullWidth
                         error={!!errors.desposition}
                         size="small"
                       >
-                        <InputLabel>Disposition *</InputLabel>
-                        <Select {...field} label="Disposition *">
+                        <InputLabel>Disposition</InputLabel>
+                        <Select {...field} label="Disposition">
                           {dispositionOptions.map((option) => (
                             <MenuItem key={option} value={option}>
                               {option}

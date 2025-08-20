@@ -1,25 +1,51 @@
 import { Provider } from 'react-redux';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { theme } from './theme/theme';
 import { store } from './store/store';
-import { initializeAuth } from './store/slices/authSlice';
+// Removed initializeAuth to prevent auto-login from cookies/localStorage
 import AppRoutes from './routes';
+import { cookieUtils } from './utils/cookieUtils';
+import { decodeJwt } from './utils/jwtUtils';
+import { setAuthFromStorage } from './store/slices/authSlice';
 import type { AppDispatch } from './store/store';
 
-// Auth initialization component
+// Rehydrate auth from session cookie on first load (not persistent across browser restarts)
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const [bootstrapped, setBootstrapped] = useState(false);
 
   useEffect(() => {
-    // Initialize authentication on app startup
-    dispatch(initializeAuth());
+    try {
+      const token = cookieUtils.getToken();
+      if (token) {
+        const decoded: any = decodeJwt(token);
+        const now = Date.now() / 1000;
+        if (decoded?.exp && decoded.exp > now) {
+          dispatch(setAuthFromStorage({
+            token,
+            id: decoded.id,
+            userid: decoded.userid,
+            username: decoded.username,
+            roleid: decoded.roleid,
+            role: decoded.role,
+            plantid: decoded.plantid,
+            email: decoded.email,
+            deptid: decoded.deptid,
+            department: decoded.department,
+          }));
+        }
+      }
+    } finally {
+      setBootstrapped(true);
+    }
   }, [dispatch]);
 
+  if (!bootstrapped) return null;
   return <>{children}</>;
 };
 
