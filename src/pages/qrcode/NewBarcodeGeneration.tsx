@@ -46,6 +46,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useForm, Controller } from "react-hook-form";
 import type { RootState, AppDispatch } from "../../store/store";
 import type { DrawingNumber, NewQRCodeFormData } from "../../types";
+
 import {
   generateStandardFieldQRCode,
   fetchIRNumbers,
@@ -53,6 +54,7 @@ import {
   clearGeneratedNumber,
   exportQRCode,
   exportBulkQRCodes,
+  type StandardFieldQRCodePayload,
 } from "../../store/slices/qrcodeSlice";
 import {
   getDrawingNumbers,
@@ -113,6 +115,8 @@ const NewBarcodeGeneration: React.FC = () => {
     } as const;
   }, [componentType]);
 
+  
+
   // Disposition options for dropdown
   const dispositionOptions = ["Accepted", "Rejected", "Used for QT"];
 
@@ -151,7 +155,7 @@ const NewBarcodeGeneration: React.FC = () => {
       htLotNo: "",
       mfgDate: new Date(),
       expireDate: new Date(),
-      tQty: 0,
+      tQty: 1,
       fan: "",
       gic: "",
       dtd: "",
@@ -163,6 +167,19 @@ const NewBarcodeGeneration: React.FC = () => {
       desposition: "Accepted",
     },
   });
+
+  // Clear FIM-only fields when switching to SI
+  useEffect(() => {
+    if (componentType === 'SI') {
+      setValue('customerIC', '');
+      setValue('mrir', '');
+      setValue('tQty', 0);
+      setValue('fan', '');
+      setValue('gic', '');
+      setValue('pc', '');
+      setValue('gfnNo', '');
+    }
+  }, [componentType, setValue]);
 
   // Load initial data
   useEffect(() => {
@@ -216,12 +233,34 @@ const NewBarcodeGeneration: React.FC = () => {
   // Form submission
   const onSubmit = async (data: NewQRCodeFormData) => {
     try {
+      // Validate mandatory fields
+      if (!selectedDrawing) {
+        setErrorMessage("Please select a drawing number");
+        return;
+      }
+
+      if (!data.productionSeries) {
+        setErrorMessage("Please select a production series");
+        return;
+      }
+
+      if (!data.unit) {
+        setErrorMessage("Please select a unit");
+        return;
+      }
+
+      if (!data.qty || data.qty <= 0) {
+        setErrorMessage("Please enter a valid quantity");
+        return;
+      }
+
+      const isFIM = componentType === 'FIM';
       const payload = {
         productionSeriesId:
           productionSeries.find(
             (ps) => ps.productionSeries === data.productionSeries
           )?.id || 0,
-        componentTypeId: selectedDrawing?.componentTypeId || 0,
+        componentTypeId: selectedDrawing?.componentTypeId || 1,
         nomenclatureId: selectedDrawing?.nomenclatureId || 0,
         lnItemCodeId: selectedDrawing?.lnItemCodeId || 0,
         rackLocationId: selectedDrawing?.rackLocationId || 0,
@@ -249,24 +288,23 @@ const NewBarcodeGeneration: React.FC = () => {
         irNumber: data.irNumber,
         poNumber: data.poNumber,
         projectNumber: data.projectNumber,
-        mrirNumber: data.mrir,
+        mrirNumber: isFIM ? data.mrir : "",
         partNo: data.partNo,
         size: data.size,
         shapes: data.shapes,
-        customerIC: data.customerIC,
+        customerIC: isFIM ? data.customerIC : "",
         material: data.material,
         htLotNo: data.htLotNo,
-        fan: data.fan,
-        gic: data.gic,
+        fan: isFIM ? data.fan : "",
+        gic: isFIM ? data.gic : "",
         dtd: data.dtd,
-        pc: data.pc,
+        pc: isFIM ? data.pc : "",
         irNo: data.irNo,
-        gfnNo: data.gfnNo,
+        gfnNo: isFIM ? data.gfnNo : "",
         srNo: data.srNo,
-        tQty: data.tQty,
+        tQty: isFIM ? String(data.tQty ?? '') : '',
         wc: data.wc,
-        project: data.project,
-        componentType: componentType, // Add the selected component type
+        project: data.project, // Add the selected component type
         toggleComponentTypeId: componentType === 'FIM' ? 1 : 4,
       };
 
@@ -394,7 +432,7 @@ const NewBarcodeGeneration: React.FC = () => {
                         renderInput={(params) => (
                           <TextField
                             {...params}
-                            label="Drawing Number"
+                            label="Drawing Number *"
                             error={!!errors.drawingNumber}
                             helperText={errors.drawingNumber?.message}
                             InputProps={{
@@ -459,7 +497,7 @@ const NewBarcodeGeneration: React.FC = () => {
                         error={!!errors.productionSeries}
                         size="small"
                       >
-                        <InputLabel>Prod Series</InputLabel>
+                        <InputLabel>Prod Series *</InputLabel>
                         <Select {...field} label="Prod Series">
                           {productionSeries.map((series) => (
                             <MenuItem
@@ -512,7 +550,7 @@ const NewBarcodeGeneration: React.FC = () => {
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        label="Quantity"
+                        label="Quantity *"
                         type="number"
                         fullWidth
                         size="small"
@@ -529,7 +567,7 @@ const NewBarcodeGeneration: React.FC = () => {
                     control={control}
                     render={({ field }) => (
                       <FormControl fullWidth error={!!errors.unit} size="small">
-                        <InputLabel>Unit</InputLabel>
+                        <InputLabel>Unit *</InputLabel>
                         <Select {...field} label="Unit">
                           {units.map((unit) => (
                             <MenuItem key={unit.id} value={unit.unitName}>
