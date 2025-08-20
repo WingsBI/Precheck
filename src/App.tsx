@@ -7,19 +7,12 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { theme } from './theme/theme';
 import { store } from './store/store';
-import { initializeAuth } from './store/slices/authSlice';
+// Removed initializeAuth to prevent auto-login from cookies/localStorage
 import AppRoutes from './routes';
 import type { AppDispatch } from './store/store';
 
-// Auth initialization component
+// AuthProvider kept for future use if needed, but does not auto-initialize auth
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const dispatch = useDispatch<AppDispatch>();
-
-  useEffect(() => {
-    // Initialize authentication on app startup
-    dispatch(initializeAuth());
-  }, [dispatch]);
-
   return <>{children}</>;
 };
 

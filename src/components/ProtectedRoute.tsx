@@ -22,11 +22,11 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, isLoading, isInitialized } = useSelector((state: RootState) => state.auth);
+  const { user, isLoading } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
 
-  // Show loading spinner while authentication is being initialized or loading
-  if (isLoading || !isInitialized) {
+  // Show loading spinner while authentication is loading
+  if (isLoading) {
     return (
       <Box
         sx={{
@@ -42,7 +42,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // If initialized and no user, redirect to login
+  // If no user, redirect to login
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

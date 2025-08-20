@@ -3,6 +3,7 @@ import axios from 'axios';
 import { store } from '../store/store';
 import { logout } from '../store/slices/authSlice';
 import { isTokenExpired } from '../utils/jwtUtils';
+import { cookieUtils } from '../utils/cookieUtils';
 
 // Debug environment variables
 console.log('Environment variables:', {
@@ -26,8 +27,8 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    const state = store.getState();
-    const token = state.auth.user?.token;
+    // Get token from cookies instead of Redux state
+    const token = cookieUtils.getToken();
 
     if (token) {
       // Check if token is expired before making the request
@@ -36,7 +37,12 @@ api.interceptors.request.use(
         window.location.href = '/login';
         return Promise.reject(new Error('Token expired'));
       }
-      
+      // Attach Authorization header only if app state has user logged-in
+      const state = store.getState();
+      if (!state.auth.user) {
+        return config;
+      }
+
       config.headers.Authorization = `Bearer ${token}`;
     }
 

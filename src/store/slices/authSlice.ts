@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 import { decodeJwt } from '../../utils/jwtUtils';
+import { cookieUtils } from '../../utils/cookieUtils';
 
 interface AuthState {
   user: {
@@ -20,40 +21,8 @@ interface AuthState {
   isInitialized: boolean;
 }
 
-// Helper function to get initial auth state from localStorage
-const getInitialAuthState = () => {
-  try {
-    const token = localStorage.getItem('token');
-    if (token) {
-      const decodedToken = decodeJwt(token);
-      if (decodedToken) {
-        // Check if token is not expired
-        const currentTime = Date.now() / 1000;
-        if (decodedToken.exp && decodedToken.exp > currentTime) {
-          return {
-            token,
-            id: decodedToken.id,
-            userid: decodedToken.userid,
-            username: decodedToken.username,
-            roleid: decodedToken.roleid,
-            role: decodedToken.role,
-            plantid: decodedToken.plantid,
-            email: decodedToken.email,
-            deptid: decodedToken.deptid,
-            department: decodedToken.department,
-          };
-        } else {
-          // Token expired, remove it
-          localStorage.removeItem('token');
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error initializing auth state:', error);
-    localStorage.removeItem('token');
-  }
-  return null;
-};
+// Do not auto-restore auth from cookies on startup
+const getInitialAuthState = () => null;
 
 const initialState: AuthState = {
   user: getInitialAuthState(),
@@ -62,48 +31,7 @@ const initialState: AuthState = {
   isInitialized: true,
 };
 
-// Initialize authentication from localStorage
-export const initializeAuth = createAsyncThunk(
-  'auth/initialize',
-  async (_, { rejectWithValue }) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        return null;
-      }
-
-      const decodedToken = decodeJwt(token);
-      if (!decodedToken) {
-        localStorage.removeItem('token');
-        return null;
-      }
-
-      // Check if token is expired
-      const currentTime = Date.now() / 1000;
-      if (decodedToken.exp && decodedToken.exp <= currentTime) {
-        localStorage.removeItem('token');
-        return null;
-      }
-
-      // Token is valid, return user data
-      return {
-        token,
-        id: decodedToken.id,
-        userid: decodedToken.userid,
-        username: decodedToken.username,
-        roleid: decodedToken.roleid,
-        role: decodedToken.role,
-        plantid: decodedToken.plantid,
-        email: decodedToken.email,
-        deptid: decodedToken.deptid,
-        department: decodedToken.department,
-      };
-    } catch (error) {
-      localStorage.removeItem('token');
-      return rejectWithValue('Failed to initialize authentication');
-    }
-  }
-);
+// Remove initializeAuth to prevent automatic login restoration
 
 export const login = createAsyncThunk(
   'auth/login',
@@ -224,7 +152,7 @@ const authSlice = createSlice({
       state.user = null;
       state.error = null;
       state.isInitialized = true;
-      localStorage.removeItem('token');
+      cookieUtils.clearAuth();
     },
     clearError: (state) => {
       state.error = null;
@@ -236,23 +164,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Initialize Auth
-      .addCase(initializeAuth.pending, (state) => {
-        state.isLoading = true;
-        state.isInitialized = false;
-      })
-      .addCase(initializeAuth.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.user = action.payload;
-        state.isInitialized = true;
-        state.error = null;
-      })
-      .addCase(initializeAuth.rejected, (state) => {
-        state.isLoading = false;
-        state.user = null;
-        state.isInitialized = true;
-        state.error = null;
-      })
       // Login
       .addCase(login.pending, (state) => {
         state.isLoading = true;
@@ -263,7 +174,7 @@ const authSlice = createSlice({
         state.user = action.payload;
         state.error = null;
         state.isInitialized = true;
-        localStorage.setItem('token', action.payload.token);
+        cookieUtils.setToken(action.payload.token);
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;

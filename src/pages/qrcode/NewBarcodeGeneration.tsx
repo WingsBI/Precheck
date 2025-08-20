@@ -267,6 +267,7 @@ const NewBarcodeGeneration: React.FC = () => {
         wc: data.wc,
         project: data.project,
         componentType: componentType, // Add the selected component type
+        toggleComponentTypeId: componentType === 'FIM' ? 1 : 4,
       };
 
       await dispatch(generateStandardFieldQRCode(payload)).unwrap();
