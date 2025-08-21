@@ -229,7 +229,6 @@ const NewBarcodeGeneration: React.FC = () => {
     navigator.clipboard.writeText(text);
   };
 
-  console.log("listqrcode", qrcodeList);
   // Form submission
   const onSubmit = async (data: NewQRCodeFormData) => {
     try {
