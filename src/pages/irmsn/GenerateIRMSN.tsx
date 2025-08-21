@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import type { TypedUseSelectorHook } from "react-redux";
 import {
   Box,
   Typography,
@@ -16,8 +15,6 @@ import {
   Autocomplete,
   IconButton,
   Tooltip,
-  useTheme,
-  useMediaQuery,
   Stack,
   FormHelperText,
   CircularProgress,
@@ -39,29 +36,25 @@ import debounce from "lodash/debounce";
 import api from "../../services/api";
 import { generateIRMSN, clearGeneratedNumber } from "../../store/slices/irmsnSlice";
 
-// Create typed versions of the hooks
-const useAppDispatch: () => AppDispatch = useDispatch;
-const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
-// Extend the base FormData interface with additional fields
-interface FormData extends BaseFormData {
+// Local form type allowing empty documentType during initial load
+type LocalFormData = Omit<BaseFormData, 'documentType'> & {
+  documentType: '' | 'IR' | 'MSN';
   ProdSeriesId?: number;
   DrawingNumberId?: number;
   ComponentTypeId?: number;
   NomenclatureId?: number;
   GeneratedBy?: string;
-}
+};
 
 export default function GenerateIRMSN() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const dispatch = useAppDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [localLoading, setLocalLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>("N/A");
 
   // Update selectors
-  const { loading: isLoading, generatedNumber, error } = useSelector((state: RootState) => state.irmsn);
+  const { loading: isLoading, generatedNumber } = useSelector((state: RootState) => state.irmsn);
   const documentTypes = useSelector((state: RootState) => state.common.documentTypes);
   const productionSeries = useSelector((state: RootState) => state.common.productionSeries);
   const currentAuthUser = useSelector((state: RootState) => state.auth.user);
@@ -72,13 +65,24 @@ export default function GenerateIRMSN() {
   );
   const [searchResults, setSearchResults] = useState<DrawingNumber[]>([]);
   const [stages, setStages] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [, setSearchTerm] = useState("");
 
   // Load initial data and set current user
   useEffect(() => {
     dispatch(getAllDocumentTypes());
     dispatch(getAllProductionSeries());
   }, [dispatch]);
+
+  // Once document types load, set a safe default value for documentType
+  useEffect(() => {
+    if (documentTypes && documentTypes.length > 0) {
+      const current = watch("documentType");
+      if (!current) {
+        const preferred = documentTypes.find((t) => t.documentType === "IR")?.documentType || documentTypes[0].documentType;
+        setValue("documentType", preferred);
+      }
+    }
+  }, [documentTypes]);
 
   // Update current user when auth state changes
   useEffect(() => {
@@ -141,10 +145,19 @@ export default function GenerateIRMSN() {
     setValue,
     reset,
     formState: { errors },
-  } = useForm<FormData>({
+  } = useForm<LocalFormData>({
     defaultValues: {
-      documentType: "IR",
+      documentType: "",
       quantity: 1,
+      stage: "", // Add default value for stage to prevent undefined error
+      drawingNumber: "",
+      productionSeries: "",
+      nomenclature: "",
+      idRange: "",
+      projectNumber: "",
+      poNumber: "",
+      supplier: "",
+      remark: "",
     },
   });
 
@@ -183,7 +196,7 @@ export default function GenerateIRMSN() {
     }
   };
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: LocalFormData) => {
     try {
       // Add user context like C# controller does automatically
       const userEnhancedData = {
@@ -466,7 +479,10 @@ export default function GenerateIRMSN() {
                       size="small"
                     >
                       <InputLabel>Document Type *</InputLabel>
-                      <Select {...field} label="Document Type *">
+                      <Select {...field} label="Document Type *" displayEmpty>
+                        <MenuItem value="">
+                          <em>Select…</em>
+                        </MenuItem>
                         {documentTypes.map((type) => (
                           <MenuItem key={type.id} value={type.documentType}>
                             {type.documentType}

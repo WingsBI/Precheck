@@ -21,6 +21,17 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     try {
+      // Session sentinel: if this is a brand-new browser session (no sentinel),
+      // clear any leftover cookies to avoid auto-login, then set the sentinel.
+      // Refreshes within the same session will keep cookies and rehydrate auth.
+      const SESSION_SENTINEL_KEY = 'session_started';
+      const hasSession = sessionStorage.getItem(SESSION_SENTINEL_KEY);
+      if (!hasSession) {
+        // New browser session → clear auth cookies to force fresh login
+        cookieUtils.clearAuth();
+        sessionStorage.setItem(SESSION_SENTINEL_KEY, '1');
+      }
+
       const token = cookieUtils.getToken();
       if (token) {
         const decoded: any = decodeJwt(token);
@@ -44,6 +55,23 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setBootstrapped(true);
     }
   }, [dispatch]);
+
+  // Add visibility change listener to track tab switching
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      console.log('Tab visibility changed:', {
+        hidden: document.hidden,
+        timestamp: new Date().toISOString(),
+        token: cookieUtils.getToken() ? 'Token exists' : 'No token'
+      });
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   if (!bootstrapped) return null;
   return <>{children}</>;
