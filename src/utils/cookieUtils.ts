@@ -1,10 +1,22 @@
 import Cookies from 'js-cookie';
 
 // Cookie configuration (session cookie: no explicit expiration)
-const COOKIE_CONFIG = {
-  secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-  sameSite: 'strict' as const, // Protect against CSRF attacks
-  path: '/', // Available across the entire site
+const getCookieConfig = () => {
+  const isProduction = import.meta.env.PROD;
+  const isSecure = window.location.protocol === 'https:';
+  
+  // For IP-based domains or localhost, we need different settings
+  const hostname = window.location.hostname;
+  const isIPAddress = /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+  
+  return {
+    secure: isSecure, // Only send over HTTPS if using HTTPS
+    sameSite: (isIPAddress || isLocalhost) ? 'lax' as const : 'strict' as const,
+    path: '/', // Available across the entire site
+    // Don't set domain for IP addresses or localhost
+    ...(!(isIPAddress || isLocalhost) && { domain: hostname })
+  };
 };
 
 // Cookie names
@@ -15,7 +27,9 @@ export const cookieUtils = {
   // Set authentication token
   setToken: (token: string): void => {
     console.log('Setting auth token in cookie');
-    Cookies.set(TOKEN_COOKIE_NAME, token, COOKIE_CONFIG);
+    const config = getCookieConfig();
+    console.log('Cookie config:', config);
+    Cookies.set(TOKEN_COOKIE_NAME, token, config);
     console.log('Auth token set successfully');
   },
 
@@ -35,7 +49,8 @@ export const cookieUtils = {
 
   // Set user data
   setUser: (userData: any): void => {
-    Cookies.set(USER_COOKIE_NAME, JSON.stringify(userData), COOKIE_CONFIG);
+    const config = getCookieConfig();
+    Cookies.set(USER_COOKIE_NAME, JSON.stringify(userData), config);
   },
 
   // Get user data
