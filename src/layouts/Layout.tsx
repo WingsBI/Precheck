@@ -626,7 +626,7 @@ export default function Layout() {
               display: { xs: 'none', sm: 'block' }
             }}
           >
-            Precheck Version 1.3
+            Precheck Version 1.4
           </Typography>
 
           {/* User Profile */}
