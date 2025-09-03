@@ -8,6 +8,12 @@ import type {
   MSNNumber
 } from '../../types';
 
+interface QRCodeError {
+  type: 'simple_error' | 'precheck_error';
+  message: string;
+  unsubmitedComponents?: Array<{ drawingNumber: string }>;
+}
+
 interface QRCodeState {
   qrcodeList: ImportedQRCodeItem[];
   consumedInList: any[];
@@ -17,7 +23,7 @@ interface QRCodeState {
   msnNumbers: MSNNumber[];
   batchItems: ImportedBatchInfo[];
   loading: boolean;
-  error: string | null;
+  error: QRCodeError | null;
   generatedNumber: string | null;
   isDownloading: boolean;
   storeInQRCodeDetails: ImportedBarcodeDetails | null;
@@ -112,7 +118,39 @@ export const generateQRCode = createAsyncThunk(
       const response = await api.post('/api/QRCode/GenerateQRCode', payload);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to generate QR code');
+      // Handle structured error responses
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        
+        // Check if it's a precheck error with unsubmitted components
+        if (errorData.unsubmitedComponents && Array.isArray(errorData.unsubmitedComponents)) {
+          return rejectWithValue({
+            type: 'precheck_error',
+            message: errorData.error || 'Precheck is not completed for the following components',
+            unsubmitedComponents: errorData.unsubmitedComponents
+          });
+        }
+        
+        // Check if it's a simple message error
+        if (errorData.message) {
+          return rejectWithValue({
+            type: 'simple_error',
+            message: errorData.message
+          });
+        }
+        
+        // Fallback for other error structures
+        return rejectWithValue({
+          type: 'simple_error',
+          message: errorData.error || errorData.message || 'Failed to generate QR code'
+        });
+      }
+      
+      // Network or other errors
+      return rejectWithValue({
+        type: 'simple_error',
+        message: error.message || 'Failed to generate QR code'
+      });
     }
   }
 );
@@ -125,7 +163,39 @@ export const generateStandardFieldQRCode = createAsyncThunk(
       const response = await api.post('/api/QRCode/GenerateStandardFieldQRCodeDetails', payload);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to generate standard field QR code');
+      // Handle structured error responses
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        
+        // Check if it's a precheck error with unsubmitted components
+        if (errorData.unsubmitedComponents && Array.isArray(errorData.unsubmitedComponents)) {
+          return rejectWithValue({
+            type: 'precheck_error',
+            message: errorData.error || 'Precheck is not completed for the following components',
+            unsubmitedComponents: errorData.unsubmitedComponents
+          });
+        }
+        
+        // Check if it's a simple message error
+        if (errorData.message) {
+          return rejectWithValue({
+            type: 'simple_error',
+            message: errorData.message
+          });
+        }
+        
+        // Fallback for other error structures
+        return rejectWithValue({
+          type: 'simple_error',
+          message: errorData.error || errorData.message || 'Failed to generate standard field QR code'
+        });
+      }
+      
+      // Network or other errors
+      return rejectWithValue({
+        type: 'simple_error',
+        message: error.message || 'Failed to generate standard field QR code'
+      });
     }
   }
 );
@@ -447,7 +517,7 @@ const qrcodeSlice = createSlice({
       })
       .addCase(generateQRCode.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.payload as QRCodeError;
       })
 
       // Generate Standard Field QR Code
@@ -461,7 +531,7 @@ const qrcodeSlice = createSlice({
       })
       .addCase(generateStandardFieldQRCode.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.payload as QRCodeError;
       })
 
       // Get Barcode Details
@@ -475,7 +545,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(getBarcodeDetails.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = {
+          type: 'simple_error',
+          message: action.payload as string
+        };
       })
 
       // Get Barcode Details with Parameters
@@ -489,7 +562,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(getBarcodeDetailsWithParameters.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = {
+          type: 'simple_error',
+          message: action.payload as string
+        };
       })
 
       // Generate Batch QR Code
@@ -503,7 +579,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(generateBatchQRCode.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = {
+          type: 'simple_error',
+          message: action.payload as string
+        };
       })
 
       // Export QR Code
@@ -516,7 +595,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(exportQRCode.rejected, (state, action) => {
         state.isDownloading = false;
-        state.error = action.payload as string;
+        state.error = {
+          type: 'simple_error',
+          message: action.payload as string
+        };
       })
 
       // Export Bulk QR Codes
@@ -529,7 +611,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(exportBulkQRCodes.rejected, (state, action) => {
         state.isDownloading = false;
-        state.error = action.payload as string;
+        state.error = {
+          type: 'simple_error',
+          message: action.payload as string
+        };
       })
 
       // Get Consumed In
@@ -543,7 +628,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(getConsumedIn.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = {
+          type: 'simple_error',
+          message: action.payload as string
+        };
       })
 
       // Fetch IR Numbers
@@ -557,7 +645,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(fetchIRNumbers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = {
+          type: 'simple_error',
+          message: action.payload as string
+        };
       })
 
       // Fetch MSN Numbers
@@ -571,7 +662,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(fetchMSNNumbers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = {
+          type: 'simple_error',
+          message: action.payload as string
+        };
       })
 
       // Handle updateQrCodeDetails
@@ -585,7 +679,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(updateQrCodeDetails.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Error updating QR code details';
+        state.error = {
+          type: 'simple_error',
+          message: action.error.message || 'Error updating QR code details'
+        };
       })
 
       // Get Stored Components by Date
@@ -599,7 +696,10 @@ const qrcodeSlice = createSlice({
       })
       .addCase(getStoredComponentsByDate.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = {
+          type: 'simple_error',
+          message: action.payload as string
+        };
       });
   },
 });
