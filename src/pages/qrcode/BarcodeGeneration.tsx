@@ -76,6 +76,7 @@ import {
   getAllUnits,
 } from "../../store/slices/commonSlice";
 import debounce from "lodash/debounce";
+import QRCodeErrorDisplay from "../../components/QRCodeErrorDisplay";
 
 // Create typed versions of the hooks
 const useAppDispatch: () => AppDispatch = useDispatch;
@@ -354,6 +355,7 @@ export default function BarcodeGeneration() {
       }
       setSuccessMessage(`Successfully generated ${data.quantity} QR code(s)!`);
     } catch (error) {
+      // Error is now handled by the Redux store and displayed by QRCodeErrorDisplay
       console.error("Error generating QR codes:", error);
     }
   };
@@ -551,15 +553,10 @@ export default function BarcodeGeneration() {
           </Alert>
         )}
 
-        {error && (
-          <Alert
-            severity="error"
-            sx={{ mb: 3 }}
-            onClose={() => dispatch(clearError())}
-          >
-            {error}
-          </Alert>
-        )}
+        <QRCodeErrorDisplay 
+          error={error} 
+          onClose={() => dispatch(clearError())} 
+        />
 
         {/* Main Form */}
         <Card elevation={2} sx={{ mb: 3 }}>
