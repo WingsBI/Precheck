@@ -46,6 +46,7 @@ import {
   Store as StoreIcon,
   ShoppingCart as ShoppingCartIcon,
   Article as ArticleIcon,
+  Archive as ArchiveIcon,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import type { RootState } from "../store/store";
@@ -241,6 +242,11 @@ export default function Layout() {
           icon: <VisibilityIcon />, 
           path: "/precheck/stored-components",
           roles: [ADMIN_ROLE, STORE_ROLE]
+        },
+        { 
+          text: "Archive", 
+          icon: <ArchiveIcon />, 
+          path: "/precheck/archive"
         },
       ],
     },
@@ -626,7 +632,7 @@ export default function Layout() {
               display: { xs: 'none', sm: 'block' }
             }}
           >
-            Precheck Version 1.4
+            Precheck Version 1.6
           </Typography>
 
           {/* User Profile */}

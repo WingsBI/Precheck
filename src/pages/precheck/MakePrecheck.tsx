@@ -37,13 +37,15 @@ import {
   QrCodeScanner as QrCodeScannerIcon,
   Refresh as RefreshIcon,
   Send as SendIcon,
+  Add as AddIcon,
 } from "@mui/icons-material";
 import {
   viewPrecheckDetails,
   makePrecheck,
   clearPrecheckData,
+  addQRCodeDetails,
 } from "../../store/slices/precheckSlice";
-import { getBarcodeDetails } from "../../store/slices/qrcodeSlice";
+import { getBarcodeDetails, updateQrCodeDetails } from "../../store/slices/qrcodeSlice";
 import {
   getAllProductionSeries,
   getDrawingNumbers,
@@ -288,6 +290,16 @@ const MakePrecheck: React.FC = () => {
   // Quantity dialog state
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
   const [maxQuantity, setMaxQuantity] = useState(0);
+
+  // Add QR Code dialog state
+  const [addQrDialogOpen, setAddQrDialogOpen] = useState(false);
+  const [selectedRowForAdd, setSelectedRowForAdd] = useState<GridItem | null>(null);
+  const [addQrFormData, setAddQrFormData] = useState({
+    prodSeriesId: '',
+    idNumber: '',
+    qrCodeNumber: ''
+  });
+  const [qrCodeError, setQrCodeError] = useState('');
   const [selectedQuantity, setSelectedQuantity] = useState(0);
   const [pendingBarcodeData, setPendingBarcodeData] = useState<any>(null);
 
@@ -404,7 +416,7 @@ const MakePrecheck: React.FC = () => {
   useEffect(() => {
     const hasLoadedBOM = showResults && searchResults.length > 0;
     setIsSubmitEnabled(hasLoadedBOM);
-    
+
     if (hasLoadedBOM) {
       const updatedItems = searchResults.filter(item => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete);
       console.log("Submit button state check:", {
@@ -528,12 +540,12 @@ const MakePrecheck: React.FC = () => {
       }
 
       console.log(`Submitting ${componentsToSubmit.length} component(s):`, componentsToSubmit);
-      
+
       // Validate payload before sending
-      const invalidComponents = componentsToSubmit.filter(comp => 
+      const invalidComponents = componentsToSubmit.filter(comp =>
         !comp.QrCodeNumber || !comp.DrawingNumberId || !comp.ConsumedInDrawingNumberID
       );
-      
+
       if (invalidComponents.length > 0) {
         console.error("Invalid components found:", invalidComponents);
         throw new Error(`${invalidComponents.length} component(s) have missing required data`);
@@ -542,21 +554,21 @@ const MakePrecheck: React.FC = () => {
       const response = await dispatch(
         makePrecheck(componentsToSubmit)
       ).unwrap();
-      
+
       console.log("Response make precheck:", response);
-      
+
       // Handle different response structures
       const responseData = Array.isArray(response) ? response : (response?.data || response || []);
-      
+
       if (responseData && responseData.length > 0) {
         // Create a map of submitted QR codes for faster lookup
         const submittedQRCodes = new Set(
           componentsToSubmit.map(comp => comp.QrCodeNumber)
         );
-        
+
         console.log("Submitted QR Codes:", Array.from(submittedQRCodes));
         console.log("Response Data:", responseData);
-        
+
         // Update grid items as submitted
         const updatedResults = searchResults.map((item) => {
           // Check if this item was in the submission batch
@@ -565,12 +577,12 @@ const MakePrecheck: React.FC = () => {
             const responseItem = responseData.find(
               (x: any) => {
                 // Try matching by QR code first, then by drawing number
-                return (x.QrCodeNumber === item.qrCode) || 
-                       (x.DrawingNumberId === item.drawingNumberId && 
-                        x.IdNumbers === item.idNumber);
+                return (x.QrCodeNumber === item.qrCode) ||
+                  (x.DrawingNumberId === item.drawingNumberId &&
+                    x.IdNumbers === item.idNumber);
               }
             );
-            
+
             if (responseItem) {
               console.log("Matching response item found for QR:", item.qrCode, responseItem);
               return {
@@ -601,17 +613,17 @@ const MakePrecheck: React.FC = () => {
         });
 
         setSearchResults(updatedResults);
-        
+
         // Count submitted and remaining items
-        const actualSubmittedCount = updatedResults.filter(item => 
+        const actualSubmittedCount = updatedResults.filter(item =>
           submittedQRCodes.has(item.qrCode || "") && item.isSubmitted
         ).length;
         const remainingItems = updatedResults.filter(
           (item) => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete
         );
-        
+
         console.log(`${actualSubmittedCount} item(s) submitted successfully. ${remainingItems.length} remaining items.`);
-        
+
         if (actualSubmittedCount === 0) {
           showAlertMessage(
             "No components were submitted. Please check the console for errors and try again.",
@@ -633,10 +645,10 @@ const MakePrecheck: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Error submitting precheck:", error);
-      
+
       // Extract user-friendly error message
       let errorMessage = "Error submitting precheck";
-      
+
       if (error?.payload) {
         // Redux rejected action with payload
         errorMessage = error.payload;
@@ -650,7 +662,7 @@ const MakePrecheck: React.FC = () => {
         // String error
         errorMessage = error;
       }
-      
+
       showAlertMessage(
         `Error submitting precheck: ${errorMessage}`,
         "error"
@@ -853,10 +865,10 @@ const MakePrecheck: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Error processing barcode:", error);
-      
+
       // Extract user-friendly error message from API response
       let errorMessage = "Error processing QR code";
-      
+
       if (error?.payload) {
         // Redux rejected action with payload
         errorMessage = error.payload;
@@ -870,7 +882,7 @@ const MakePrecheck: React.FC = () => {
         // String error
         errorMessage = error;
       }
-      
+
       showAlertMessage(
         `Error processing QR Code ${barcode}: ${errorMessage}`,
         "error"
@@ -1002,6 +1014,228 @@ const MakePrecheck: React.FC = () => {
     setSelectedRow(selectedRow === actualIndex ? null : actualIndex);
   };
 
+
+  // Handle plus button click
+  const handlePlusClick = (item: GridItem) => {
+    setSelectedRowForAdd(item);
+    setAddQrFormData({
+      prodSeriesId: selectedProductionSeries?.id?.toString() || '',
+      idNumber: '',
+      qrCodeNumber: ''
+    });
+    setAddQrDialogOpen(true);
+  };
+
+  // Validate QR code format
+  const validateQrCode = (qrCode: string) => {
+    if (!qrCode) {
+      setQrCodeError('');
+      return true;
+    }
+
+    // Check if QR code is exactly 15 digits
+    if (!/^\d{15}$/.test(qrCode)) {
+      setQrCodeError('QR code must be exactly 15 digits');
+      return false;
+    }
+
+    setQrCodeError('');
+    return true;
+  };
+
+  // Handle QR code input change
+  const handleQrCodeChange = (value: string) => {
+    // Only allow digits and limit to 15 characters
+    const numericValue = value.replace(/\D/g, '').slice(0, 15);
+    setAddQrFormData(prev => ({
+      ...prev,
+      qrCodeNumber: numericValue
+    }));
+    validateQrCode(numericValue);
+  };
+
+  // Handle add QR code form submission
+  const handleAddQrCode = async () => {
+    if (!selectedRowForAdd || !addQrFormData.qrCodeNumber || !addQrFormData.idNumber) {
+      showAlertMessage("Please fill all required fields", "error");
+      return;
+    }
+
+    // Validate QR code format
+    if (!validateQrCode(addQrFormData.qrCodeNumber)) {
+      showAlertMessage("Please enter a valid 15-digit QR code", "error");
+      return;
+    }
+
+    try {
+      setIsLoadingLocal(true);
+
+      // Step 1: Call AddQRCodeDetails API
+      const addQRPayload = {
+        drawingNumberId: selectedRowForAdd.drawingNumberId || 0,
+        productionSeriesId: parseInt(addQrFormData.prodSeriesId) || 0,
+        idNumber: parseInt(addQrFormData.idNumber) || 0,
+        qrCodeNumber: addQrFormData.qrCodeNumber,
+        createdBy: Number(user?.id) || 0,
+        createdDate: new Date().toISOString(),
+        isActive: true
+      };
+
+      console.log("Calling AddQRCodeDetails API with payload:", addQRPayload);
+      const addQRResult = await dispatch(addQRCodeDetails(addQRPayload)).unwrap();
+      console.log("AddQRCodeDetails API response:", addQRResult);
+
+      // Step 2: Call the store-in API (updateQrCodeDetails)
+      console.log("Calling store-in API for QR code:", addQrFormData.qrCodeNumber);
+      const storeInResult = await dispatch(updateQrCodeDetails(addQrFormData.qrCodeNumber)).unwrap();
+      console.log("Store-in API response:", storeInResult);
+
+      // Step 3: Get updated barcode details after store-in
+      console.log("Getting updated barcode details for QR code:", addQrFormData.qrCodeNumber);
+      const qrCodeDetails = await dispatch(getBarcodeDetails(addQrFormData.qrCodeNumber)).unwrap();
+
+      if (!qrCodeDetails) {
+        showAlertMessage("Invalid QR code or no data found", "error");
+        return;
+      }
+
+      console.log("QR Code Details from store-in API:", qrCodeDetails);
+
+      // Step 4: Execute scan QR code functionality automatically
+      // Check QR code status first
+      if (
+        qrCodeDetails.qrCodeStatusId === 3 ||
+        qrCodeDetails.qrCodeStatus?.toLowerCase() === "qrcodegenerated"
+      ) {
+        showAlertMessage(
+          "Component not stored in. QR code is generated but not ready for consumption.",
+          "warning"
+        );
+        return;
+      }
+
+      if (
+        qrCodeDetails.qrCodeStatusId === 2 ||
+        qrCodeDetails.qrCodeStatus?.toLowerCase() === "consumed"
+      ) {
+        showAlertMessage(
+          "This QR code has already been consumed and cannot be used again.",
+          "error"
+        );
+        return;
+      }
+
+      // Only proceed if status is 1 (Available)
+      if (
+        qrCodeDetails.qrCodeStatusId !== 1 &&
+        qrCodeDetails.qrCodeStatus?.toLowerCase() !== "available"
+      ) {
+        showAlertMessage("Invalid QR code status.", "error");
+        return;
+      }
+
+      // Find the matching item in search results
+      console.log("Looking for matching item:", {
+        selectedRowSr: selectedRowForAdd.sr,
+        selectedRowDrawingNumber: selectedRowForAdd.drawingNumber,
+        searchResultsLength: searchResults.length
+      });
+
+      const matchingItemIndex = searchResults.findIndex(item =>
+        item.sr === selectedRowForAdd.sr &&
+        item.drawingNumber === selectedRowForAdd.drawingNumber
+      );
+
+      console.log("Matching item index:", matchingItemIndex);
+
+      if (matchingItemIndex !== -1) {
+        const updatedResults = [...searchResults];
+        const item = updatedResults[matchingItemIndex];
+
+        // Update the item with all fields from QR code details (same as scan functionality)
+        console.log("Updating grid item with QR code details:", qrCodeDetails);
+        console.log("Current item before update:", item);
+
+        item.qrCode = qrCodeDetails.qrCodeNumber;
+        item.isPrecheckComplete = false;
+        item.isUpdated = true;
+        item.ir = qrCodeDetails.irNumber;
+        item.msn = qrCodeDetails.msnNumber;
+        // Use the ID number from the form input, not from QR code details
+        item.idNumber = addQrFormData.idNumber || qrCodeDetails.idNumber;
+        item.quantity = qrCodeDetails.quantity || item.quantity;
+        item.componentType = qrCodeDetails.componentType;
+        item.mrirNumber = qrCodeDetails.mrirNumber;
+        item.remarks = qrCodeDetails.remark;
+        item.username = user?.username || "Current User";
+        item.modifiedDate = new Date().toISOString();
+        item.productionOrderNumber = qrCodeDetails.productionOrderNumber || "NA";
+        item.projectNumber = qrCodeDetails.projectNumber || "NA";
+        item.disposition = qrCodeDetails.desposition || "NA";
+        item.unit = qrCodeDetails.unit || item.unit || "1";
+
+        console.log("Updated item after changes:", item);
+
+        // Force re-render by creating a new array reference
+        setSearchResults([...updatedResults]);
+
+        // Small delay to ensure state update is processed
+        setTimeout(() => {
+          showAlertMessage("QR Code added and scanned successfully!", "success");
+        }, 100);
+      } else {
+        console.error("No matching item found in search results");
+        showAlertMessage("Error: Could not find matching item in the grid to update", "error");
+        return;
+      }
+
+      // Close dialog and reset form
+      setAddQrDialogOpen(false);
+      setSelectedRowForAdd(null);
+      setAddQrFormData({
+        prodSeriesId: '',
+        idNumber: '',
+        qrCodeNumber: ''
+      });
+      setQrCodeError('');
+
+    } catch (error: any) {
+      console.error("Error adding QR code:", error);
+
+      // Extract user-friendly error message
+      let errorMessage = "Error adding QR code";
+
+      if (error?.payload) {
+        errorMessage = error.payload;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+
+      showAlertMessage(
+        `Error adding QR Code: ${errorMessage}`,
+        "error"
+      );
+    } finally {
+      setIsLoadingLocal(false);
+    }
+  };
+
+  // Handle dialog close
+  const handleAddQrDialogClose = () => {
+    setAddQrDialogOpen(false);
+    setSelectedRowForAdd(null);
+    setAddQrFormData({
+      prodSeriesId: '',
+      idNumber: '',
+      qrCodeNumber: ''
+    });
+    setQrCodeError('');
+  };
+
   // Pagination handlers
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
@@ -1020,6 +1254,12 @@ const MakePrecheck: React.FC = () => {
     const endIndex = startIndex + rowsPerPage;
     return sortedResults.slice(startIndex, endIndex);
   }, [sortedResults, page, rowsPerPage]);
+
+  // Check if all components are completed/submitted
+  const allComponentsCompleted = useMemo(() => {
+    if (searchResults.length === 0) return false;
+    return searchResults.every(item => item.isPrecheckComplete || item.isSubmitted);
+  }, [searchResults]);
 
   const updateGridItems = async (response: any[]) => {
     if (!response?.length) return;
@@ -1202,14 +1442,14 @@ const MakePrecheck: React.FC = () => {
 
         <FormControl
           sx={{
-            minWidth: { xs: "50%", sm: 100 },
-            flex: { xs: "1 1 50%", sm: "0 1" },
+            minWidth: { xs: "60%", sm: 120 },
+            flex: { xs: "1 1 60%", sm: "0 1" },
           }}
           size="small"
         >
           <TextField
             size="small"
-            label="ID Num *"
+            label="ID Number *"
             value={idNumber}
             onChange={(e) => setIdNumber(e.target.value)}
             variant="outlined"
@@ -1549,18 +1789,33 @@ const MakePrecheck: React.FC = () => {
                 >
                   Details
                 </TableCell>
+                {!allComponentsCompleted && (
+                  <TableCell
+                    align="center"
+                    sx={{
+                      fontWeight: "bold",
+                      backgroundColor: "#f5f5f5",
+                      py: 0.3,
+                      px: 0.8,
+                      fontSize: "0.85rem",
+                      minWidth: 40,
+                    }}
+                  >
+                    Add
+                  </TableCell>
+                )}
               </TableRow>
             </TableHead>
             <TableBody>
               {isLoadingLocal ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ height: 150 }}>
+                  <TableCell colSpan={allComponentsCompleted ? 10 : 11} align="center" sx={{ height: 150 }}>
                     <CircularProgress size={30} />
                   </TableCell>
                 </TableRow>
               ) : paginatedResults.length > 0 ? (
                 paginatedResults.map((item, index) => (
-                  <React.Fragment key={index}>
+                  <React.Fragment key={`${item.sr}-${item.drawingNumber}-${item.isUpdated}-${item.idNumber}`}>
                     <TableRow
                       hover
                       onDoubleClick={() => handleRowDoubleClick(index)}
@@ -1568,8 +1823,8 @@ const MakePrecheck: React.FC = () => {
                         backgroundColor: item.isPrecheckComplete
                           ? "#f0f0f0"
                           : selectedRow === page * rowsPerPage + index
-                          ? "#e3f2fd"
-                          : "inherit",
+                            ? "#e3f2fd"
+                            : "inherit",
                         opacity: item.isPrecheckComplete ? 0.7 : 1,
                         height: 36,
                         cursor: "pointer",
@@ -1577,8 +1832,8 @@ const MakePrecheck: React.FC = () => {
                           backgroundColor: item.isPrecheckComplete
                             ? "#f0f0f0"
                             : selectedRow === page * rowsPerPage + index
-                            ? "#bbdefb"
-                            : "#f5f5f5",
+                              ? "#bbdefb"
+                              : "#f5f5f5",
                         },
                       }}
                     >
@@ -1653,11 +1908,32 @@ const MakePrecheck: React.FC = () => {
                           )}
                         </IconButton>
                       </TableCell>
+                      {!allComponentsCompleted && (
+                        <TableCell
+                          align="center"
+                          sx={{ py: 0.2, px: 0.8, fontSize: "0.75rem" }}
+                        >
+                          {!item.isPrecheckComplete && !item.isSubmitted ? (
+                            <IconButton
+                              size="small"
+                              onClick={() => handlePlusClick(item)}
+                              sx={{ p: 0.2 }}
+                              color="primary"
+                            >
+                              <AddIcon fontSize="small" />
+                            </IconButton>
+                          ) : (
+                            <span style={{ color: '#999', fontSize: '0.7rem' }}>
+                              {item.isPrecheckComplete ? 'Completed' : 'Submitted'}
+                            </span>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                     <TableRow>
                       <TableCell
                         style={{ paddingBottom: 0, paddingTop: 0 }}
-                        colSpan={10}
+                        colSpan={allComponentsCompleted ? 10 : 11}
                       >
                         <Collapse
                           in={expandedRows.has(index)}
@@ -1751,16 +2027,16 @@ const MakePrecheck: React.FC = () => {
                                         item.isPrecheckComplete
                                           ? "Completed"
                                           : item.isUpdated
-                                          ? "Updated"
-                                          : "Pending"
+                                            ? "Updated"
+                                            : "Pending"
                                       }
                                       size="small"
                                       color={
                                         item.isPrecheckComplete
                                           ? "success"
                                           : item.isUpdated
-                                          ? "warning"
-                                          : "default"
+                                            ? "warning"
+                                            : "default"
                                       }
                                       variant="outlined"
                                     />
@@ -1776,14 +2052,14 @@ const MakePrecheck: React.FC = () => {
                 ))
               ) : showResults ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ height: 150 }}>
+                  <TableCell colSpan={allComponentsCompleted ? 10 : 11} align="center" sx={{ height: 150 }}>
                     No records found
                   </TableCell>
                 </TableRow>
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={allComponentsCompleted ? 10 : 11}
                     align="center"
                     sx={{ height: 150, color: "text.secondary" }}
                   >
@@ -1812,9 +2088,9 @@ const MakePrecheck: React.FC = () => {
                 minHeight: 48,
               },
               "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-                {
-                  fontSize: "0.8rem",
-                },
+              {
+                fontSize: "0.8rem",
+              },
             }}
           />
         )}
@@ -1828,6 +2104,90 @@ const MakePrecheck: React.FC = () => {
         onClose={() => setQuantityDialogOpen(false)}
         onConfirm={handleQuantityConfirm}
       />
+
+      {/* Add QR Code Dialog */}
+      <Dialog
+        open={addQrDialogOpen}
+        onClose={handleAddQrDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Add QR Code Details
+          {selectedRowForAdd && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Drawing Number: {selectedRowForAdd.drawingNumber}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <FormControl fullWidth>
+              <Autocomplete
+                options={productionSeries}
+                getOptionLabel={(option) => option.productionSeries}
+                value={productionSeries.find(ps => ps.id?.toString() === addQrFormData.prodSeriesId) || null}
+                onChange={(_, newValue) => {
+                  setAddQrFormData(prev => ({
+                    ...prev,
+                    prodSeriesId: newValue?.id?.toString() || ''
+                  }));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Production Series *"
+                    variant="outlined"
+                    size="small"
+                  />
+                )}
+              />
+            </FormControl>
+
+            <TextField
+              label="ID Number *"
+              variant="outlined"
+              size="small"
+              fullWidth
+              value={addQrFormData.idNumber}
+              onChange={(e) => setAddQrFormData(prev => ({
+                ...prev,
+                idNumber: e.target.value
+              }))}
+            />
+
+            <TextField
+              label="QR Code Number *"
+              variant="outlined"
+              size="small"
+              fullWidth
+              value={addQrFormData.qrCodeNumber}
+              onChange={(e) => handleQrCodeChange(e.target.value)}
+              placeholder="Enter 15 digit QR code"
+              error={!!qrCodeError}
+              helperText={qrCodeError || "Must be exactly 15 digits"}
+              inputProps={{
+                maxLength: 15,
+                inputMode: "numeric",
+                pattern: "[0-9]*"
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAddQrDialogClose} color="secondary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddQrCode}
+            color="primary"
+            variant="contained"
+            disabled={!addQrFormData.prodSeriesId || !addQrFormData.idNumber || !addQrFormData.qrCodeNumber || !!qrCodeError || addQrFormData.qrCodeNumber.length !== 15}
+          >
+            Add
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -230,6 +230,26 @@ export const getStoreInData = createAsyncThunk(
   }
 );
 
+export const addQRCodeDetails = createAsyncThunk(
+  'precheck/addQRCodeDetails',
+  async (payload: {
+    drawingNumberId: number;
+    productionSeriesId: number;
+    idNumber: number;
+    qrCodeNumber: string;
+    createdBy: number;
+    createdDate: string;
+    isActive: boolean;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/Precheck/AddQRCodeDetails', payload);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to add QR code details');
+    }
+  }
+);
+
 const precheckSlice = createSlice({
   name: 'precheck',
   initialState,
@@ -409,6 +429,19 @@ const precheckSlice = createSlice({
       .addCase(getStoreInData.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.error.message || 'Error fetching store-in data';
+      })
+      // Add QR Code Details
+      .addCase(addQRCodeDetails.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(addQRCodeDetails.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(addQRCodeDetails.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
       });
   },
 });

@@ -27,6 +27,7 @@ import BarcodeGeneration from './pages/qrcode/BarcodeGeneration';
 import NewBarcodeGeneration from './pages/qrcode/NewBarcodeGeneration';
 import ViewBarcode from './pages/qrcode/ViewBarcode';
 import ViewConsumedIn from './pages/precheck/ViewConsumedIn';
+import Archive from './pages/precheck/Archive';
 
 // SOP Pages
 import SOP from './pages/sop/ViewSOP';
@@ -66,6 +67,7 @@ export default function AppRoutes() {
           <Route path="stored-components" element={<StoredInComponents />} />
           <Route path="make-order" element={<MakeOrder />} />
           <Route path="consumed" element={<ViewConsumedIn />} />
+          <Route path="archive" element={<Archive />} />
         </Route>
         
         {/* IR/MSN Module */}
