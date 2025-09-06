@@ -416,7 +416,7 @@ const MakePrecheck: React.FC = () => {
   useEffect(() => {
     const hasLoadedBOM = showResults && searchResults.length > 0;
     setIsSubmitEnabled(hasLoadedBOM);
-    
+
     if (hasLoadedBOM) {
       const updatedItems = searchResults.filter(item => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete);
       console.log("Submit button state check:", {
@@ -540,12 +540,12 @@ const MakePrecheck: React.FC = () => {
       }
 
       console.log(`Submitting ${componentsToSubmit.length} component(s):`, componentsToSubmit);
-      
+
       // Validate payload before sending
-      const invalidComponents = componentsToSubmit.filter(comp => 
+      const invalidComponents = componentsToSubmit.filter(comp =>
         !comp.QrCodeNumber || !comp.DrawingNumberId || !comp.ConsumedInDrawingNumberID
       );
-      
+
       if (invalidComponents.length > 0) {
         console.error("Invalid components found:", invalidComponents);
         throw new Error(`${invalidComponents.length} component(s) have missing required data`);
@@ -554,21 +554,21 @@ const MakePrecheck: React.FC = () => {
       const response = await dispatch(
         makePrecheck(componentsToSubmit)
       ).unwrap();
-      
+
       console.log("Response make precheck:", response);
-      
+
       // Handle different response structures
       const responseData = Array.isArray(response) ? response : (response?.data || response || []);
-      
+
       if (responseData && responseData.length > 0) {
         // Create a map of submitted QR codes for faster lookup
         const submittedQRCodes = new Set(
           componentsToSubmit.map(comp => comp.QrCodeNumber)
         );
-        
+
         console.log("Submitted QR Codes:", Array.from(submittedQRCodes));
         console.log("Response Data:", responseData);
-        
+
         // Update grid items as submitted
         const updatedResults = searchResults.map((item) => {
           // Check if this item was in the submission batch
@@ -577,12 +577,12 @@ const MakePrecheck: React.FC = () => {
             const responseItem = responseData.find(
               (x: any) => {
                 // Try matching by QR code first, then by drawing number
-                return (x.QrCodeNumber === item.qrCode) || 
-                       (x.DrawingNumberId === item.drawingNumberId && 
-                        x.IdNumbers === item.idNumber);
+                return (x.QrCodeNumber === item.qrCode) ||
+                  (x.DrawingNumberId === item.drawingNumberId &&
+                    x.IdNumbers === item.idNumber);
               }
             );
-            
+
             if (responseItem) {
               console.log("Matching response item found for QR:", item.qrCode, responseItem);
               return {
@@ -613,17 +613,17 @@ const MakePrecheck: React.FC = () => {
         });
 
         setSearchResults(updatedResults);
-        
+
         // Count submitted and remaining items
-        const actualSubmittedCount = updatedResults.filter(item => 
+        const actualSubmittedCount = updatedResults.filter(item =>
           submittedQRCodes.has(item.qrCode || "") && item.isSubmitted
         ).length;
         const remainingItems = updatedResults.filter(
           (item) => item.isUpdated && !item.isSubmitted && !item.isPrecheckComplete
         );
-        
+
         console.log(`${actualSubmittedCount} item(s) submitted successfully. ${remainingItems.length} remaining items.`);
-        
+
         if (actualSubmittedCount === 0) {
           showAlertMessage(
             "No components were submitted. Please check the console for errors and try again.",
@@ -645,10 +645,10 @@ const MakePrecheck: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Error submitting precheck:", error);
-      
+
       // Extract user-friendly error message
       let errorMessage = "Error submitting precheck";
-      
+
       if (error?.payload) {
         // Redux rejected action with payload
         errorMessage = error.payload;
@@ -662,7 +662,7 @@ const MakePrecheck: React.FC = () => {
         // String error
         errorMessage = error;
       }
-      
+
       showAlertMessage(
         `Error submitting precheck: ${errorMessage}`,
         "error"
@@ -865,10 +865,10 @@ const MakePrecheck: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Error processing barcode:", error);
-      
+
       // Extract user-friendly error message from API response
       let errorMessage = "Error processing QR code";
-      
+
       if (error?.payload) {
         // Redux rejected action with payload
         errorMessage = error.payload;
@@ -882,7 +882,7 @@ const MakePrecheck: React.FC = () => {
         // String error
         errorMessage = error;
       }
-      
+
       showAlertMessage(
         `Error processing QR Code ${barcode}: ${errorMessage}`,
         "error"
@@ -1032,13 +1032,13 @@ const MakePrecheck: React.FC = () => {
       setQrCodeError('');
       return true;
     }
-    
+
     // Check if QR code is exactly 15 digits
     if (!/^\d{15}$/.test(qrCode)) {
       setQrCodeError('QR code must be exactly 15 digits');
       return false;
     }
-    
+
     setQrCodeError('');
     return true;
   };
@@ -1089,7 +1089,7 @@ const MakePrecheck: React.FC = () => {
       console.log("Calling store-in API for QR code:", addQrFormData.qrCodeNumber);
       const storeInResult = await dispatch(updateQrCodeDetails(addQrFormData.qrCodeNumber)).unwrap();
       console.log("Store-in API response:", storeInResult);
-      
+
       // Step 3: Get updated barcode details after store-in
       console.log("Getting updated barcode details for QR code:", addQrFormData.qrCodeNumber);
       const qrCodeDetails = await dispatch(getBarcodeDetails(addQrFormData.qrCodeNumber)).unwrap();
@@ -1140,9 +1140,9 @@ const MakePrecheck: React.FC = () => {
         selectedRowDrawingNumber: selectedRowForAdd.drawingNumber,
         searchResultsLength: searchResults.length
       });
-      
-      const matchingItemIndex = searchResults.findIndex(item => 
-        item.sr === selectedRowForAdd.sr && 
+
+      const matchingItemIndex = searchResults.findIndex(item =>
+        item.sr === selectedRowForAdd.sr &&
         item.drawingNumber === selectedRowForAdd.drawingNumber
       );
 
@@ -1155,7 +1155,7 @@ const MakePrecheck: React.FC = () => {
         // Update the item with all fields from QR code details (same as scan functionality)
         console.log("Updating grid item with QR code details:", qrCodeDetails);
         console.log("Current item before update:", item);
-        
+
         item.qrCode = qrCodeDetails.qrCodeNumber;
         item.isPrecheckComplete = false;
         item.isUpdated = true;
@@ -1173,12 +1173,12 @@ const MakePrecheck: React.FC = () => {
         item.projectNumber = qrCodeDetails.projectNumber || "NA";
         item.disposition = qrCodeDetails.desposition || "NA";
         item.unit = qrCodeDetails.unit || item.unit || "1";
-        
+
         console.log("Updated item after changes:", item);
 
         // Force re-render by creating a new array reference
         setSearchResults([...updatedResults]);
-        
+
         // Small delay to ensure state update is processed
         setTimeout(() => {
           showAlertMessage("QR Code added and scanned successfully!", "success");
@@ -1201,10 +1201,10 @@ const MakePrecheck: React.FC = () => {
 
     } catch (error: any) {
       console.error("Error adding QR code:", error);
-      
+
       // Extract user-friendly error message
       let errorMessage = "Error adding QR code";
-      
+
       if (error?.payload) {
         errorMessage = error.payload;
       } else if (error?.response?.data?.message) {
@@ -1214,7 +1214,7 @@ const MakePrecheck: React.FC = () => {
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
-      
+
       showAlertMessage(
         `Error adding QR Code: ${errorMessage}`,
         "error"
@@ -1823,8 +1823,8 @@ const MakePrecheck: React.FC = () => {
                         backgroundColor: item.isPrecheckComplete
                           ? "#f0f0f0"
                           : selectedRow === page * rowsPerPage + index
-                          ? "#e3f2fd"
-                          : "inherit",
+                            ? "#e3f2fd"
+                            : "inherit",
                         opacity: item.isPrecheckComplete ? 0.7 : 1,
                         height: 36,
                         cursor: "pointer",
@@ -1832,8 +1832,8 @@ const MakePrecheck: React.FC = () => {
                           backgroundColor: item.isPrecheckComplete
                             ? "#f0f0f0"
                             : selectedRow === page * rowsPerPage + index
-                            ? "#bbdefb"
-                            : "#f5f5f5",
+                              ? "#bbdefb"
+                              : "#f5f5f5",
                         },
                       }}
                     >
@@ -2027,16 +2027,16 @@ const MakePrecheck: React.FC = () => {
                                         item.isPrecheckComplete
                                           ? "Completed"
                                           : item.isUpdated
-                                          ? "Updated"
-                                          : "Pending"
+                                            ? "Updated"
+                                            : "Pending"
                                       }
                                       size="small"
                                       color={
                                         item.isPrecheckComplete
                                           ? "success"
                                           : item.isUpdated
-                                          ? "warning"
-                                          : "default"
+                                            ? "warning"
+                                            : "default"
                                       }
                                       variant="outlined"
                                     />
@@ -2088,9 +2088,9 @@ const MakePrecheck: React.FC = () => {
                 minHeight: 48,
               },
               "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-                {
-                  fontSize: "0.8rem",
-                },
+              {
+                fontSize: "0.8rem",
+              },
             }}
           />
         )}
@@ -2166,7 +2166,7 @@ const MakePrecheck: React.FC = () => {
               placeholder="Enter 15 digit QR code"
               error={!!qrCodeError}
               helperText={qrCodeError || "Must be exactly 15 digits"}
-              inputProps={{ 
+              inputProps={{
                 maxLength: 15,
                 inputMode: "numeric",
                 pattern: "[0-9]*"
@@ -2178,9 +2178,9 @@ const MakePrecheck: React.FC = () => {
           <Button onClick={handleAddQrDialogClose} color="secondary">
             Cancel
           </Button>
-          <Button 
-            onClick={handleAddQrCode} 
-            color="primary" 
+          <Button
+            onClick={handleAddQrCode}
+            color="primary"
             variant="contained"
             disabled={!addQrFormData.prodSeriesId || !addQrFormData.idNumber || !addQrFormData.qrCodeNumber || !!qrCodeError || addQrFormData.qrCodeNumber.length !== 15}
           >
